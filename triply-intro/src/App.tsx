@@ -3,7 +3,9 @@ import Home from "./pages/Home";
 import Storybook from "./pages/Storybook.tsx";
 import Roadmap from "./pages/Roadmap";
 import Contact from "./pages/Contact";
-import ProjectTeam from "./pages/ProjectTeam.tsx";
+import TeamCharPage from "./pages/TeamCharPage.tsx";
+import AboutUs from "./pages/AboutUs.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
 
 export default function App() {
     return (
@@ -13,7 +15,9 @@ export default function App() {
                 <Route path="/about" element={<Storybook />} />
                 <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/contact" element={<Contact />} />
-                <Route path="/projectteam" element={<ProjectTeam />} />
+                <Route path="/teamchar" element={<TeamCharPage />} />
+                <Route path="/aboutus" element={<AboutUs />} />
+                <Route path="/dashboard" element={<Dashboard />} />
             </Routes>
         </BrowserRouter>
     );
