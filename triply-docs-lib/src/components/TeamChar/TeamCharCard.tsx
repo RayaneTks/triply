@@ -1,5 +1,3 @@
-import React from 'react';
-
 export interface TeamCharCardProps {
     /** Le titre principal de la carte */
     titre: React.ReactNode;
