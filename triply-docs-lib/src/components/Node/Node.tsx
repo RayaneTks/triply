@@ -7,6 +7,7 @@ export type NodeProps = {
     onClick?: (nodeId: string) => void;
     id: string;
     colorScheme?: 'primary' | 'secondary' | 'neutral';
+    isActive?: boolean;
 };
 
 export const Node: React.FC<NodeProps> = ({
@@ -15,7 +16,8 @@ export const Node: React.FC<NodeProps> = ({
                                               label,
                                               id,
                                               onClick,
-                                              colorScheme = 'primary'
+                                              colorScheme = 'primary',
+                                              isActive = false
                                           }) => {
 
     const colorClasses = {
@@ -41,10 +43,14 @@ export const Node: React.FC<NodeProps> = ({
         transition-transform duration-200 hover:scale-105
     `;
 
+    const interactionClasses = isActive
+        ? 'scale-110 shadow-lg ring-4 ring-blue-500 ring-offset-2'
+        : 'hover:scale-105';
+
     return (
         <div
             onClick={() => onClick?.(id)}
-            className={`${baseClasses} ${colorClasses[colorScheme]}`}
+            className={`${baseClasses} ${colorClasses[colorScheme]} ${interactionClasses}`}
             style={dynamicStyles}
         >
             {label}
