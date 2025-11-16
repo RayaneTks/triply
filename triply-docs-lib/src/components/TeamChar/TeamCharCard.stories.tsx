@@ -20,7 +20,7 @@ type Story = StoryObj<typeof TeamCharCard>;
  */
 export const Defaut: Story = {
     args: {
-        titre: 'Alice Dubois',
+        titre: 'Léa Dalfin',
         sousTitre: 'Directrice Générale',
     },
 };
@@ -42,7 +42,7 @@ export const AvecTitreJSX: Story = {
     args: {
         titre: (
             <div className="flex items-center gap-2">
-                <span className="text-red-500">🔥 Projet Phoenix</span>
+                <span className="text-red-500">Triply Project</span>
             </div>
         ),
         sousTitre: 'Équipe prioritaire',
