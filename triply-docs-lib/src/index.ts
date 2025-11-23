@@ -12,6 +12,8 @@ export { StackedWorkloadChart } from './components/Widgets/StackedWorkloadChart/
 export { KpiCard } from './components/Widgets/KpiCard/KpiCard';
 export { PieChartWidget } from './components/Widgets/PieChartWidget/PieChartWidget';
 export { ProgressBar } from './components/Widgets/ProgressBar/ProgressBar';
+export { PaperAirplane } from './components/PaperAirplane/PaperAirplane';
+export { SlidingDoorCard } from './components/ImageCard/SlidingDoorCard';
 
 export type { ButtonProps } from './components/Button/Button';
 export type { NodeProps } from "./components/Node/Node";
@@ -25,3 +27,5 @@ export type { PieChartDataPoint } from './types/piechart.ts';
 export type { KpiCardData } from './types/kpi';
 export type { ProgressBarData } from "./types/progress.ts";
 export type { WorkloadDataPoint } from './types/workload';
+export type { PaperAirplaneProps } from "./types/paperAirplane.ts";
+export type { SlidingDoorCardProps } from './components/ImageCard/SlidingDoorCard';

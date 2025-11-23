@@ -1,201 +1,187 @@
-import React, { useState } from 'react';
-import { ImageCard, Node } from "triply-docs-lib";
-import { Edge } from "triply-docs-lib";
+import React, { useMemo, useState } from 'react';
+import { Node, Edge, SlidingDoorCard } from "triply-docs-lib";
+import { AnimatePresence, motion } from 'framer-motion';
+import roadmapData from '../../data/roadmap.json';
 
-// ... (Le type CardContent et l'objet cardData restent identiques) ...
-type CardContent = {
-    title: string;
-    description: string;
-    imageSrc: string;
-    imageAlt: string;
-    buttonText: string;
+interface RawSprint {
+    phase: string;
+    period: string;
+    start_date: string;
+    end_date: string;
+    product: string[];
+    development: string[];
+    user_experience: string[];
+    quality_assurance: string[];
+    risk_assessment: string[];
+}
+
+interface RoadmapJson {
+    project_name: string;
+    start_date: string;
+    end_date: string;
+    number_of_sprints: number;
+    standard_sprint_duration: string;
+    number_of_features: number;
+    sprints: RawSprint[];
+}
+
+interface ComponentSprintData {
+    id: string;
+    label: string;
+    period: string;
+    product: string[];
+    risk_assessment: string[];
+}
+
+const typedRoadmapData = roadmapData as RoadmapJson;
+
+const NODE_Y_POS = 400;
+const NODE_SPACING = 250;
+const INITIAL_X_OFFSET = 150;
+const SMALL_EDGE_LENGTH = NODE_SPACING / 2;
+
+const OFFSET_BEFORE_NODE = 30;
+const OFFSET_AFTER_NODE = -30;
+
+const mapSprintsData = (data: RoadmapJson): ComponentSprintData[] => {
+    return data.sprints.map((sprint, index) => ({
+        id: `node-${index + 1}`,
+        label: sprint.phase,
+        period: sprint.period,
+        product: sprint.product,
+        risk_assessment: sprint.risk_assessment,
+    }));
 };
 
-const cardData: Record<string, CardContent> = {
-    'node-1': {
-        title: 'Étape 1: Découverte',
-        description: 'Voici la description de la première étape du processus.',
-        imageSrc: 'https://via.placeholder.com/300x200?text=Etape+1',
-        imageAlt: 'Illustration de l\'étape 1',
-        buttonText: 'Suivant'
-    },
-    'node-2': {
-        title: 'Étape 2: Planification',
-        description: 'Planification détaillée des ressources et du calendrier.',
-        imageSrc: 'https://via.placeholder.com/300x200?text=Etape+2',
-        imageAlt: 'Illustration de l\'étape 2',
-        buttonText: 'Suivant'
-    },
-    'node-3': {
-        title: 'Étape 3: Exécution',
-        description: 'Mise en œuvre du plan établi lors de l\'étape 2.',
-        imageSrc: 'https://via.placeholder.com/300x200?text=Etape+3',
-        imageAlt: 'Illustration de l\'étape 3',
-        buttonText: 'Suivant'
-    },
-    'node-4': {
-        title: 'Étape 4: Révision',
-        description: 'Examen des résultats et ajustements si nécessaire.',
-        imageSrc: 'https://via.placeholder.com/300x200?text=Etape+4',
-        imageAlt: 'Illustration de l\'étape 4',
-        buttonText: 'Suivant'
-    },
-    'node-5': {
-        title: 'Étape 5: Lancement',
-        description: 'Déploiement final et lancement officiel.',
-        imageSrc: 'https://via.placeholder.com/300x200?text=Etape+5',
-        imageAlt: 'Illustration de l\'étape 5',
-        buttonText: 'Terminer'
-    },
+const calculateNodePositions = (sprints: ComponentSprintData[]) => {
+    return sprints.reduce((acc, sprint, index) => {
+        acc[sprint.id] = {
+            x: INITIAL_X_OFFSET + index * NODE_SPACING,
+            y: NODE_Y_POS,
+        };
+        return acc;
+    }, {} as Record<string, { x: number, y: number }>);
 };
-
 
 export default function Roadmap(): React.ReactElement {
-    const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+    const [selectedSprint, setSelectedSprint] = useState<RawSprint | null>(null);
 
-    // 2. Nœuds centrés verticalement (y: 400)
-    const nodeYPos = 400;
-    const node1Pos = { x: 150, y: nodeYPos };
-    const node2Pos = { x: 350, y: nodeYPos };
-    const node3Pos = { x: 550, y: nodeYPos };
-    const node4Pos = { x: 750, y: nodeYPos };
-    const node5Pos = { x: 950, y: nodeYPos };
+    const sprints = useMemo(() => mapSprintsData(typedRoadmapData), []);
+    const nodePositions = useMemo(() => calculateNodePositions(sprints), [sprints]);
 
-    type NodePosition = { x: number, y: number };
+    const lastSprintIndex = sprints.length - 1;
+    const lastNodePos = nodePositions[sprints[lastSprintIndex].id];
+    const projectEndDateLabel = typedRoadmapData.end_date;
+    const totalWidth = INITIAL_X_OFFSET + lastSprintIndex * NODE_SPACING + INITIAL_X_OFFSET + SMALL_EDGE_LENGTH;
 
-    const nodePositions: Record<string, NodePosition> = {
-        'node-1': node1Pos,
-        'node-2': node2Pos,
-        'node-3': node3Pos,
-        'node-4': node4Pos,
-        'node-5': node5Pos,
-    };
-
-    // 3. Créer un tableau ordonné des IDs
-    const nodeIds = Object.keys(nodePositions); // ['node-1', 'node-2', ...]
-
-    const handleNodeClick = (nodeId: string) => {
-        setActiveNodeId(prevActiveId => (prevActiveId === nodeId ? null : nodeId));
-    };
-
-    const activeNodePos: NodePosition | null = activeNodeId
-        ? nodePositions[activeNodeId]
-        : null;
-
-    const activeNodeData: CardContent | null = activeNodeId
-        ? cardData[activeNodeId]
-        : null;
-
-    // 4. Logique pour le style de la carte dynamique
-    let dynamicCardStyle: React.CSSProperties = {
-        position: 'absolute',
-        zIndex: 20,
-        // Ajout d'une transition pour un effet plus doux
-        transition: 'transform 0.3s ease-in-out, top 0.3s ease-in-out',
-    };
-
-    if (activeNodeId && activeNodePos) {
-        const activeIndex = nodeIds.indexOf(activeNodeId);
-        // Nœuds 2 (index 1) et 4 (index 3) iront au-dessus
-        const positionAbove = activeIndex % 2 === 1;
-
-        dynamicCardStyle.left = activeNodePos.x;
-        dynamicCardStyle.top = activeNodePos.y; // On part toujours du 'y' du nœud
-
-        if (positionAbove) {
-            // **POSITION AU-DESSUS**
-            // 1. translateX(-50%): Centre horizontalement
-            // 2. translateY(-100%): Monte la carte de 100% de sa propre hauteur 
-            //    (le bas de la carte touche maintenant le centre du nœud)
-            // 3. translateY(-70px): Ajoute 70px d'espace
-            dynamicCardStyle.transform = 'translateX(-50%) translateY(-100%) translateY(-70px)';
-        } else {
-            // **POSITION EN DESSOUS** (Nœuds 1, 3, 5)
-            // 1. translateX(-50%): Centre horizontalement
-            // 2. translateY(70px): Ajoute 70px d'espace vers le bas
-            dynamicCardStyle.transform = 'translateX(-50%) translateY(70px)';
-        }
-    }
-
+    const handleCloseModal = () => setSelectedSprint(null);
 
     return (
-        <div className="flex justify-center items-center min-h-screen w-full">
-            <div
-                style={{
-                    position: 'relative',
-                    // 1. Augmentation de la hauteur pour laisser de la place
-                    height: '800px',
-                    width: '1100px',
-                }}
-            >
-                {/* --- Nœuds (utilisent maintenant nodeYPos) --- */}
-                <Node
-                    id="node-1"
-                    label="Étape 1"
-                    x={node1Pos.x}
-                    y={node1Pos.y}
-                    /* ... reste des props ... */
-                    onClick={() => handleNodeClick("node-1")}
-                    isActive={activeNodeId === "node-1"}
-                />
-                <Node
-                    id="node-2"
-                    label="Étape 2"
-                    x={node2Pos.x}
-                    y={node2Pos.y}
-                    /* ... reste des props ... */
-                    onClick={() => handleNodeClick("node-2")}
-                    isActive={activeNodeId === "node-2"}
-                />
-                <Node
-                    id="node-3"
-                    label="Étape 3"
-                    x={node3Pos.x}
-                    y={node3Pos.y}
-                    /* ... reste des props ... */
-                    onClick={() => handleNodeClick("node-3")}
-                    isActive={activeNodeId === "node-3"}
-                />
-                <Node
-                    id="node-4"
-                    label="Étape 4"
-                    x={node4Pos.x}
-                    y={node4Pos.y}
-                    /* ... reste des props ... */
-                    onClick={() => handleNodeClick("node-4")}
-                    isActive={activeNodeId === "node-4"}
-                />
-                <Node
-                    id="node-5"
-                    label="Étape 5"
-                    x={node5Pos.x}
-                    y={node5Pos.y}
-                    /* ... reste des props ... */
-                    onClick={() => handleNodeClick("node-5")}
-                    isActive={activeNodeId === "node-5"}
-                />
+        <>
+            <div className="flex justify-center items-center min-h-screen w-full relative">
+                <div
+                    style={{
+                        position: 'relative',
+                        height: '800px',
+                        width: `${totalWidth}px`,
+                    }}
+                >
+                    {sprints.map((sprint, index) => {
+                        const pos = nodePositions[sprint.id];
+                        const rawSprint = typedRoadmapData.sprints[index];
 
-                {/* --- Liens (Edges) --- */}
-                <Edge x1={node1Pos.x} y1={node1Pos.y} x2={node2Pos.x} y2={node2Pos.y} />
-                <Edge x1={node2Pos.x} y1={node2Pos.y} x2={node3Pos.x} y2={node3Pos.y} />
-                <Edge x1={node3Pos.x} y1={node3Pos.y} x2={node4Pos.x} y2={node4Pos.y} />
-                <Edge x1={node4Pos.x} y1={node4Pos.y} x2={node5Pos.x} y2={node5Pos.y} />
+                        return (
+                            <React.Fragment key={sprint.id}>
+                                <Edge
+                                    x1={pos.x - SMALL_EDGE_LENGTH}
+                                    y1={pos.y}
+                                    x2={pos.x}
+                                    y2={pos.y}
+                                    label={rawSprint.start_date}
+                                    labelOffset={OFFSET_BEFORE_NODE}
+                                    labelPosition="above"
+                                    variant='dashed'
+                                    colorScheme='secondary'
+                                />
 
-                {/* --- Rendu conditionnel de la ImageCard --- */}
-                {/* Le div wrapper utilise maintenant le style dynamique */}
-                {activeNodePos && activeNodeData && (
-                    <div style={dynamicCardStyle}>
-                        <ImageCard
-                            title={activeNodeData.title}
-                            description={activeNodeData.description}
-                            imageSrc={activeNodeData.imageSrc}
-                            imageAlt={activeNodeData.imageAlt}
-                            buttonText={activeNodeData.buttonText}
-                            onButtonClick={() => setActiveNodeId(null)}
-                        />
-                    </div>
-                )}
+                                <Node
+                                    id={sprint.id}
+                                    label={sprint.label}
+                                    x={pos.x}
+                                    y={pos.y}
+                                    onClick={() => setSelectedSprint(rawSprint)}
+                                />
+
+                                {index < lastSprintIndex && (
+                                    <Edge
+                                        x1={pos.x}
+                                        y1={pos.y}
+                                        x2={pos.x + SMALL_EDGE_LENGTH}
+                                        y2={pos.y}
+                                        label={rawSprint.end_date}
+                                        labelOffset={OFFSET_AFTER_NODE}
+                                        labelPosition="below"
+                                        variant='dashed'
+                                        colorScheme='secondary'
+                                    />
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+
+                    <Edge
+                        x1={lastNodePos.x}
+                        y1={lastNodePos.y}
+                        x2={lastNodePos.x + SMALL_EDGE_LENGTH}
+                        y2={lastNodePos.y}
+                        label={projectEndDateLabel}
+                        labelOffset={OFFSET_AFTER_NODE}
+                        labelPosition="below"
+                        variant='dashed'
+                        colorScheme='secondary'
+                    />
+
+                    {sprints.slice(0, -1).map((sprint, index) => {
+                        const currentPos = nodePositions[sprint.id];
+                        const nextPos = nodePositions[sprints[index + 1].id];
+
+                        return (
+                            <Edge
+                                key={`edge-link-${index}`}
+                                x1={currentPos.x + SMALL_EDGE_LENGTH}
+                                y1={currentPos.y}
+                                x2={nextPos.x - SMALL_EDGE_LENGTH}
+                                y2={nextPos.y}
+                                colorScheme='neutral'
+                                variant='solid'
+                            />
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+
+            <AnimatePresence>
+                {selectedSprint && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                        onClick={handleCloseModal}
+                    >
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <SlidingDoorCard
+                                imageSrc="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80"
+                                imageAlt={selectedSprint.phase}
+                                title={selectedSprint.phase}
+                                description={`Objectifs Principaux: ${selectedSprint.product.join(', ')}. Risques: ${selectedSprint.risk_assessment.join(', ')}`}
+                                buttonText="Fermer"
+                                onButtonClick={handleCloseModal}
+                            />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
     );
 }
