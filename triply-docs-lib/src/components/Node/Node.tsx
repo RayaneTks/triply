@@ -8,6 +8,7 @@ export type NodeProps = {
     id: string;
     colorScheme?: 'primary' | 'secondary' | 'neutral';
     isActive?: boolean;
+    size?: number;
 };
 
 export const Node: React.FC<NodeProps> = ({
@@ -17,7 +18,8 @@ export const Node: React.FC<NodeProps> = ({
                                               id,
                                               onClick,
                                               colorScheme = 'primary',
-                                              isActive = false
+                                              isActive = false,
+                                              size = 120
                                           }) => {
 
     const colorClasses = {
@@ -30,12 +32,13 @@ export const Node: React.FC<NodeProps> = ({
         position: 'absolute',
         left: `${x}px`,
         top: `${y}px`,
+        width: `${size}px`,
+        height: `${size}px`,
         transform: 'translate(-50%, -50%)',
         zIndex: 10,
     };
 
     const baseClasses = `
-        w-20 h-20
         rounded-full
         cursor-pointer
         p-1.5
