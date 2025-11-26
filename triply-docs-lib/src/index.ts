@@ -14,6 +14,7 @@ export { PieChartWidget } from './components/Widgets/PieChartWidget/PieChartWidg
 export { ProgressBar } from './components/Widgets/ProgressBar/ProgressBar';
 export { PaperAirplane } from './components/PaperAirplane/PaperAirplane';
 export { SlidingDoorCard } from './components/ImageCard/SlidingDoorCard';
+export { GitView } from './components/GitGraph/GitView';
 
 export type { ButtonProps } from './components/Button/Button';
 export type { NodeProps } from "./components/Node/Node";
@@ -29,3 +30,4 @@ export type { ProgressBarData } from "./types/progress.ts";
 export type { WorkloadDataPoint } from './types/workload';
 export type { PaperAirplaneProps } from "./types/paperAirplane.ts";
 export type { SlidingDoorCardProps } from './components/ImageCard/SlidingDoorCard';
+export type { GitAction, CommitAction, MergeAction } from './components/GitGraph/GitView';

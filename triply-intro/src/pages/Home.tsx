@@ -22,10 +22,10 @@ export default function Home() {
 
                 <div className="flex items-center justify-center gap-16">
                     <Bubble label="Storybook" angle={0} href={STORYBOOK_URL}/>
-                    <Bubble label="Présentation" angle={36} href="/aboutus"/>
+                    <Bubble label="Présentation" angle={36} href="/powerpoint"/>
                     <Bubble label="Roadmap" angle={72} href="/roadmap"/>
                     <Bubble label="Dashboard" angle={108} href="/dashboard"/>
-                    <Bubble label="Contact" angle={144} href="/contact"/>
+                    <Bubble label="Git" angle={144} href="/git"/>
                     <Bubble label="Organigramme" angle={180} href="/teamchar"/>
                 </div>
             </div>

@@ -1,111 +1,118 @@
 import React, { useMemo } from 'react';
-import { Branch, Gitgraph } from "@gitgraph/react";
+import { Branch, Gitgraph, TemplateName, Orientation, templateExtend } from "@gitgraph/react";
 
-
-interface CommitAction {
+export interface CommitAction {
     type: 'commit';
     branchName: string;
     subject: string;
     author: string;
+    hash?: string;
 }
 
-interface BranchAction {
+export interface BranchAction {
     type: 'branch';
     newBranchName: string;
     fromBranchName: string;
 }
 
-interface MergeAction {
+export interface MergeAction {
     type: 'merge';
     sourceBranchName: string;
     targetBranchName: string;
     subject: string;
+    hash?: string;
 }
 
-interface TagAction {
+export interface TagAction {
     type: 'tag';
     branchName: string;
     tagName: string;
 }
 
-type GitAction = CommitAction | BranchAction | MergeAction | TagAction;
-type GitHistory = GitAction[];
+export type GitAction = CommitAction | BranchAction | MergeAction | TagAction;
+export type GitHistory = GitAction[];
 
-
-interface GitViewProps {
+export interface GitViewProps {
     history: GitHistory;
 }
 
-
-interface LocalGitgraphUserApi {
+export interface LocalGitgraphUserApi {
     branch(name: string): Branch;
-    commit(options: { subject: string, author: string } | string): void;
+    commit(options: any): void;
 }
 
+const compactTemplate = templateExtend(TemplateName.Metro, {
+    branch: {
+        spacing: 20,
+        lineWidth: 3,
+        label: { font: "normal 10px Arial" }
+    },
+    commit: {
+        spacing: 25,
+        dot: { size: 5 },
+        message: { font: "normal 12px Arial" }
+    }
+});
 
 export const GitView: React.FC<GitViewProps> = ({ history }) => {
-
     const branchMap = useMemo(() => new Map<string, Branch>(), []);
 
-    const processGitAction = (_gitgraph: LocalGitgraphUserApi, action: GitAction) => {
-
-        switch (action.type) {
-            case 'commit': {
-                const commitAction = action as CommitAction;
-                const branch = branchMap.get(commitAction.branchName) || branchMap.get('main');
-
-                if (branch) {
-                    branch.commit({
-                        subject: commitAction.subject,
-                        author: commitAction.author,
-                    });
-                }
-                break;
-            }
-
-            case 'branch': {
-                const branchAction = action as BranchAction;
-                const fromBranch = branchMap.get(branchAction.fromBranchName);
-
-                if (fromBranch && !branchMap.has(branchAction.newBranchName)) {
-                    const newBranch = fromBranch.branch(branchAction.newBranchName);
-                    branchMap.set(branchAction.newBranchName, newBranch);
-                }
-                break;
-            }
-
-            case 'merge': {
-                const mergeAction = action as MergeAction;
-                const sourceBranch = branchMap.get(mergeAction.sourceBranchName);
-                const targetBranch = branchMap.get(mergeAction.targetBranchName);
-
-                if (sourceBranch && targetBranch) {
-                    sourceBranch.merge(targetBranch, mergeAction.subject);
-                }
-                break;
-            }
-
-            case 'tag': {
-                const tagAction = action as TagAction;
-                const branch = branchMap.get(tagAction.branchName);
-                if (branch) {
-                    branch.tag(tagAction.tagName);
-                }
-                break;
-            }
-        }
-    };
-
     return (
-        <div style={{ height: '500px', width: '700px', border: '1px solid #ddd', padding: '10px', overflow: 'auto' }}>
-            <Gitgraph>
+        <div className="w-full overflow-x-auto p-2 bg-white rounded-lg">
+            <Gitgraph options={{
+                orientation: Orientation.HorizontalReverse,
+                template: compactTemplate,
+            }}>
                 {(gitgraph) => {
                     branchMap.clear();
 
                     const mainBranch = gitgraph.branch('main');
                     branchMap.set('main', mainBranch);
 
-                    history.forEach(action => processGitAction(gitgraph as LocalGitgraphUserApi, action as GitAction));
+                    const getAuthoredBranch = (branchName: string): Branch => {
+                        if (!branchName || branchName === 'main') return mainBranch;
+
+                        if (branchMap.has(branchName)) {
+                            return branchMap.get(branchName)!;
+                        }
+
+                        const newBranch = mainBranch.branch(branchName);
+                        branchMap.set(branchName, newBranch);
+                        return newBranch;
+                    };
+
+                    history.forEach((action) => {
+                        switch (action.type) {
+                            case 'commit': {
+                                const commitAction = action as CommitAction;
+                                const branch = getAuthoredBranch(commitAction.branchName);
+
+                                branch.commit({
+                                    subject: commitAction.subject,
+                                    author: commitAction.author,
+                                    hash: commitAction.hash,
+                                });
+                                break;
+                            }
+
+                            case 'merge': {
+                                const mergeAction = action as MergeAction;
+
+                                const sourceBranch = getAuthoredBranch(mergeAction.sourceBranchName);
+                                const targetBranch = getAuthoredBranch(mergeAction.targetBranchName);
+
+                                targetBranch.merge({
+                                    branch: sourceBranch,
+                                    commitOptions: {
+                                        subject: mergeAction.subject,
+                                        hash: mergeAction.hash,
+                                        author: "Merge"
+                                    }
+                                });
+                                break;
+                            }
+                        }
+                    });
                 }}
             </Gitgraph>
         </div>
