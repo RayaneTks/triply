@@ -14,7 +14,7 @@ const DEFAULT_CTA_BUTTONS: ButtonProps[] = [
         label: 'Connexion',
         onClick: () => alert('Action Connexion'),
         variant: 'secondary',
-        tone: 'default',
+        tone: 'light',
     },
     {
         label: 'Inscription',
@@ -56,7 +56,7 @@ export const LoggedInHeader: Story = {
                 label: 'Profil',
                 onClick: () => alert('Aller au profil'),
                 variant: 'secondary',
-                tone: 'default',
+                tone: 'light',
             },
         ],
     },

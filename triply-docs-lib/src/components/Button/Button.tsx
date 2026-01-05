@@ -19,12 +19,12 @@ export const Button: React.FC<ButtonProps> = ({
         },
         secondary: {
             light: 'bg-secondary-light hover:bg-secondary',
-            default: 'bg-secondary hover:bg-secondary-dark',
+            default: 'bg-secondary hover:bg-secondary-light ',
             dark: 'bg-secondary-dark',
         },
     };
 
-    const textColor = variant === 'secondary' ? 'text-black' : 'text-white';
+    const textColor = tone === 'dark' ? 'text-white' : (variant === 'secondary' ? 'text-black' : 'text-white');
 
     return (
         <button
