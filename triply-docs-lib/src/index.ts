@@ -15,6 +15,10 @@ export { ProgressBar } from './components/Widgets/ProgressBar/ProgressBar';
 export { PaperAirplane } from './components/PaperAirplane/PaperAirplane';
 export { SlidingDoorCard } from './components/ImageCard/SlidingDoorCard';
 export { GitView } from './components/GitGraph/GitView';
+export { SearchBar } from './components/Searchbar/Searchbar';
+export { TravelerCounter } from './components/TravelerCounter/TravelerCounter';
+export { Slide } from './components/PowerPoint/Slide';
+export { SliderMenu } from './components/PowerPoint/SliderMenu';
 
 export type { ButtonProps } from './components/Button/Button';
 export type { NodeProps } from "./components/Node/Node";
@@ -31,3 +35,6 @@ export type { WorkloadDataPoint } from './types/workload';
 export type { PaperAirplaneProps } from "./types/paperAirplane.ts";
 export type { SlidingDoorCardProps } from './components/ImageCard/SlidingDoorCard';
 export type { GitAction, CommitAction, MergeAction } from './components/GitGraph/GitView';
+export type { SearchBarProps } from './components/Searchbar/Searchbar';
+export type { TravelerCounterProps } from './components/TravelerCounter/TravelerCounter';
+export type { SlideDefinition, SlideDirection } from './components/PowerPoint/types';

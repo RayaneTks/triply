@@ -12,7 +12,7 @@ export const SearchBar: FC<SearchBarProps> = ({
                                               }) => {
     return (
         <div
-            className={`flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full max-w-md ${className}`}
+            className={`flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full max-w-md focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-colors ${className}`}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

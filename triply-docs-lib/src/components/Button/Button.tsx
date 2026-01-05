@@ -3,6 +3,7 @@ export interface ButtonProps {
     onClick?: () => void;
     variant?: 'primary' | 'secondary';
     tone?: 'light' | 'default' | 'dark';
+    className?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -10,6 +11,7 @@ export const Button: React.FC<ButtonProps> = ({
                                                   onClick,
                                                   variant = 'primary',
                                                   tone = 'default',
+                                                  className = '',
                                               }) => {
     const tones = {
         primary: {
@@ -19,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
         },
         secondary: {
             light: 'bg-secondary-light hover:bg-secondary',
-            default: 'bg-secondary hover:bg-secondary-light ',
+            default: 'bg-secondary hover:bg-secondary-dark hover:text-white',
             dark: 'bg-secondary-dark',
         },
     };
@@ -29,7 +31,7 @@ export const Button: React.FC<ButtonProps> = ({
     return (
         <button
             onClick={onClick}
-            className={`px-6 py-1 rounded-xl font-medium transition-colors duration-200 ${tones[variant][tone]} ${textColor}`}
+            className={`px-6 py-1 rounded-md font-medium transition-colors duration-200 ${tones[variant][tone]} ${textColor} ${className}`}
         >
             {label}
         </button>

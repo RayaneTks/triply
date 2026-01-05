@@ -11,8 +11,8 @@ type BubbleProps = {
 export const Bubble: React.FC<BubbleProps> = ({
                                                   label,
                                                   angle,
-                                                  radiusX = 500,
-                                                  radiusY = 250,
+                                                  radiusX = 200,
+                                                  radiusY = 100,
                                                   href,
                                               }) => {
     const rad = (angle * Math.PI) / 180;
@@ -22,7 +22,7 @@ export const Bubble: React.FC<BubbleProps> = ({
     return (
         <a
             href={href}
-            className="absolute bg-primary-dark text-secondary-900 backdrop-blur-md rounded-full px-6 py-4 text-center cursor-pointer hover:bg-secondary-dark hover:scale-110 transition-all"
+            className="absolute bg-primary hover:bg-primary-dark text-white backdrop-blur-md rounded-full px-6 py-3 text-center cursor-pointer hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl font-medium"
             style={{
                 left: `50%`,
                 top: `50%`,

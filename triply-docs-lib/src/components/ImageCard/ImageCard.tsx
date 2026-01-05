@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '../Button/Button';
 
 export interface ImageCardProps {
     imageSrc: string;
@@ -26,13 +27,14 @@ export const ImageCard: React.FC<ImageCardProps> = ({
 
     return (
         <div
-            className={`group w-64 h-auto bg-transparent [perspective:1000px] ${className}`}
+            className={`group w-64 bg-transparent [perspective:1000px] ${className}`}
         >
             <div
                 className="relative flex flex-col bg-white rounded-lg shadow-lg overflow-hidden transition-shadow duration-300 ease-in-out hover:shadow-xl"
             >
+                {/* Image fixe - ne bouge jamais */}
                 <div
-                    className="w-full h-40 overflow-hidden cursor-pointer z-20 relative"
+                    className="w-full h-40 flex-shrink-0 overflow-hidden cursor-pointer z-20 relative"
                     onClick={toggleOpen}
                 >
                     <img
@@ -46,14 +48,14 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                     </div>
                 </div>
 
+                {/* Layer qui s'ouvre en dessous - pousse les autres éléments */}
                 <AnimatePresence initial={false}>
                     {isOpen && (
                         <motion.div
-                            initial={{ height: 0, opacity: 0, rotateX: -90 }}
+                            initial={{ height: 0, opacity: 0 }}
                             animate={{
                                 height: "auto",
                                 opacity: 1,
-                                rotateX: 0,
                                 transition: {
                                     type: "spring",
                                     bounce: 0.3,
@@ -63,13 +65,11 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                             exit={{
                                 height: 0,
                                 opacity: 0,
-                                rotateX: -90,
                                 transition: {
                                     duration: 0.4,
                                     ease: "easeInOut"
                                 }
                             }}
-                            style={{ transformOrigin: "top" }}
                             className="flex flex-col bg-white origin-top overflow-hidden"
                         >
                             <div className="p-4 flex flex-col flex-grow">
@@ -79,12 +79,15 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                                 <p className="text-gray-600 text-sm flex-grow mb-4">
                                     {description}
                                 </p>
-                                <button
-                                    onClick={onButtonClick}
-                                    className="mt-auto bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded transition-colors duration-200"
-                                >
-                                    {buttonText}
-                                </button>
+                                <div className="mt-auto">
+                                    <Button
+                                        label={buttonText}
+                                        onClick={onButtonClick}
+                                        variant="primary"
+                                        tone="default"
+                                        className="w-full"
+                                    />
+                                </div>
                             </div>
                         </motion.div>
                     )}

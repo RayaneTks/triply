@@ -49,11 +49,12 @@ export const SliderMenu: React.FC<SliderMenuProps> = ({
     return (
         <>
             <motion.button
-                className="fixed top-4 left-4 z-50 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md border border-slate-200"
+                className="fixed top-4 left-4 z-[100] p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md border border-slate-200"
                 onClick={toggleMenu}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 aria-label="Menu des slides"
+                style={{ position: 'fixed' }}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -70,7 +71,8 @@ export const SliderMenu: React.FC<SliderMenuProps> = ({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={toggleMenu}
-                            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40"
+                            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[90]"
+                            style={{ position: 'fixed' }}
                         />
 
                         <motion.div
@@ -78,7 +80,8 @@ export const SliderMenu: React.FC<SliderMenuProps> = ({
                             initial="closed"
                             animate="open"
                             exit="closed"
-                            className="fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-50 p-6 flex flex-col"
+                            className="fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-[100] p-6 flex flex-col"
+                            style={{ position: 'fixed' }}
                         >
                             <div className="flex justify-between items-center mb-8">
                                 <motion.h2

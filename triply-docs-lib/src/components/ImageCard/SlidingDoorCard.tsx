@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '../Button/Button';
 
 export interface SlidingDoorCardProps {
     imageSrc: string;
@@ -86,15 +87,15 @@ export const SlidingDoorCard: React.FC<SlidingDoorCardProps> = ({
                                 </p>
                             </div>
 
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onButtonClick();
-                                }}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors shadow-md mt-4"
-                            >
-                                {buttonText}
-                            </button>
+                            <div className="w-full mt-4" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                    label={buttonText}
+                                    onClick={onButtonClick}
+                                    variant="primary"
+                                    tone="default"
+                                    className="w-full"
+                                />
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

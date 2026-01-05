@@ -70,14 +70,14 @@ export const Slide: React.FC<SlideProps> = ({
         >
             {/* 1. Menu Burger - En haut à gauche */}
             {slides && onJumpTo && (
-                // Le composant SliderMenu utilise 'fixed', mais à l'intérieur d'un élément transformé
-                // (motion.div), il se comportera comme 'absolute', restant solidaire de la slide.
-                <div className="absolute top-0 left-0 z-50">
-                    <SliderMenu
-                        slides={slides}
-                        currentIndex={slideIndex}
-                        onSelect={onJumpTo}
-                    />
+                <div className="absolute top-0 left-0 z-[100] pointer-events-none">
+                    <div className="pointer-events-auto">
+                        <SliderMenu
+                            slides={slides}
+                            currentIndex={slideIndex}
+                            onSelect={onJumpTo}
+                        />
+                    </div>
                 </div>
             )}
 

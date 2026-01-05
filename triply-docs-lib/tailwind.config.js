@@ -15,9 +15,12 @@ module.exports = {
         secondary: {
           DEFAULT: '#DBDBDB',
           light: '#ffffff',
-          dark: '#000000',
+          dark: '#6E6E6E',
         },
         neutral: '#64748b',
+      },
+      height: {
+        '24': '6rem',
       },
     },
   },

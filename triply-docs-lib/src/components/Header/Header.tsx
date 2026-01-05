@@ -14,13 +14,13 @@ export interface HeaderProps {
     ctaButtons: ButtonProps[];
 }
 
-const LOGO_SIZE_SMALL = 60;
+const LOGO_SIZE_SMALL = 120;
 
 export const Header: FC<HeaderProps> = ({ logoAlt, navItems, ctaButtons }) => {
-    const linkTextColor = 'text-white hover:text-green-300';
+    const linkTextColor = 'text-black hover:text-primary';
 
     return (
-        <header className="w-full max-w-full flex !justify-between items-center px-8 py-4 bg-primary-dark"
+        <header className="w-full max-w-full flex !justify-between rounded-b-xl items-center px-8 py-4 bg-white"
                 style={{ justifyContent: 'space-between' }}>
 
             <Logo
@@ -44,7 +44,7 @@ export const Header: FC<HeaderProps> = ({ logoAlt, navItems, ctaButtons }) => {
                         <Button
                             key={index}
                             {...buttonProps}
-                            tone="light"
+                            tone={index === 0 ? 'default' : 'default'}
                         />
                     ))}
                 </div>

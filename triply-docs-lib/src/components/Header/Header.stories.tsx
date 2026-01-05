@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import {Header, HeaderProps, NavItem} from "./Header";
 import {ButtonProps} from "../Button/Button";

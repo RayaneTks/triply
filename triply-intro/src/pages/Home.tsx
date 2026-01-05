@@ -1,5 +1,6 @@
-import {Bubble, CentralText} from "triply-docs-lib";
-import logoImage from "../assets/logo.png";
+import { Button, CentralText } from "triply-docs-lib";
+import { Link } from "react-router-dom";
+import logoImage from "../assets/Logo-light.png";
 
 const STORYBOOK_URL =
     import.meta.env.VITE_PUBLIC_STORYBOOK_URL ||
@@ -20,13 +21,25 @@ export default function Home() {
                     linkText="Rejoignez-nous !"
                     linkHref="/signup"/>
 
-                <div className="flex items-center justify-center gap-16">
-                    <Bubble label="Storybook" angle={0} href={STORYBOOK_URL}/>
-                    <Bubble label="Présentation" angle={36} href="/powerpoint"/>
-                    <Bubble label="Roadmap" angle={72} href="/roadmap"/>
-                    <Bubble label="Dashboard" angle={108} href="/dashboard"/>
-                    <Bubble label="Git" angle={144} href="/git"/>
-                    <Bubble label="Organigramme" angle={180} href="/teamchar"/>
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                    <a href={STORYBOOK_URL}>
+                        <Button label="Storybook" variant="primary" tone="default" />
+                    </a>
+                    <Link to="/powerpoint">
+                        <Button label="Présentation" variant="primary" tone="default" />
+                    </Link>
+                    <Link to="/roadmap">
+                        <Button label="Roadmap" variant="primary" tone="default" />
+                    </Link>
+                    <Link to="/dashboard">
+                        <Button label="Dashboard" variant="primary" tone="default" />
+                    </Link>
+                    <Link to="/git">
+                        <Button label="Git" variant="primary" tone="default" />
+                    </Link>
+                    <Link to="/teamchar">
+                        <Button label="Organigramme" variant="primary" tone="default" />
+                    </Link>
                 </div>
             </div>
         </div>
