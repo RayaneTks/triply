@@ -3,7 +3,7 @@ import {PaperAirplaneProps} from "../../types/paperAirplane.ts";
 
 export const PaperAirplane: React.FC<PaperAirplaneProps> = ({
                                                                 size = 48,
-                                                                color = '#006241'
+                                                                color = '#0096c7'
                                                             }) => {
 
     return (

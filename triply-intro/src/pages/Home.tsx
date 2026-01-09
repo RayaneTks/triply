@@ -23,22 +23,22 @@ export default function Home() {
 
                 <div className="flex flex-wrap items-center justify-center gap-4">
                     <a href={STORYBOOK_URL}>
-                        <Button label="Storybook" variant="primary" tone="default" />
+                        <Button label="Storybook" variant="secondary" tone="dark" />
                     </a>
                     <Link to="/powerpoint">
-                        <Button label="Présentation" variant="primary" tone="default" />
+                        <Button label="Présentation" variant="secondary" tone="dark" />
                     </Link>
                     <Link to="/roadmap">
-                        <Button label="Roadmap" variant="primary" tone="default" />
+                        <Button label="Roadmap" variant="secondary" tone="dark" />
                     </Link>
                     <Link to="/dashboard">
-                        <Button label="Dashboard" variant="primary" tone="default" />
+                        <Button label="Dashboard" variant="secondary" tone="dark" />
                     </Link>
                     <Link to="/git">
-                        <Button label="Git" variant="primary" tone="default" />
+                        <Button label="Git" variant="secondary" tone="dark" />
                     </Link>
                     <Link to="/teamchar">
-                        <Button label="Organigramme" variant="primary" tone="default" />
+                        <Button label="Organigramme" variant="secondary" tone="dark" />
                     </Link>
                 </div>
             </div>

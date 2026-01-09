@@ -19,6 +19,7 @@ export { SearchBar } from './components/Searchbar/Searchbar';
 export { TravelerCounter } from './components/TravelerCounter/TravelerCounter';
 export { Slide } from './components/PowerPoint/Slide';
 export { SliderMenu } from './components/PowerPoint/SliderMenu';
+export { WorldMap } from './components/Map/Map';
 
 export type { ButtonProps } from './components/Button/Button';
 export type { NodeProps } from "./components/Node/Node";
@@ -38,3 +39,4 @@ export type { GitAction, CommitAction, MergeAction } from './components/GitGraph
 export type { SearchBarProps } from './components/Searchbar/Searchbar';
 export type { TravelerCounterProps } from './components/TravelerCounter/TravelerCounter';
 export type { SlideDefinition, SlideDirection } from './components/PowerPoint/types';
+export type { MapProps } from './components/Map/Map';

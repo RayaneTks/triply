@@ -129,8 +129,8 @@ export default function Powerpoint() {
                                 <Button
                                     label="Continuer"
                                     onClick={() => goToNext()}
-                                    variant="primary"
-                                    tone="default"
+                                    variant="secondary"
+                                    tone="dark"
                                 />
                             </div>
                         </div>
@@ -211,13 +211,13 @@ export default function Powerpoint() {
                                 label="Créer un compte"
                                 onClick={() => alert('Création de compte')}
                                 variant="secondary"
-                                tone="light"
+                                tone="dark"
                             />
                             <Button
                                 label="Explorer les destinations"
                                 onClick={() => alert('Exploration')}
-                                variant="primary"
-                                tone="default"
+                                variant="secondary"
+                                tone="dark"
                             />
                         </div>
                         <div className="mt-12 text-center max-w-2xl">

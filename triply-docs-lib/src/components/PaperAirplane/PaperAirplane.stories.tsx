@@ -7,7 +7,7 @@ const meta: Meta<typeof PaperAirplane> = {
     tags: ['autodocs'],
     args: {
         size: 48,
-        color: '#006241',
+        color: '#0096c7',
     },
     argTypes: {
         size: { control: { type: 'range', min: 24, max: 200, step: 1 } },
@@ -23,13 +23,13 @@ export const DefaultAirplane: Story = {};
 export const LargeBlueAirplane: Story = {
     args: {
         size: 96,
-        color: '#006241',
+        color: '#0096c7',
     },
 };
 
 export const SmallRedAirplane: Story = {
     args: {
         size: 32,
-        color: '#006241',
+        color: '#0096c7',
     },
 };

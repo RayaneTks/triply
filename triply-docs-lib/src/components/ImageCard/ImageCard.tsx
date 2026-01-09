@@ -83,8 +83,8 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                                     <Button
                                         label={buttonText}
                                         onClick={onButtonClick}
-                                        variant="primary"
-                                        tone="default"
+                                        variant="light"
+                                        tone="tone1"
                                         className="w-full"
                                     />
                                 </div>

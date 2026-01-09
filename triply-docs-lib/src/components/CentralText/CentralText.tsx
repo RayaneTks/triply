@@ -5,7 +5,7 @@ export type CentralTextProps = {
     title: string;
     subtitle?: string;
     linkText?: string;
-    linkHref?: string;
+    linkHref?: string | (() => void);
     logoSrc?: string;
     logoAlt?: string;
     logoSize?: 'small' | 'default' | 'large';
@@ -49,13 +49,23 @@ export const CentralText: React.FC<CentralTextProps> = ({
             <h1 className={`text-4xl font-bold ${titleColor} mb-2`}>{title}</h1>
             {subtitle && <p className={`text-lg ${subtitleColor} mb-2`}>{subtitle}</p>}
             {linkText && linkHref && (
-                <a href={linkHref} className="inline-block mt-4">
-                    <Button
-                        label={linkText}
-                        variant="primary"
-                        tone="default"
-                    />
-                </a>
+                typeof linkHref === 'string' ? (
+                    <a href={linkHref} className="inline-block mt-4">
+                        <Button
+                            label={linkText}
+                            variant="light"
+                            tone="tone1"
+                        />
+                    </a>
+                ) : (
+                    <div className="inline-block mt-4" onClick={linkHref}>
+                        <Button
+                            label={linkText}
+                            variant="light"
+                            tone="tone1"
+                        />
+                    </div>
+                )
             )}
         </div>
     );

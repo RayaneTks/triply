@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from './Button';
 
@@ -10,22 +11,20 @@ const meta: Meta<typeof Button> = {
 export default meta;
 type Story = StoryObj<typeof Button>;
 
-export const PrimaryVariants: Story = {
+export const DarkVariants: Story = {
     render: (args) => (
-        <div className="flex gap-4">
-            <Button {...args} label="Primary Light" variant="primary" tone="light" />
-            <Button {...args} label="Primary Default" variant="primary" tone="default" />
-            <Button {...args} label="Primary Dark" variant="primary" tone="dark" />
+        <div className="flex gap-4 bg-black p-4">
+            <Button {...args} label="Dark Tone 1" variant="dark" tone="tone1" />
+            <Button {...args} label="Dark Tone 2" variant="dark" tone="tone2" />
         </div>
     ),
 };
 
-export const SecondaryVariants: Story = {
+export const LightVariants: Story = {
     render: (args) => (
         <div className="flex gap-4">
-            <Button {...args} label="Secondary Light" variant="secondary" tone="light" />
-            <Button {...args} label="Secondary Default" variant="secondary" tone="default" />
-            <Button {...args} label="Secondary Dark" variant="secondary" tone="dark" />
+            <Button {...args} label="Light Tone 1" variant="light" tone="tone1" />
+            <Button {...args} label="Light Tone 2" variant="light" tone="tone2" />
         </div>
     ),
 };

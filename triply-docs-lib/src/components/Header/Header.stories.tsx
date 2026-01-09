@@ -15,13 +15,13 @@ const DEFAULT_CTA_BUTTONS: ButtonProps[] = [
         label: 'Connexion',
         onClick: () => alert('Action Connexion'),
         variant: 'secondary',
-        tone: 'light',
+        tone: 'dark',
     },
     {
         label: 'Inscription',
         onClick: () => alert('Action Inscription'),
-        variant: 'primary',
-        tone: 'default',
+        variant: 'secondary',
+        tone: 'dark',
     },
 ];
 
@@ -57,7 +57,7 @@ export const LoggedInHeader: Story = {
                 label: 'Profil',
                 onClick: () => alert('Aller au profil'),
                 variant: 'secondary',
-                tone: 'light',
+                tone: 'dark',
             },
         ],
     },
@@ -70,8 +70,8 @@ export const MinimalHeader: Story = {
             {
                 label: 'Connexion',
                 onClick: () => alert('Action Connexion'),
-                variant: 'primary',
-                tone: 'default',
+                variant: 'secondary',
+                tone: 'dark',
             },
         ],
     },
