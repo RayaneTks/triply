@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Éditeur{% endblock %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold">Éditeur - {{ template.name }}</h1>
+    <p class="text-sm text-slate-500">Personnalisez votre invitation.</p>
+  </div>
+  <div class="flex gap-2">
+    <button id="save-btn" class="bg-indigo-600 text-white px-4 py-2 rounded">Enregistrer</button>
+    <button id="duplicate-btn" class="bg-white border px-4 py-2 rounded">Enregistrer sous</button>
+    <button id="export-btn" class="bg-white border px-4 py-2 rounded">Exporter PNG</button>
+  </div>
+</div>
+<div class="grid grid-cols-12 gap-4 h-[70vh]">
+  <aside class="col-span-2 bg-white shadow rounded p-3 space-y-2 overflow-auto">
+    <h2 class="font-semibold">Outils</h2>
+    <button data-tool="select" class="tool-btn w-full text-left px-2 py-1 rounded bg-slate-100">Sélection</button>
+    <button data-tool="text" class="tool-btn w-full text-left px-2 py-1 rounded">Texte</button>
+    <button data-tool="image" class="tool-btn w-full text-left px-2 py-1 rounded">Image</button>
+    <button data-tool="rect" class="tool-btn w-full text-left px-2 py-1 rounded">Rectangle</button>
+    <button data-tool="circle" class="tool-btn w-full text-left px-2 py-1 rounded">Cercle</button>
+    <button data-tool="draw" class="tool-btn w-full text-left px-2 py-1 rounded">Dessin</button>
+    <div class="pt-3 border-t">
+      <button id="mask-btn" class="w-full text-left px-2 py-1 rounded bg-slate-100">Créer masque</button>
+      <button id="mask-edit-btn" class="w-full text-left px-2 py-1 rounded">Éditer image</button>
+      <button id="mask-detach-btn" class="w-full text-left px-2 py-1 rounded">Dissocier</button>
+    </div>
+    <div class="pt-3 border-t">
+      <button id="zoom-in" class="w-full text-left px-2 py-1 rounded">Zoom +</button>
+      <button id="zoom-out" class="w-full text-left px-2 py-1 rounded">Zoom -</button>
+      <button id="fit" class="w-full text-left px-2 py-1 rounded">Ajuster</button>
+      <button id="reset-view" class="w-full text-left px-2 py-1 rounded">Reset view</button>
+    </div>
+  </aside>
+  <section class="col-span-7 bg-white shadow rounded flex items-center justify-center overflow-hidden">
+    <canvas id="editor-canvas" class="border" width="{{ template.width }}" height="{{ template.height }}"></canvas>
+  </section>
+  <aside class="col-span-3 bg-white shadow rounded p-3 space-y-4 overflow-auto">
+    <div>
+      <h2 class="font-semibold">Propriétés</h2>
+      <div id="properties" class="text-sm text-slate-500">Sélectionnez un objet.</div>
+    </div>
+    <div>
+      <h2 class="font-semibold">Calques</h2>
+      <ul id="layers" class="text-sm space-y-1"></ul>
+    </div>
+    <div>
+      <h2 class="font-semibold">Modèle de référence</h2>
+      {% if template.thumbnail %}
+        <img src="{{ template.thumbnail.url }}" class="w-full border rounded" alt="Reference">
+      {% else %}
+        <div class="border rounded p-4 text-center text-slate-400">Aucune miniature</div>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script src="/static/js/editor/editor.js"></script>
+<script>
+  window.EditorApp.init({
+    templateId: {{ template.id }},
+    saveUrl: "{% url 'api_save_template_json' template.id %}",
+    loadUrl: "{% url 'api_load_template_json' template.id %}",
+    duplicateUrl: "{% url 'api_duplicate_template' template.id %}",
+    thumbnailUrl: "{% url 'api_render_thumbnail' template.id %}",
+  });
+</script>
+{% endblock %}

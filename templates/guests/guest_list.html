@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Invités{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-3xl font-semibold">Invités</h1>
+    <p class="text-slate-500">{{ event.title }}</p>
+  </div>
+  <div class="flex gap-2">
+    <a class="bg-white border px-4 py-2 rounded" href="{% url 'event_detail' event.id %}">Retour</a>
+    <a class="bg-indigo-600 text-white px-4 py-2 rounded" href="{% url 'guest_create' event.id %}">Ajouter</a>
+  </div>
+</div>
+<div class="bg-white shadow rounded overflow-hidden">
+  <table class="w-full text-left">
+    <thead class="bg-slate-100 text-slate-600">
+      <tr>
+        <th class="p-3">Nom</th>
+        <th class="p-3">Email</th>
+        <th class="p-3">Statut</th>
+        <th class="p-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for guest in guests %}
+        <tr class="border-t">
+          <td class="p-3">{{ guest.first_name }} {{ guest.last_name }}</td>
+          <td class="p-3">{{ guest.email }}</td>
+          <td class="p-3">{{ guest.get_status_display }}</td>
+          <td class="p-3 text-right">
+            <a class="text-indigo-600" href="{% url 'guest_edit' event.id guest.id %}">Modifier</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td class="p-3" colspan="4">Aucun invité.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

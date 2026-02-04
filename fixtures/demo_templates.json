@@ -1,0 +1,47 @@
+[
+  {
+    "model": "events.invitationtemplate",
+    "pk": 1,
+    "fields": {
+      "name": "Invitation classique",
+      "owner": null,
+      "is_system": true,
+      "tags": "classique, bleu",
+      "width": 800,
+      "height": 500,
+      "fabric_json": {
+        "version": "5.3.0",
+        "objects": [
+          {
+            "type": "rect",
+            "left": 0,
+            "top": 0,
+            "width": 800,
+            "height": 500,
+            "fill": "#f8fafc"
+          },
+          {
+            "type": "text",
+            "left": 80,
+            "top": 120,
+            "text": "Vous êtes invité !",
+            "fontSize": 48,
+            "fill": "#1e3a8a",
+            "fontWeight": "bold"
+          },
+          {
+            "type": "text",
+            "left": 80,
+            "top": 200,
+            "text": "Rejoignez-nous pour célébrer",
+            "fontSize": 24,
+            "fill": "#0f172a"
+          }
+        ],
+        "background": "#f8fafc"
+      },
+      "thumbnail": "",
+      "created_at": "2024-01-01T10:00:00Z"
+    }
+  }
+]

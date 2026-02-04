@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-3xl font-semibold">{{ event.title }}</h1>
+    <p class="text-slate-500">{{ event.start_at|date:"d/m/Y H:i" }} · {{ event.address }}</p>
+  </div>
+  <div class="flex gap-2">
+    <a class="bg-white border px-4 py-2 rounded" href="{% url 'event_edit' event.id %}">Modifier</a>
+    <a class="bg-indigo-600 text-white px-4 py-2 rounded" href="{% url 'guest_list' event.id %}">Invités</a>
+  </div>
+</div>
+<div class="bg-white shadow rounded p-6 space-y-4">
+  <p>{{ event.description|default:"Pas de description." }}</p>
+  <p class="text-sm text-slate-500">Statut : {{ event.get_status_display }}</p>
+</div>
+{% endblock %}

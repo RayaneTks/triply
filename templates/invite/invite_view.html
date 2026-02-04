@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Invitation{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow rounded p-6 space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold">Invitation pour {{ guest.first_name }} {{ guest.last_name }}</h1>
+    <p class="text-slate-500">Statut : {{ guest.get_status_display }}</p>
+  </div>
+  {% if invitation and invitation.image %}
+    <img src="{{ invitation.image.url }}" class="w-full border rounded" alt="Invitation">
+  {% else %}
+    <div class="border rounded p-6 text-center text-slate-400">Invitation en cours de génération.</div>
+  {% endif %}
+  <div class="flex flex-col items-center">
+    <p class="font-semibold">{{ guest.first_name }} {{ guest.last_name }}</p>
+    <img src="data:image/png;base64,{{ qr_code }}" class="w-40 h-40" alt="QR Code">
+  </div>
+  <div class="flex gap-4">
+    <button id="confirm" class="bg-emerald-600 text-white px-4 py-2 rounded">Je confirme</button>
+    <button id="decline" class="bg-rose-600 text-white px-4 py-2 rounded">Je décline</button>
+  </div>
+</div>
+<script>
+  async function sendStatus(status) {
+    await fetch("{% url 'api_guest_confirm' %}", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}"},
+      body: JSON.stringify({token: "{{ token }}", status})
+    });
+    location.reload();
+  }
+  document.getElementById("confirm").addEventListener("click", () => sendStatus("confirmed"));
+  document.getElementById("decline").addEventListener("click", () => sendStatus("declined"));
+</script>
+{% endblock %}
