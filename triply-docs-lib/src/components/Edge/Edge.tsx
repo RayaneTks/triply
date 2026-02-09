@@ -17,7 +17,7 @@ export interface EdgeProps {
 }
 
 const COLORS: Record<ColorScheme, string> = {
-    primary: '#35C497',
+    primary: '#0096c7',
     secondary: '#F5E6CA',
     neutral: '#64748b',
 };

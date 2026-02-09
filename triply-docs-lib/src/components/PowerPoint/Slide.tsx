@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { SlideDefinition, SlideDirection } from './types';
 import { SlideNavButton } from './SlideNavButton';
 import { SliderMenu } from './SliderMenu';
+
+// Contexte pour la dernière slide
+interface SlideContextType {
+    isLastSlide: boolean;
+}
+
+const SlideContext = createContext<SlideContextType>({ isLastSlide: false });
+export const useSlideContext = () => useContext(SlideContext);
 
 interface SlideProps {
     children: React.ReactNode;
@@ -54,6 +62,10 @@ export const Slide: React.FC<SlideProps> = ({
                                                 slideIndex = 0,
                                                 onJumpTo
                                             }) => {
+    // Détecter si c'est la dernière slide
+    const isLastSlide: boolean = canNext === false || (slides !== undefined && slideIndex === slides.length - 1);
+    const bgColor = isLastSlide ? '#0096c7' : 'white';
+    
     return (
         <motion.div
             custom={direction}
@@ -66,7 +78,8 @@ export const Slide: React.FC<SlideProps> = ({
                 opacity: { duration: 0.2 },
                 scale: { duration: 0.4 }
             }}
-            className={`absolute top-0 left-0 w-full h-full bg-white shadow-xl overflow-hidden flex flex-col ${className}`}
+            className={`absolute top-0 left-0 w-full h-full shadow-xl overflow-hidden flex flex-col ${className}`}
+            style={{ backgroundColor: bgColor }}
         >
             {/* 1. Menu Burger - En haut à gauche */}
             {slides && onJumpTo && (
@@ -82,9 +95,34 @@ export const Slide: React.FC<SlideProps> = ({
             )}
 
             {/* 2. Contenu Central */}
-            <div className="flex-grow w-full h-full overflow-y-auto relative z-0">
-                {children}
-            </div>
+            <SlideContext.Provider value={{ isLastSlide }}>
+                {isLastSlide && (
+                    <style>{`
+                        [data-last-slide="true"],
+                        [data-last-slide="true"] *,
+                        [data-last-slide="true"] h1,
+                        [data-last-slide="true"] h2,
+                        [data-last-slide="true"] h3,
+                        [data-last-slide="true"] h4,
+                        [data-last-slide="true"] h5,
+                        [data-last-slide="true"] h6,
+                        [data-last-slide="true"] p,
+                        [data-last-slide="true"] span,
+                        [data-last-slide="true"] div,
+                        [data-last-slide="true"] a,
+                        [data-last-slide="true"] button,
+                        [data-last-slide="true"] label {
+                            color: #222222 !important;
+                        }
+                    `}</style>
+                )}
+                <div 
+                    className="flex-grow w-full h-full overflow-y-auto relative z-0"
+                    data-last-slide={isLastSlide.toString()}
+                >
+                    {children}
+                </div>
+            </SlideContext.Provider>
 
             {/* 3. Boutons de Navigation - En bas à droite (Grands) */}
             {(onPrev || onNext) && (

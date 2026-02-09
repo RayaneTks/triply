@@ -15,9 +15,6 @@ export const Button: React.FC<ButtonProps> = ({
                                                   tone = 'tone2',
                                                   className = '',
                                               }) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/153a59ad-2cfd-4f34-9993-09db21a70f84',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Button.tsx:11',message:'Button component entry',data:{variant,tone,label},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const buttonId = useId();
     const buttonClass = `triply-button-${buttonId.replace(/:/g, '-')}`;
     
@@ -52,15 +49,9 @@ export const Button: React.FC<ButtonProps> = ({
         },
     };
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/153a59ad-2cfd-4f34-9993-09db21a70f84',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Button.tsx:48',message:'Before accessing colors',data:{variant,tone,hasVariant:!!colors[variant as Variant],hasTone:!!colors[variant as Variant]?!!colors[variant as Variant][tone as Tone]:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const validVariant = (variant === 'dark' || variant === 'light') ? variant : 'dark';
     const validTone = (tone === 'tone1' || tone === 'tone2') ? tone : 'tone2';
     const buttonColors = colors[validVariant][validTone];
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/153a59ad-2cfd-4f34-9993-09db21a70f84',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Button.tsx:51',message:'After accessing colors',data:{buttonColors:buttonColors?{color:buttonColors.color,outline:buttonColors.outline}:null,isUndefined:buttonColors===undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     return (
         <>
