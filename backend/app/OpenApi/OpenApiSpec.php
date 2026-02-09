@@ -4,6 +4,8 @@ namespace App\OpenApi;
 
 use OpenApi\Attributes as OA;
 
+// Point d'entree global de la documentation OpenAPI:
+// metadonnees API, serveur cible, schema de securite, tags fonctionnels.
 #[OA\Info(
     title: 'Triply API',
     version: '1.0.0',
