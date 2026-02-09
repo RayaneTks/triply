@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { SearchBar } from '@/src/components/Searchbar/Searchbar';
@@ -12,6 +12,8 @@ import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounte
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
+import type { MapboxPoiFeature } from '@/src/components/Map/Map';
+import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
 
 // Données de démonstration pour les slides
 const getMockSlides = (
@@ -208,7 +210,88 @@ export default function Home() {
     const [arrivalTime, setArrivalTime] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-    
+    const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
+
+    const [poiHover, setPoiHover] = useState<{
+        feature: MapboxPoiFeature;
+        lngLat: { lng: number; lat: number };
+        point: { x: number; y: number };
+    } | null>(null);
+    const [poiReviews, setPoiReviews] = useState<{
+        name: string;
+        rating: number | null;
+        reviews: { author_name: string; rating: number; text: string; relative_time_description: string }[];
+        url: string | null;
+    } | null>(null);
+    const [poiReviewsLoading, setPoiReviewsLoading] = useState(false);
+    const [mouseInModal, setMouseInModal] = useState(false);
+    const mouseInModalRef = useRef(false);
+    const hoverFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hideModalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    mouseInModalRef.current = mouseInModal;
+
+    const fetchPoiReviews = useCallback(async (name: string, lat: number, lng: number) => {
+        setPoiReviewsLoading(true);
+        setPoiReviews(null);
+        try {
+            const res = await fetch(
+                `/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`
+            );
+            const data = await res.json();
+            setPoiReviews({
+                name: data.name ?? name,
+                rating: data.rating ?? null,
+                reviews: data.reviews ?? [],
+                url: data.url ?? null,
+            });
+        } catch {
+            setPoiReviews({ name, rating: null, reviews: [], url: null });
+        } finally {
+            setPoiReviewsLoading(false);
+        }
+    }, []);
+
+    const handlePoiHover = useCallback(
+        (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => {
+            setPoiHover({ feature, lngLat, point });
+
+            if (hoverFetchTimer.current) clearTimeout(hoverFetchTimer.current);
+            const name = String(
+                feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu'
+            ).trim();
+            if (!name) return;
+
+            hoverFetchTimer.current = setTimeout(() => {
+                hoverFetchTimer.current = null;
+                fetchPoiReviews(name, lngLat.lat, lngLat.lng);
+            }, 500);
+        },
+        [fetchPoiReviews]
+    );
+
+    const handlePoiLeave = useCallback(() => {
+        setPoiHover(null);
+        if (hoverFetchTimer.current) {
+            clearTimeout(hoverFetchTimer.current);
+            hoverFetchTimer.current = null;
+        }
+        if (hideModalTimer.current) clearTimeout(hideModalTimer.current);
+        hideModalTimer.current = setTimeout(() => {
+            if (!mouseInModalRef.current) {
+                setPoiReviews(null);
+                setPoiReviewsLoading(false);
+            }
+            hideModalTimer.current = null;
+        }, 250);
+    }, []);
+
+    const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
+        setSelectedPoi(feature);
+        const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
+        console.log('POI cliqué:', { name, feature, lngLat });
+    };
+
     const multiSelectOptions = [
         'Petit déjeuner inclus',
         'Proche du centre ville',
@@ -301,6 +384,26 @@ export default function Home() {
                         width="100%"
                         className="h-full"
                         padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
+                        onPoiClick={handlePoiClick}
+                        onPoiHover={handlePoiHover}
+                        onPoiLeave={handlePoiLeave}
+                    />
+                    <PoiReviewsModal
+                        visible={(!!poiHover || mouseInModal) && (!!poiReviews || poiReviewsLoading)}
+                        name={poiReviews?.name ?? (poiHover ? String(poiHover.feature.properties?.name ?? poiHover.feature.properties?.name_en ?? poiHover.feature.layer?.id ?? 'Lieu') : '')}
+                        rating={poiReviews?.rating ?? null}
+                        reviews={poiReviews?.reviews ?? []}
+                        url={poiReviews?.url ?? null}
+                        position={poiHover?.point ?? { x: 0, y: 0 }}
+                        loading={poiReviewsLoading}
+                        onMouseEnter={() => setMouseInModal(true)}
+                        onMouseLeave={() => {
+                            setMouseInModal(false);
+                            if (!poiHover) {
+                                setPoiReviews(null);
+                                setPoiReviewsLoading(false);
+                            }
+                        }}
                     />
                 </div>
 
