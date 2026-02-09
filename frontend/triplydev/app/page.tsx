@@ -11,6 +11,7 @@ import { SlideDefinition } from '@/src/components/PowerPoint/types';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
+import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 
 // Données de démonstration pour les slides
 const getMockSlides = (
@@ -135,30 +136,26 @@ const getMockSlides = (
                         />
                         <div className="flex flex-col sm:flex-row gap-2 mt-2">
                             <div className="flex-1 min-w-0">
-                                <label className="block text-xs mb-1.5 sm:mb-1" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Heure d'arrivée</label>
-                                <input
-                                    type="time"
+                                <TimePicker
                                     value={arrivalTime}
-                                    onChange={(e) => setArrivalTime(e.target.value)}
-                                    className="w-full bg-white border border-gray-300 rounded-lg py-2.5 sm:py-2 px-3 sm:px-4 text-sm sm:text-base"
-                                    style={{ 
+                                    onChange={setArrivalTime}
+                                    label="Heure d'arrivée"
+                                    containerStyle={{
                                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                         borderColor: 'rgba(255, 255, 255, 0.2)',
-                                        color: 'var(--foreground, #ededed)'
+                                        color: 'rgba(255, 255, 255, 0.7)',
                                     }}
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <label className="block text-xs mb-1.5 sm:mb-1" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Heure de départ</label>
-                                <input
-                                    type="time"
+                                <TimePicker
                                     value={departureTime}
-                                    onChange={(e) => setDepartureTime(e.target.value)}
-                                    className="w-full bg-white border border-gray-300 rounded-lg py-2.5 sm:py-2 px-3 sm:px-4 text-sm sm:text-base"
-                                    style={{ 
+                                    onChange={setDepartureTime}
+                                    label="Heure de départ"
+                                    containerStyle={{
                                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                         borderColor: 'rgba(255, 255, 255, 0.2)',
-                                        color: 'var(--foreground, #ededed)'
+                                        color: 'rgba(255, 255, 255, 0.7)',
                                     }}
                                 />
                             </div>
@@ -190,18 +187,6 @@ const getMockSlides = (
                 <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--foreground, #ededed)' }}>Architecture</h1>
                 <p className="text-lg max-w-md text-center" style={{ color: 'var(--foreground, #ededed)' }}>
                     Vue d'ensemble de l'architecture du système.
-                </p>
-            </div>
-        )
-    },
-    { 
-        id: '3', 
-        title: 'Conclusion', 
-        content: (
-            <div className="flex flex-col items-center justify-center h-full p-8">
-                <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--foreground, #ededed)' }}>Conclusion</h1>
-                <p className="text-lg max-w-md text-center" style={{ color: 'var(--foreground, #ededed)' }}>
-                    Résumé et prochaines étapes.
                 </p>
             </div>
         )
