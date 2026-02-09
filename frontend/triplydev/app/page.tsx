@@ -14,6 +14,7 @@ import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
+import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import {Login} from "@/src/components/Login/Login";
 
 // Données de démonstration pour les slides
@@ -26,6 +27,9 @@ const getMockSlides = (
     arrivalTime: string,
     departureTime: string,
     selectedOptions: string[],
+    departureCity: string,
+    arrivalCity: string,
+    travelDays: number,
     setTravelerCount: (count: number) => void,
     setBudget: (budget: string) => void,
     setActivityTime: (time: string) => void,
@@ -34,7 +38,11 @@ const getMockSlides = (
     setArrivalTime: (time: string) => void,
     setDepartureTime: (time: string) => void,
     setSelectedOptions: (options: string[]) => void,
-    multiSelectOptions: string[]
+    setDepartureCity: (city: string) => void,
+    setArrivalCity: (city: string) => void,
+    setTravelDays: (days: number) => void,
+    multiSelectOptions: string[],
+    mapboxToken: string
 ): SlideDefinition[] => [
     { 
         id: '1', 
@@ -55,6 +63,48 @@ const getMockSlides = (
                 <h1 className="text-3xl font-bold mb-6" style={{ color: 'var(--foreground, #ededed)' }}>Configurez votre voyage</h1>
                 
                 <div className="space-y-4 max-w-2xl">
+                    {/* Ville de départ / Ville d'arrivée / Nombre de jours */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <CityAutocomplete
+                            value={departureCity}
+                            onChange={setDepartureCity}
+                            label="Ville de départ"
+                            placeholder="Ex. Paris, Lyon..."
+                            mapboxToken={mapboxToken}
+                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
+                        />
+                        <CityAutocomplete
+                            value={arrivalCity}
+                            onChange={setArrivalCity}
+                            label="Ville d'arrivée"
+                            placeholder="Ex. Marseille, Bordeaux..."
+                            mapboxToken={mapboxToken}
+                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                            Nombre de jours de voyage
+                        </label>
+                        <div
+                            className="rounded-lg border py-2.5 px-4 w-full"
+                            style={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                            }}
+                        >
+                            <input
+                                type="number"
+                                min={1}
+                                value={travelDays === 0 ? '' : travelDays}
+                                onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))}
+                                placeholder="Ex. 3"
+                                className="w-full bg-transparent focus:outline-none"
+                                style={{ color: 'var(--foreground, #ededed)' }}
+                            />
+                        </div>
+                    </div>
+
                     {/* Nombre de voyageurs */}
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
@@ -211,6 +261,9 @@ export default function Home() {
     const [arrivalTime, setArrivalTime] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+    const [departureCity, setDepartureCity] = useState('');
+    const [arrivalCity, setArrivalCity] = useState('');
+    const [travelDays, setTravelDays] = useState<number>(3);
 
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
@@ -343,6 +396,9 @@ export default function Home() {
         setCurrentView('home');
     };
 
+    // Token Mapbox (utilisé pour les slides et la carte)
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
+
     // Générer les slides avec les états actuels
     const mockSlides = getMockSlides(
         travelerCount,
@@ -353,6 +409,9 @@ export default function Home() {
         arrivalTime,
         departureTime,
         selectedOptions,
+        departureCity,
+        arrivalCity,
+        travelDays,
         setTravelerCount,
         setBudget,
         setActivityTime,
@@ -361,7 +420,11 @@ export default function Home() {
         setArrivalTime,
         setDepartureTime,
         setSelectedOptions,
-        multiSelectOptions
+        setDepartureCity,
+        setArrivalCity,
+        setTravelDays,
+        multiSelectOptions,
+        MAPBOX_TOKEN
     );
 
     const handleNext = () => {
@@ -383,9 +446,6 @@ export default function Home() {
         setSlideDirection(direction);
         setCurrentSlideIndex(index);
     };
-
-    // Token Mapbox - À remplacer par votre token ou une variable d'environnement
-    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
 
     return (
         <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
