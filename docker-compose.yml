@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+
+#  frontend:
+#    build:
+#      context: ./frontend
+#      dockerfile: Dockerfile
+#    volumes:
+#      - ./frontend:/app
+#    ports:
+#      - "5173:5173"
+#    env_file:
+#      - ./frontend/.env.docker
+#    command: sh -c "npm install --save-dev @rollup/rollup-linux-x64-gnu && npm run dev -- --host 0.0.0.0"
+
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: backend
+      POSTGRES_USER: backend
+      POSTGRES_PASSWORD: backend
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      
+#  phpmyadmin:
+#    image: phpmyadmin/phpmyadmin
+#    ports:
+#      - "8080:80"
+#    environment:
+#      PMA_HOST: db
+#      MYSQL_ROOT_PASSWORD: root
+
+volumes:
+  pg_data:
