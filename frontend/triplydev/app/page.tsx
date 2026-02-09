@@ -14,6 +14,7 @@ import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
+import {Login} from "@/src/components/Login/Login";
 
 // Données de démonstration pour les slides
 const getMockSlides = (
@@ -210,6 +211,10 @@ export default function Home() {
     const [arrivalTime, setArrivalTime] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+
+    const [isConnected, setIsConnected] = useState(false);
+    const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
+
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
 
     const [poiHover, setPoiHover] = useState<{
@@ -319,6 +324,25 @@ export default function Home() {
         }
     };
 
+    const handleLoginClick = () => {
+        setCurrentView('login');
+    };
+
+    const handleLogoutClick = () => {
+        // plus tard : signOut()
+        setIsConnected(false);
+        setCurrentView('home');
+    };
+
+    const handleLoginSuccess = () => {
+        setIsConnected(true);
+        setCurrentView('home');
+    };
+
+    const handleBackToHome = () => {
+        setCurrentView('home');
+    };
+
     // Générer les slides avec les états actuels
     const mockSlides = getMockSlides(
         travelerCount,
@@ -366,13 +390,25 @@ export default function Home() {
     return (
         <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
             {/* Sidebar à gauche */}
-            <Sidebar 
+            <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                isConnected={isConnected}
+                onLoginClick={handleLoginClick}
+                onLogoutClick={handleLogoutClick}
             />
 
             {/* Contenu principal */}
             <div className="flex-1 flex overflow-hidden min-w-0 relative">
+                {currentView === 'login' && (
+                    <Login
+                        onLoginSuccess={handleLoginSuccess}
+                        onBack={handleBackToHome}
+                    />
+                )}
+
+                {currentView === 'home' && (
+                    <>
                 {/* Map en arrière-plan (prend tout l'espace avec centre décalé) */}
                 <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
                     <WorldMap
@@ -462,6 +498,8 @@ export default function Home() {
                         </AnimatePresence>
                     </div>
                 </div>
+                    </>
+                )}
             </div>
         </div>
     );
