@@ -117,9 +117,18 @@ export const Slide: React.FC<SlideProps> = ({
                     `}</style>
                 )}
                 <div 
-                    className="flex-grow w-full h-full overflow-y-auto relative z-0"
+                    className="flex-grow w-full h-full overflow-y-auto relative z-0 slide-scroll"
                     data-last-slide={isLastSlide.toString()}
+                    style={{
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                    }}
                 >
+                    <style>{`
+                        .slide-scroll::-webkit-scrollbar {
+                            display: none !important;
+                        }
+                    `}</style>
                     {children}
                 </div>
             </SlideContext.Provider>

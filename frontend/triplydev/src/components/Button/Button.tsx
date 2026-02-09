@@ -78,6 +78,9 @@ export const Button: React.FC<ButtonProps> = ({
                     cursor: pointer;
                     border-radius: var(--button_radius);
                     background: var(--button_outline_color);
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
                 }
 
                 .${buttonClass}-top {
@@ -85,11 +88,15 @@ export const Button: React.FC<ButtonProps> = ({
                     box-sizing: border-box;
                     border: 2px solid var(--button_outline_color);
                     border-radius: var(--button_radius);
-                    padding: 0.75em 1.5em;
+                    padding: 0.5rem 1.5em;
                     background: var(--button_color);
                     color: var(--button_text_color);
                     transform: translateY(-0.2em);
                     transition: transform 0.1s ease;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
 
                 .${buttonClass}:hover .${buttonClass}-top {

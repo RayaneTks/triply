@@ -18,6 +18,7 @@ export interface TravelerCounterProps {
     onChange?: (count: number) => void;
     onClick?: () => void;
     className?: string;
+    style?: React.CSSProperties;
     min?: number;
     max?: number;
 }
@@ -27,15 +28,17 @@ export const TravelerCounter: FC<TravelerCounterProps> = ({
                                                               onChange,
                                                               onClick,
                                                               className = '',
+                                                              style,
                                                               min = 1,
                                                               max = 20,
                                                           }) => {
-    const [count, setCount] = useState(initialCount);
+    const [internalCount, setInternalCount] = useState(initialCount);
+    const count = initialCount !== undefined ? initialCount : internalCount;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value) || min;
         const clampedValue = Math.max(min, Math.min(max, value));
-        setCount(clampedValue);
+        setInternalCount(clampedValue);
         onChange?.(clampedValue);
     };
 
@@ -43,8 +46,11 @@ export const TravelerCounter: FC<TravelerCounterProps> = ({
         <div
             onClick={onClick}
             className={`flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full ${className}`}
+            style={style}
         >
-            {PersonIcon}
+            <div style={{ color: style?.color || 'rgba(255, 255, 255, 0.5)' }}>
+                {PersonIcon}
+            </div>
 
             <input
                 type="number"
@@ -53,8 +59,12 @@ export const TravelerCounter: FC<TravelerCounterProps> = ({
                 value={count}
                 onChange={handleChange}
                 onClick={(e) => e.stopPropagation()}
-                className="flex-grow text-gray-700 font-medium focus:outline-none border-none bg-transparent"
-                style={{ WebkitAppearance: 'textfield', MozAppearance: 'textfield' }}
+                className="flex-grow font-medium focus:outline-none border-none bg-transparent"
+                style={{ 
+                    WebkitAppearance: 'textfield', 
+                    MozAppearance: 'textfield',
+                    color: style?.color || 'var(--foreground, #ededed)'
+                }}
             />
 
         </div>
