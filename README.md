@@ -7,40 +7,53 @@ Plateforme de voyage avec un frontend et un backend Laravel documente avec Swagg
 - `frontend/` : application front
 - `backend/` : API Laravel
 
-## Demarrage rapide
+## Demarrage rapide (Docker)
 
-Utiliser le `Makefile` a la racine.
+Objectif: ne jamais avoir a taper des commandes artisan/composer a la main.
 
-1. Afficher les commandes disponibles :
+1. Lancer tout l'environnement:
 ```bash
-make help
+make up
 ```
-2. Initialiser le backend en local :
+
+2. Apres des modifications backend (routes, swagger, config, etc.):
 ```bash
-make local-setup
+make reload
 ```
-3. Lancer l'API :
+
+3. Voir les logs:
 ```bash
-make local-serve
+make logs
 ```
+
+4. Arreter l'environnement:
+```bash
+make down
+```
+
+## Commandes intuitives (recommandees)
+
+- `make up` : build + run Docker + bootstrap backend complet
+- `make run` : alias de `make up`
+- `make reload` : reapplique bootstrap backend (deps/cache/migrations/swagger)
+- `make restart` : restart des conteneurs + bootstrap backend
+- `make logs` : logs complets
+- `make logs-back` : logs backend uniquement
+- `make shell` : shell dans le conteneur backend
+- `make test` : tests backend dans Docker
+- `make routes` : liste des routes API
+- `make swagger` : regenere Swagger
+- `make down` : stop environnement
+- `make clean` : stop + suppression volumes (destructif)
 
 ## URLs utiles
 
 - API locale : `http://127.0.0.1:8000`
+- API v1 health : `http://127.0.0.1:8000/api/v1/health`
 - Swagger UI : `http://127.0.0.1:8000/api/documentation`
-- Healthcheck : `http://127.0.0.1:8000/api/health`
 
 ## Notes
 
-- Le frontend est gere separement.
-- Les details backend (variables d'environnement, endpoints V1, workflow Swagger) sont dans `backend/README.md`.
-- La carte des fichiers backend a modifier selon la feature est dans `backend/docs/BACKEND_WORKING_MAP.md`.
-
-## Commandes principales
-
-- `make local-setup` : setup backend local complet
-- `make local-swagger` : regenerer Swagger
-- `make local-routes` : lister les routes API
-- `make local-test` : lancer les tests
-- `make docker-up` : lancer l'environnement Docker
-- `make docker-swagger` : regenerer Swagger dans Docker
+- Les commandes `local-*` existent encore mais sont legacy.
+- Le workflow recommande est 100% Docker via `make up` / `make reload`.
+- Les details backend sont dans `backend/README_DEV.md`.

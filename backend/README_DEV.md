@@ -1,61 +1,66 @@
 # Backend Dev README (Triply)
 
-## Prerequisites
-- PHP 8.2+
-- Composer
+## Workflow recommande (Docker uniquement)
 
-## Install
+Aucune commande artisan/composer manuelle necessaire.
+
+### 1) Demarrer tout l'environnement
 ```bash
-composer install
-cp .env.example .env
-php artisan key:generate
+make up
 ```
 
-## Run locally
+### 2) Recharger apres modifications backend
 ```bash
-php artisan serve
+make reload
 ```
 
-API base URL (local): `http://127.0.0.1:8000/api/v1`
-
-## Generate OpenAPI / Swagger docs
+### 3) Outils quotidiens
 ```bash
-php artisan l5-swagger:generate
+make logs
+make logs-back
+make shell
+make routes
+make swagger
+make test
 ```
 
-Swagger UI:
-- `http://127.0.0.1:8000/api/documentation`
-
-## Route check
+### 4) Arreter
 ```bash
-php artisan route:list --path=api/v1
+make down
 ```
 
-## Scheduler (reminders stub)
-Run scheduler worker:
-```bash
-php artisan schedule:work
-```
+## Ce que fait `make up`
 
-Reminder command (manual):
-```bash
-php artisan triply:send-reminders --dry-run
-```
+- Lance Docker (`docker compose up -d --build`)
+- Cree `backend/.env` si absent
+- Installe les dependances composer dans le conteneur
+- Genere `APP_KEY`
+- Vide les caches Laravel
+- Lance les migrations (mode gracieux)
+- Regenere la documentation Swagger
 
-## Current scope
-- API v1 skeleton only
-- Stub services and responses
-- No database/business logic implementation
-- Ready for frontend/API contract integration and iterative domain wiring
+## URLs
 
-## Security and throttling
-- Auth middleware: `auth:sanctum` on private endpoints
-- Rate limiting profiles: `auth`, `password-reset`, `ai`, `places`
-- Security headers middleware enabled on API group
-- CORS config added in `config/cors.php`
+- API: `http://127.0.0.1:8000`
+- API v1: `http://127.0.0.1:8000/api/v1`
+- Health v1: `http://127.0.0.1:8000/api/v1/health`
+- Swagger UI: `http://127.0.0.1:8000/api/documentation`
 
-## Next implementation steps
-1. Replace stubs under `app/Services/Stubs` with real implementations.
-2. Connect FormRequests to finalized domain validation rules.
-3. Add persistence repositories and policies with real ownership checks.
-4. Expand OpenAPI examples and error schemas per endpoint.
+## Commandes Make (intuitives)
+
+- `make up` / `make run`: demarrage complet Docker + bootstrap backend
+- `make reload`: reapplique bootstrap backend (post-modifs)
+- `make restart`: restart conteneurs + bootstrap
+- `make down`: arret conteneurs
+- `make clean`: suppression conteneurs + volumes
+- `make logs`: logs de tous les services
+- `make logs-back`: logs backend
+- `make shell`: shell backend
+- `make routes`: liste routes API
+- `make swagger`: regen Swagger
+- `make test`: tests backend
+
+## Notes
+
+- Les commandes `local-*` sont legacy et gardees pour compatibilite.
+- Le backend reste en mode squelette API v1 (stubs), sans logique metier/BDD finale.
