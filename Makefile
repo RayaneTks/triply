@@ -7,7 +7,7 @@ up:
 
 # Stopper tous les services et supprimer les conteneurs
 down:
-	docker-compose down
+	docker-compose down	
 
 # Rebuilder + relancer (utile après modif Dockerfile ou .env)
 rebuild:
