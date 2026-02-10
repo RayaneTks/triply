@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Slide } from '@/src/components/PowerPoint/Slide';
@@ -13,6 +13,7 @@ import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
+import { Button } from '@/src/components/Button/Button';
 import {Login} from "@/src/components/Login/Login";
 import Assistant from "@/src/components/Assistant/Assistant";
 
@@ -249,11 +250,62 @@ const getMockSlides = (
                 <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--foreground, #ededed)' }}>Architecture</h1>
                 <p className="text-lg max-w-md text-center" style={{ color: 'var(--foreground, #ededed)' }}>
                     Vue d'ensemble de l'architecture du système.
-                </p>
-            </div>
+          </p>
+        </div>
         )
     },
 ];
+
+function LoginWithMapBackground({
+    mapboxToken,
+    onLoginSuccess,
+    onBack,
+}: {
+    mapboxToken: string;
+    onLoginSuccess: () => void;
+    onBack: () => void;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [padding, setPadding] = useState({ left: 600, top: 400, right: 0, bottom: 0 });
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const update = () => {
+            const { width, height } = el.getBoundingClientRect();
+            setPadding({ left: width * 0.55, top: height * 0.5, right: 0, bottom: 0 });
+        };
+        update();
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
+    return (
+        <div ref={containerRef} className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 z-0" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                <WorldMap
+                    accessToken={mapboxToken}
+                    initialLatitude={20}
+                    initialLongitude={0}
+                    initialZoom={1.2}
+                    mapStyle="mapbox://styles/mapbox/standard"
+                    mapConfig={{ lightPreset: 'night' }}
+                    pitch={60}
+                    interactive={false}
+                    autoRotateSpeed={6}
+                    padding={padding}
+                    height="100%"
+                    width="100%"
+                    className="h-full w-full"
+                />
+            </div>
+            <div className="absolute inset-0 z-10">
+                <Login onLoginSuccess={onLoginSuccess} onBack={onBack} />
+            </div>
+        </div>
+    );
+}
 
 export default function Home() {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -281,7 +333,26 @@ export default function Home() {
 
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
 
-    const [poiHover, setPoiHover] = useState<{
+    const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/standard');
+    const [mapConfig, setMapConfig] = useState<{ lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' }>({ lightPreset: 'day' });
+    const [mapPitch, setMapPitch] = useState<number>(0);
+    const [mapViewMenuOpen, setMapViewMenuOpen] = useState(false);
+    const mapViewMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (mapViewMenuRef.current && !mapViewMenuRef.current.contains(e.target as Node)) {
+                setMapViewMenuOpen(false);
+            }
+        };
+        if (mapViewMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [mapViewMenuOpen]);
+
+    // POI hover + modal avis Google : état affiché (conservé pour permettre de déplacer la souris vers la modal)
+    const [displayPoi, setDisplayPoi] = useState<{
         feature: MapboxPoiFeature;
         lngLat: { lng: number; lat: number };
         point: { x: number; y: number };
@@ -293,67 +364,81 @@ export default function Home() {
         url: string | null;
     } | null>(null);
     const [poiReviewsLoading, setPoiReviewsLoading] = useState(false);
-    const [mouseInModal, setMouseInModal] = useState(false);
-    const mouseInModalRef = useRef(false);
-    const hoverFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const hideModalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [isPointerInModal, setIsPointerInModal] = useState(false);
+    const isPointerInModalRef = useRef(false);
+    const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hideDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastFetchIdRef = useRef(0);
 
-    mouseInModalRef.current = mouseInModal;
+    isPointerInModalRef.current = isPointerInModal;
 
-    const fetchPoiReviews = useCallback(async (name: string, lat: number, lng: number) => {
-        setPoiReviewsLoading(true);
-        setPoiReviews(null);
-        try {
-            const res = await fetch(
-                `/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`
-            );
-            const data = await res.json();
-            setPoiReviews({
-                name: data.name ?? name,
-                rating: data.rating ?? null,
-                reviews: data.reviews ?? [],
-                url: data.url ?? null,
-            });
-        } catch {
-            setPoiReviews({ name, rating: null, reviews: [], url: null });
-        } finally {
-            setPoiReviewsLoading(false);
+    const scheduleHide = useCallback(() => {
+        if (hideDebounceRef.current) clearTimeout(hideDebounceRef.current);
+        hideDebounceRef.current = setTimeout(() => {
+            hideDebounceRef.current = null;
+            if (!isPointerInModalRef.current) {
+                setDisplayPoi(null);
+                setPoiReviews(null);
+                setPoiReviewsLoading(false);
+            }
+        }, 300);
+    }, []);
+
+    const cancelHide = useCallback(() => {
+        if (hideDebounceRef.current) {
+            clearTimeout(hideDebounceRef.current);
+            hideDebounceRef.current = null;
         }
     }, []);
 
     const handlePoiHover = useCallback(
         (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => {
-            setPoiHover({ feature, lngLat, point });
+            cancelHide();
+            const poi = { feature, lngLat, point };
+            setDisplayPoi(poi);
 
-            if (hoverFetchTimer.current) clearTimeout(hoverFetchTimer.current);
+            if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
             const name = String(
                 feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu'
             ).trim();
             if (!name) return;
 
-            hoverFetchTimer.current = setTimeout(() => {
-                hoverFetchTimer.current = null;
-                fetchPoiReviews(name, lngLat.lat, lngLat.lng);
-            }, 500);
+            fetchDebounceRef.current = setTimeout(() => {
+                fetchDebounceRef.current = null;
+                const fetchId = ++lastFetchIdRef.current;
+                setPoiReviewsLoading(true);
+                setPoiReviews(null);
+                fetch(`/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lngLat.lat}&lng=${lngLat.lng}`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (fetchId !== lastFetchIdRef.current) return;
+                        setPoiReviews({
+                            name: data.name ?? name,
+                            rating: data.rating ?? null,
+                            reviews: data.reviews ?? [],
+                            url: data.url ?? null,
+                        });
+                    })
+                    .catch(() => {
+                        if (fetchId !== lastFetchIdRef.current) return;
+                        setPoiReviews({ name, rating: null, reviews: [], url: null });
+                    })
+                    .finally(() => {
+                        if (fetchId !== lastFetchIdRef.current) return;
+                        setPoiReviewsLoading(false);
+                    });
+            }, 400);
         },
-        [fetchPoiReviews]
+        [cancelHide]
     );
 
     const handlePoiLeave = useCallback(() => {
-        setPoiHover(null);
-        if (hoverFetchTimer.current) {
-            clearTimeout(hoverFetchTimer.current);
-            hoverFetchTimer.current = null;
+        if (fetchDebounceRef.current) {
+            clearTimeout(fetchDebounceRef.current);
+            fetchDebounceRef.current = null;
         }
-        if (hideModalTimer.current) clearTimeout(hideModalTimer.current);
-        hideModalTimer.current = setTimeout(() => {
-            if (!mouseInModalRef.current) {
-                setPoiReviews(null);
-                setPoiReviewsLoading(false);
-            }
-            hideModalTimer.current = null;
-        }, 250);
-    }, []);
+        scheduleHide();
+    }, [scheduleHide]);
 
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
@@ -472,7 +557,8 @@ export default function Home() {
             {/* Contenu principal */}
             <div className="flex-1 flex overflow-hidden min-w-0 relative">
                 {currentView === 'login' && (
-                    <Login
+                    <LoginWithMapBackground
+                        mapboxToken={MAPBOX_TOKEN}
                         onLoginSuccess={handleLoginSuccess}
                         onBack={handleBackToHome}
                     />
@@ -487,6 +573,9 @@ export default function Home() {
                         initialLatitude={46.6034}
                         initialLongitude={1.8883}
                         initialZoom={5}
+                        mapStyle={mapStyle}
+                        mapConfig={mapConfig}
+                        pitch={mapPitch}
                         height="100%"
                         width="100%"
                         className="h-full"
@@ -497,22 +586,99 @@ export default function Home() {
                         locations={mapLocations}
                     />
                     <PoiReviewsModal
-                        visible={(!!poiHover || mouseInModal) && (!!poiReviews || poiReviewsLoading)}
-                        name={poiReviews?.name ?? (poiHover ? String(poiHover.feature.properties?.name ?? poiHover.feature.properties?.name_en ?? poiHover.feature.layer?.id ?? 'Lieu') : '')}
+                        visible={!!displayPoi && (!!poiReviews || poiReviewsLoading)}
+                        name={poiReviews?.name ?? (displayPoi ? String(displayPoi.feature.properties?.name ?? displayPoi.feature.properties?.name_en ?? displayPoi.feature.layer?.id ?? 'Lieu') : '')}
                         rating={poiReviews?.rating ?? null}
                         reviews={poiReviews?.reviews ?? []}
                         url={poiReviews?.url ?? null}
-                        position={poiHover?.point ?? { x: 0, y: 0 }}
+                        position={displayPoi?.point ?? { x: 0, y: 0 }}
                         loading={poiReviewsLoading}
-                        onMouseEnter={() => setMouseInModal(true)}
+                        leftPanelWidth={400}
+                        onMouseEnter={() => {
+                            setIsPointerInModal(true);
+                            cancelHide();
+                        }}
                         onMouseLeave={() => {
-                            setMouseInModal(false);
-                            if (!poiHover) {
-                                setPoiReviews(null);
-                                setPoiReviewsLoading(false);
-                            }
+                            setIsPointerInModal(false);
+                            scheduleHide();
                         }}
                     />
+
+                    {/* Bouton Changer de vue (dark/light/satellite/2D/3D) en bas à droite */}
+                    <div className="absolute bottom-4 right-4 z-20" ref={mapViewMenuRef}>
+                        <Button
+                            label="Changer de vue"
+                            onClick={() => setMapViewMenuOpen((o) => !o)}
+                            variant="dark"
+                            tone="tone1"
+                        />
+                        <AnimatePresence>
+                            {mapViewMenuOpen && (
+                                <div
+                                    className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[180px]"
+                                    style={{
+                                        backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+                                    }}
+                                >
+                                    <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                                            Style
+                                        </span>
+                                    </div>
+                                    {[
+                                        { id: 'dark', label: 'Sombre', style: 'mapbox://styles/mapbox/standard', config: { lightPreset: 'night' as const } },
+                                        { id: 'light', label: 'Clair', style: 'mapbox://styles/mapbox/standard', config: { lightPreset: 'day' as const } },
+                                        { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/standard-satellite', config: { lightPreset: 'day' as const } },
+                                    ].map(({ id, label, style, config }) => (
+                                        <button
+                                            key={id}
+                                            type="button"
+                                            onClick={() => {
+                                                setMapStyle(style);
+                                                setMapConfig(config);
+                                                setMapPitch(0);
+                                                setMapViewMenuOpen(false);
+                                            }}
+                                            className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors"
+                                            style={{ color: 'var(--foreground, #ededed)' }}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                    <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+                                    <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                                            Projection
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMapPitch(0);
+                                            setMapViewMenuOpen(false);
+                                        }}
+                                        className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors"
+                                        style={{ color: 'var(--foreground, #ededed)' }}
+                                    >
+                                        Vue 2D
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMapPitch(60);
+                                            setMapViewMenuOpen(false);
+                                        }}
+                                        className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors"
+                                        style={{ color: 'var(--foreground, #ededed)' }}
+                                    >
+                                        Vue 3D
+                                    </button>
+                                </div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* Div mère contenant LLM et Slide - positionnée en overlay sur la map */}
@@ -538,6 +704,6 @@ export default function Home() {
                     </>
                 )}
             </div>
-        </div>
-    );
+    </div>
+  );
 }
