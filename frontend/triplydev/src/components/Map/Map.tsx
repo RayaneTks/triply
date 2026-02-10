@@ -76,6 +76,12 @@ export interface MapProps {
     mapConfig?: { lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' };
     /** Inclinaison de la carte (0 = 2D, 60 = 3D). Contrôlée par le parent si fourni. */
     pitch?: number;
+    /** Orientation de la carte en degrés (0-360). Contrôlée par le parent si fourni. */
+    bearing?: number;
+    /** Désactive zoom, pan, rotation (carte non interactive). */
+    interactive?: boolean;
+    /** Vitesse de rotation auto en degrés/seconde (animation fluide, sans passer par React). */
+    autoRotateSpeed?: number;
     /** Hauteur de la carte */
     height?: string;
     /** Largeur de la carte */
@@ -114,6 +120,9 @@ export const WorldMap: React.FC<MapProps> = ({
                                                  mapStyle = 'mapbox://styles/mapbox/standard',
                                                  mapConfig,
                                                  pitch,
+                                                 bearing,
+                                                 interactive = true,
+                                                 autoRotateSpeed,
                                                  height = '100%',
                                                  width = '100%',
                                                  className = '',
@@ -140,16 +149,57 @@ export const WorldMap: React.FC<MapProps> = ({
         longitude: initialLongitude,
         latitude: initialLatitude,
         zoom: initialZoom,
-        bearing: 0,
+        bearing: bearing ?? 0,
         pitch: pitch ?? 0,
         padding: padding || { top: 0, bottom: 0, left: 0, right: 0 },
     });
 
     useEffect(() => {
+        if (typeof bearing !== 'number' || !isMapLoaded || !mapRef.current) return;
+        if (autoRotateSpeed != null) return;
+        mapRef.current.getMap().setBearing(bearing);
+        if (interactive) setViewState((prev) => ({ ...prev, bearing }));
+    }, [bearing, isMapLoaded, interactive, autoRotateSpeed]);
+
+    useEffect(() => {
+        if (autoRotateSpeed == null || !isMapLoaded || !mapRef.current) return;
+        const map = mapRef.current.getMap();
+        const start = performance.now();
+        let rafId: number;
+        const tick = () => {
+            const elapsed = (performance.now() - start) / 1000;
+            map.setBearing((elapsed * autoRotateSpeed) % 360);
+            rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafId);
+    }, [autoRotateSpeed, isMapLoaded]);
+
+    useEffect(() => {
+        if (!isMapLoaded || !mapRef.current) return;
+        const map = mapRef.current.getMap();
+        if (!interactive) {
+            map.scrollZoom.disable();
+            map.dragPan.disable();
+            map.dragRotate.disable();
+            map.doubleClickZoom.disable();
+            map.touchZoomRotate.disable();
+        }
+        return () => {
+            if (interactive) return;
+            map.scrollZoom.enable();
+            map.dragPan.enable();
+            map.dragRotate.enable();
+            map.doubleClickZoom.enable();
+            map.touchZoomRotate.enable();
+        };
+    }, [interactive, isMapLoaded]);
+
+    useEffect(() => {
         if (typeof pitch !== 'number' || !isMapLoaded || !mapRef.current) return;
         mapRef.current.getMap().setPitch(pitch);
-        setViewState((prev) => ({ ...prev, pitch }));
-    }, [pitch, isMapLoaded]);
+        if (interactive) setViewState((prev) => ({ ...prev, pitch }));
+    }, [pitch, isMapLoaded, interactive]);
 
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current || !mapConfig) return;
@@ -256,7 +306,7 @@ export const WorldMap: React.FC<MapProps> = ({
             ...evt.viewState,
             padding: padding || evt.viewState.padding,
         };
-        setViewState(updatedViewState);
+        if (interactive) setViewState(updatedViewState);
         onMove?.(updatedViewState);
     };
 
@@ -322,7 +372,9 @@ export const WorldMap: React.FC<MapProps> = ({
         >
             <Map
                 ref={mapRef}
-                {...viewState}
+                {...(autoRotateSpeed != null ? (({ bearing: _b, ...v }) => v)(viewState) : viewState)}
+                {...(autoRotateSpeed == null && typeof bearing === 'number' ? { bearing } : {})}
+                {...(typeof pitch === 'number' ? { pitch } : {})}
                 onMove={handleMove}
                 onMouseMove={handleMouseMove}
                 onClick={onPoiClick ? handleClick : undefined}
@@ -335,7 +387,7 @@ export const WorldMap: React.FC<MapProps> = ({
                         map.on('style.load', () => add3DBuildingsLayer(map, mapStyleRef.current));
                     }
                 }}
-                cursor={cursor || 'grab'}
+                cursor={interactive ? (cursor || 'grab') : 'default'}
                 style={{ width: '100%', height: '100%' }}
                 mapStyle={mapStyle}
                 mapboxAccessToken={accessToken}
