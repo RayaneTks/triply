@@ -6,6 +6,8 @@ export interface ButtonProps {
     variant?: 'dark' | 'light';
     tone?: 'tone1' | 'tone2';
     className?: string;
+    loading?: boolean;
+    disabled?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -14,6 +16,8 @@ export const Button: React.FC<ButtonProps> = ({
                                                   variant = 'dark',
                                                   tone = 'tone2',
                                                   className = '',
+                                                  loading,
+                                                  disabled
                                               }) => {
     const buttonId = useId();
     const buttonClass = `triply-button-${buttonId.replace(/:/g, '-')}`;
@@ -59,15 +63,20 @@ export const Button: React.FC<ButtonProps> = ({
                 <button
                     type="button"
                     onClick={onClick}
+                    disabled={disabled || loading} // ✅ combine disabled et loading
                     className={buttonClass}
                     style={{
+                        opacity: loading || disabled ? 0.6 : 1,
+                        cursor: loading || disabled ? 'not-allowed' : 'pointer',
                         '--button_radius': '0.75em',
                         '--button_color': buttonColors.color,
                         '--button_outline_color': buttonColors.outline,
                         '--button_text_color': buttonColors.textColor,
                     } as React.CSSProperties}
                 >
-                    <span className={`${buttonClass}-top`}>{label}</span>
+    <span className={`${buttonClass}-top`}>
+        {loading ? 'Chargement...' : label}
+    </span>
                 </button>
             </div>
             <style>{`
