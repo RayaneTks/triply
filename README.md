@@ -7,43 +7,56 @@ Plateforme de voyage avec un frontend et un backend Laravel documente avec Swagg
 - `frontend/` : application front
 - `backend/` : API Laravel
 
-## Demarrage rapide (Docker)
+## Workflow recommande (Docker-first)
 
-Objectif: ne jamais avoir a taper des commandes artisan/composer a la main.
+### 1) Setup initial (une seule fois)
+```bash
+make init
+```
+Utilise cette commande pour un environnement neuf.
+Elle est volontairement lourde:
+- build Docker
+- install dependencies backend
+- generation APP_KEY
+- clear cache
+- migrations
+- regeneration Swagger
 
-1. Lancer tout l'environnement:
+### 2) Demarrage quotidien (rapide)
 ```bash
 make up
 ```
+- lance les conteneurs sans rebuild
+- ne relance pas composer install
 
-2. Apres des modifications backend (routes, swagger, config, etc.):
+### 3) Apres des modifications backend
 ```bash
 make reload
 ```
+- clear cache
+- migrate (graceful)
+- regeneration Swagger
 
-3. Voir les logs:
-```bash
-make logs
-```
-
-4. Arreter l'environnement:
+### 4) Arret
 ```bash
 make down
 ```
 
-## Commandes intuitives (recommandees)
+## Commandes utiles et cas d'usage
 
-- `make up` : build + run Docker + bootstrap backend complet
-- `make run` : alias de `make up`
-- `make reload` : reapplique bootstrap backend (deps/cache/migrations/swagger)
-- `make restart` : restart des conteneurs + bootstrap backend
+- `make init` : premier setup complet (one-shot)
+- `make up` / `make run` : demarrage rapide au quotidien
+- `make reload` : sync backend apres changement code/config/routes/swagger
+- `make rebuild` : rebuild complet quand Dockerfile/deps systeme changent
+- `make composer-install` : quand `composer.json`/`composer.lock` changent
+- `make restart` : redemarrer conteneurs
+- `make status` : etat des services docker
 - `make logs` : logs complets
 - `make logs-back` : logs backend uniquement
 - `make shell` : shell dans le conteneur backend
-- `make test` : tests backend dans Docker
-- `make routes` : liste des routes API
-- `make swagger` : regenere Swagger
-- `make down` : stop environnement
+- `make routes` : lister routes API
+- `make swagger` : regenerer Swagger
+- `make test` : lancer tests backend
 - `make clean` : stop + suppression volumes (destructif)
 
 ## URLs utiles
@@ -52,16 +65,16 @@ make down
 - API v1 health : `http://127.0.0.1:8000/api/v1/health`
 - Swagger UI : `http://127.0.0.1:8000/api/documentation`
 
-## Notes
-
-- Les commandes `local-*` existent encore mais sont legacy.
-- Le workflow recommande est 100% Docker via `make up` / `make reload`.
-- Les details backend sont dans `backend/README_DEV.md`.
-
 ## Depannage Docker (Windows)
 
 Si `make up` retourne une erreur du type `dockerDesktopLinuxEngine` introuvable:
 
 1. Demarrer Docker Desktop.
-2. Attendre que Docker soit pret (`docker version` fonctionne).
+2. Attendre que Docker soit pret (`docker version`).
 3. Relancer `make up`.
+
+## Notes
+
+- Les commandes `local-*` existent encore pour urgence/legacy.
+- Le workflow recommande reste 100% Docker.
+- Les details backend sont dans `backend/README_DEV.md`.
