@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import MessageList from "@/src/components/Messages/MessageList";
-import {SearchBar} from "@/src/components/Searchbar/Searchbar";
-import {Button} from "@/src/components/Button/Button";
+import { SearchBar } from "@/src/components/Searchbar/Searchbar";
+import { Button } from "@/src/components/Button/Button";
 
 interface Coordinates {
     latitude: number;
@@ -17,23 +17,10 @@ interface Location {
     coordinates: Coordinates;
 }
 
-const MOCK_LOCATIONS = [
-    {
-        id: '1',
-        title: 'Paris',
-        coordinates: { latitude: 48.8566, longitude: 2.3522 }
-    },
-    {
-        id: '2',
-        title: 'Rome',
-        coordinates: { latitude: 41.9028, longitude: 12.4964 }
-    },
-    {
-        id: '3',
-        title: 'Dublin',
-        coordinates: { latitude: 53.3498, longitude: -6.2603 }
-    }
-];
+interface AssistantResponse {
+    reply: string;
+    locations: Location[];
+}
 
 export type Role = 'user' | 'assistant';
 
@@ -63,29 +50,28 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
             content: currentMessageText,
         };
 
-        setMessages(prev => [...prev, userMessage]);
+        const newHistory = [...messages, userMessage];
+        setMessages(newHistory);
         setMessage('');
         setLoading(true);
 
-        const foundLocations = MOCK_LOCATIONS.filter(loc =>
-            currentMessageText.toLowerCase().includes(loc.title.toLowerCase())
-        );
-
-        if (foundLocations.length > 0 && onUpdateLocations) {
-            console.log("Assistant: Villes trouvées, envoi au parent...", foundLocations);
-            onUpdateLocations(foundLocations);
-        }
-
         try {
+            const apiMessages = newHistory.map(({ role, content }) => ({
+                role,
+                content
+            }));
+
             const res = await fetch('/api/assistant', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messages, userMessage],
+                    messages: apiMessages,
                 }),
             });
 
-            const data = await res.json();
+            if (!res.ok) throw new Error(res.statusText);
+
+            const data: AssistantResponse = await res.json();
 
             const assistantMessage: ChatMessage = {
                 id: uuid(),
@@ -95,16 +81,18 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
 
             setMessages(prev => [...prev, assistantMessage]);
 
+            if (data.locations && data.locations.length > 0 && onUpdateLocations) {
+                onUpdateLocations(data.locations);
+            }
+
         } catch (error) {
             console.error("Erreur API", error);
-            if (foundLocations.length > 0) {
-                const autoReply: ChatMessage = {
-                    id: uuid(),
-                    role: 'assistant',
-                    content: `J'ai trouvé ${foundLocations.length} destination(s) : ${foundLocations.map(l => l.title).join(', ')}. Je centre la carte.`
-                };
-                setMessages(prev => [...prev, autoReply]);
-            }
+            const errorMessage: ChatMessage = {
+                id: uuid(),
+                role: 'assistant',
+                content: "Désolé, une erreur est survenue lors de la recherche des destinations."
+            };
+            setMessages(prev => [...prev, errorMessage]);
         } finally {
             setLoading(false);
         }
@@ -133,7 +121,7 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
 
             <div className="flex gap-2 mt-4">
                 <SearchBar
-                    placeholder="Posez votre question à l'assistant..."
+                    placeholder="Où souhaitez-vous aller ? (ex: Tokyo, Bali...)"
                     value={message}
                     onChange={e => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}

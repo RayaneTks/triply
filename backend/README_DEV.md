@@ -1,43 +1,45 @@
 # Backend Dev README (Triply)
 
-## Workflow recommande (Docker uniquement)
+## Workflow officiel (Docker-first)
 
-Aucune commande artisan/composer manuelle necessaire.
+## 1) Initialisation (une seule fois)
+```bash
+make init
+```
 
-### 1) Demarrer tout l'environnement
+Commande lourde volontairement:
+- build image backend
+- install dependances composer
+- generation APP_KEY
+- clear cache
+- migrations
+- generation Swagger
+
+## 2) Demarrage quotidien (rapide)
 ```bash
 make up
 ```
 
-### 2) Recharger apres modifications backend
+## 3) Synchroniser apres modifs backend
 ```bash
 make reload
 ```
 
-### 3) Outils quotidiens
-```bash
-make logs
-make logs-back
-make shell
-make routes
-make swagger
-make test
-```
-
-### 4) Arreter
+## 4) Arret
 ```bash
 make down
 ```
 
-## Ce que fait `make up`
+## Quelle commande utiliser selon le cas
 
-- Lance Docker (`docker compose up -d --build`)
-- Cree `backend/.env` si absent
-- Installe les dependances composer dans le conteneur
-- Genere `APP_KEY`
-- Vide les caches Laravel
-- Lance les migrations (mode gracieux)
-- Regenere la documentation Swagger
+- Changement `Dockerfile` / libs systeme: `make rebuild`
+- Changement `composer.json` / `composer.lock`: `make composer-install`
+- Changement routes/controllers/requests/resources/openapi/config: `make reload`
+- Besoin de voir les logs: `make logs` ou `make logs-back`
+- Besoin shell backend: `make shell`
+- Verifier routes: `make routes`
+- Regenerer docs uniquement: `make swagger`
+- Lancer tests: `make test`
 
 ## URLs
 
@@ -46,21 +48,21 @@ make down
 - Health v1: `http://127.0.0.1:8000/api/v1/health`
 - Swagger UI: `http://127.0.0.1:8000/api/documentation`
 
-## Commandes Make (intuitives)
+## Depannage rapide (Windows)
 
-- `make up` / `make run`: demarrage complet Docker + bootstrap backend
-- `make reload`: reapplique bootstrap backend (post-modifs)
-- `make restart`: restart conteneurs + bootstrap
-- `make down`: arret conteneurs
-- `make clean`: suppression conteneurs + volumes
-- `make logs`: logs de tous les services
-- `make logs-back`: logs backend
-- `make shell`: shell backend
-- `make routes`: liste routes API
-- `make swagger`: regen Swagger
-- `make test`: tests backend
+Si erreur `dockerDesktopLinuxEngine`:
 
-## Notes
+1. Ouvrir Docker Desktop.
+2. Verifier Docker:
+```bash
+docker version
+```
+3. Relancer:
+```bash
+make up
+```
 
-- Les commandes `local-*` sont legacy et gardees pour compatibilite.
-- Le backend reste en mode squelette API v1 (stubs), sans logique metier/BDD finale.
+## Mode urgence (sans Docker)
+
+Les commandes `local-*` du Makefile restent disponibles en fallback.
+Usage recommande: Docker-first.

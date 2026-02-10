@@ -7,7 +7,7 @@ export interface SearchBarProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const SearchBar: FC<SearchBarProps> = ({
-                                                  placeholder = 'Où voulez-vous aller?',
+                                                  placeholder = 'Où voulez-vous aller ?',
                                                   className = '',
                                                   containerStyle,
                                                   ...rest
@@ -16,10 +16,12 @@ export const SearchBar: FC<SearchBarProps> = ({
         <div
             className={`input-assistant w-full max-w-md ${className}`}
             style={containerStyle}
+            className={`flex items-center border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full max-w-md focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-colors ${className}`}
+            style={{ ...containerStyle, backgroundColor: containerStyle?.backgroundColor || '#222' }}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-3 flex-shrink-0"
+                className="h-5 w-5 mr-3 flex-shrink-0 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -35,6 +37,7 @@ export const SearchBar: FC<SearchBarProps> = ({
                 placeholder={placeholder}
                 className="flex-grow"
                 style={{ color: rest.style?.color || 'var(--foreground, #ededed)' }}
+                className="flex-grow bg-transparent focus:outline-none placeholder-white/50 text-white"
                 {...rest}
             />
         </div>
