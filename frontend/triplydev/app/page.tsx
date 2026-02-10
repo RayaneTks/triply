@@ -3,8 +3,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
-import { SearchBar } from '@/src/components/Searchbar/Searchbar';
-import { Button } from '@/src/components/Button/Button';
 import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
 import { SlideDefinition } from '@/src/components/PowerPoint/types';
@@ -16,6 +14,17 @@ import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import {Login} from "@/src/components/Login/Login";
+import Assistant from "@/src/components/Assistant/Assistant";
+
+interface Coordinates {
+    latitude: number;
+    longitude: number;
+}
+interface Location {
+    id: string;
+    title: string;
+    coordinates: Coordinates;
+}
 
 // Données de démonstration pour les slides
 const getMockSlides = (
@@ -251,6 +260,8 @@ export default function Home() {
     const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [message, setMessage] = useState('');
+
+    const [mapLocations, setMapLocations] = useState<any[]>([]);
     
     // États pour la première slide
     const [travelerCount, setTravelerCount] = useState(1);
@@ -483,6 +494,7 @@ export default function Home() {
                         onPoiClick={handlePoiClick}
                         onPoiHover={handlePoiHover}
                         onPoiLeave={handlePoiLeave}
+                        locations={mapLocations}
                     />
                     <PoiReviewsModal
                         visible={(!!poiHover || mouseInModal) && (!!poiReviews || poiReviewsLoading)}
@@ -504,60 +516,25 @@ export default function Home() {
                 </div>
 
                 {/* Div mère contenant LLM et Slide - positionnée en overlay sur la map */}
-                <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                    {/* Module LLM en haut */}
-                    <div className="p-6 rounded-lg flex-shrink-0 min-h-[300px]" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                        <div className="max-w-2xl mx-auto h-full flex flex-col">
-                            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground, #ededed)' }}>Triply Assistant</h2>
-                            <div className="flex-1"></div>
-                            <div className="flex gap-2 items-stretch mt-auto">
-                                <div className="flex-1">
-                                    <SearchBar 
-                                        placeholder="Posez votre question à l'assistant..."
-                                        className="w-full"
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        containerStyle={{ 
-                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                        }}
-                                        style={{ 
-                                            color: 'var(--foreground, #ededed)',
-                                            backgroundColor: 'transparent'
-                                        }}
-                                    />
-                                </div>
-                                <div className="flex-shrink-0">
-                                    <Button
-                                        label="Envoyer"
-                                        onClick={handleSubmitMessage}
-                                        variant="dark"
-                                        tone="tone1"
-                                        className="h-full"
-                                    />
-                                </div>
+                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
+                            <Assistant onUpdateLocations={setMapLocations} />
+
+                            {/* Slide en dessous du LLM */}
+                            <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
+                                <AnimatePresence mode="wait" custom={slideDirection}>
+                                    <Slide
+                                        key={currentSlideIndex}
+                                        direction={slideDirection}
+                                        onNext={handleNext}
+                                        onPrev={handlePrev}
+                                        canNext={currentSlideIndex < mockSlides.length - 1}
+                                        canPrev={currentSlideIndex > 0}
+                                    >
+                                        {mockSlides[currentSlideIndex]?.content}
+                                    </Slide>
+                                </AnimatePresence>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Slide en dessous du LLM */}
-                    <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                        <AnimatePresence mode="wait" custom={slideDirection}>
-                            <Slide
-                                key={currentSlideIndex}
-                                direction={slideDirection}
-                                onNext={handleNext}
-                                onPrev={handlePrev}
-                                canNext={currentSlideIndex < mockSlides.length - 1}
-                                canPrev={currentSlideIndex > 0}
-                            >
-                                {mockSlides[currentSlideIndex]?.content}
-                            </Slide>
-                        </AnimatePresence>
-                    </div>
-                </div>
                     </>
                 )}
             </div>
