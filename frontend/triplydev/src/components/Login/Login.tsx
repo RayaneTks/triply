@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Button } from '@/src/components/Button/Button';
 
 export interface LoginProps {
     onLoginSuccess: () => void;
@@ -24,13 +25,14 @@ export const Login: React.FC<LoginProps> = ({
     return (
         <div className="w-full h-full flex items-center justify-center relative">
             {/* Bouton retour */}
-            <button
-                onClick={onBack}
-                className="absolute top-6 left-6 text-sm hover:text-primary transition-colors"
-                style={{ color: 'var(--foreground, #ededed)' }}
-            >
-                ← Retour
-            </button>
+            <div className="absolute top-6 left-6">
+                <Button
+                    label="← Retour"
+                    onClick={onBack}
+                    variant="dark"
+                    tone="tone1"
+                />
+            </div>
 
             <div
                 className="w-full max-w-md p-8 rounded-lg"

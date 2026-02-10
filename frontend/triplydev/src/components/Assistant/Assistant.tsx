@@ -143,7 +143,10 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
                 <Button
                     label="Envoyer"
                     onClick={sendMessage}
+                    variant="dark"
+                    tone="tone1"
                     disabled={loading}
+                    loading={loading}
                     className="h-full"
                 />
             </div>

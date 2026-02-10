@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface GoogleReview {
@@ -20,6 +21,60 @@ export interface PoiReviewsModalProps {
     loading?: boolean;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
+    /** Largeur du panneau gauche (sidebar + slide) pour éviter le chevauchement */
+    leftPanelWidth?: number;
+}
+
+const MODAL_WIDTH = 360;
+const MAX_HEIGHT = 420;
+const OFFSET = 12;
+const EDGE_PADDING = 12;
+
+function computeModalPosition(
+    anchor: { x: number; y: number },
+    leftPanelWidth = 0
+): { left: number; top: number } {
+    if (typeof window === 'undefined') return { left: anchor.x + OFFSET, top: anchor.y + OFFSET };
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const spaceRight = vw - anchor.x - OFFSET;
+    const spaceLeft = anchor.x - leftPanelWidth - OFFSET;
+    const spaceBottom = vh - anchor.y - OFFSET;
+    const spaceTop = anchor.y - OFFSET;
+
+    const preferRight = spaceRight >= MODAL_WIDTH || spaceRight >= spaceLeft;
+    const preferBottom = spaceBottom >= spaceTop;
+
+    let left: number;
+    let top: number;
+
+    if (preferRight && preferBottom) {
+        left = anchor.x + OFFSET;
+        top = anchor.y + OFFSET;
+    } else if (preferRight && !preferBottom) {
+        left = anchor.x + OFFSET;
+        top = anchor.y - MAX_HEIGHT - OFFSET;
+    } else if (!preferRight && preferBottom) {
+        left = anchor.x - MODAL_WIDTH - OFFSET;
+        top = anchor.y + OFFSET;
+    } else {
+        left = anchor.x - MODAL_WIDTH - OFFSET;
+        top = anchor.y - MAX_HEIGHT - OFFSET;
+    }
+
+    left = Math.max(EDGE_PADDING, Math.min(vw - MODAL_WIDTH - EDGE_PADDING, left));
+
+    const topMin = EDGE_PADDING;
+    const topMax = vh - MAX_HEIGHT - EDGE_PADDING;
+    let topClamped = Math.max(topMin, Math.min(topMax, top));
+
+    if (topClamped === topMin && top < topMin && spaceBottom > 0) {
+        topClamped = Math.min(topMax, anchor.y + OFFSET);
+    }
+
+    return { left, top: topClamped };
 }
 
 export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
@@ -32,22 +87,14 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
     loading = false,
     onMouseEnter,
     onMouseLeave,
+    leftPanelWidth = 0,
 }) => {
-    const offset = 16;
-    const modalWidth = 360;
-    const maxHeight = 420;
+    const { left, top } = useMemo(
+        () => computeModalPosition(position, leftPanelWidth),
+        [position.x, position.y, leftPanelWidth]
+    );
 
-    let left = position.x + offset;
-    let top = position.y + offset;
-
-    if (typeof window !== 'undefined') {
-        if (left + modalWidth > window.innerWidth) left = position.x - modalWidth - offset;
-        if (top + maxHeight > window.innerHeight) top = position.y - maxHeight - offset;
-        if (left < 8) left = 8;
-        if (top < 8) top = 8;
-    }
-
-    return (
+    const modalContent = (
         <AnimatePresence>
             {visible && (
                 <motion.div
@@ -61,8 +108,8 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
                     style={{
                         left: `${left}px`,
                         top: `${top}px`,
-                        width: `${modalWidth}px`,
-                        maxHeight: `${maxHeight}px`,
+                        width: `${MODAL_WIDTH}px`,
+                        maxHeight: `${MAX_HEIGHT}px`,
                         backgroundColor: 'rgba(34, 34, 34, 0.98)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
                         boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
@@ -106,7 +153,7 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
                     <div
                         className="overflow-y-auto p-4"
                         style={{
-                            maxHeight: `${maxHeight - 100}px`,
+                            maxHeight: `${MAX_HEIGHT - 100}px`,
                             scrollbarWidth: 'none',
                             msOverflowStyle: 'none',
                         }}
@@ -154,4 +201,8 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
             )}
         </AnimatePresence>
     );
+
+    return typeof document !== 'undefined'
+        ? ReactDOM.createPortal(modalContent, document.body)
+        : modalContent;
 };
