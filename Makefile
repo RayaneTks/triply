@@ -1,48 +1,46 @@
-.PHONY: help run up reload down restart logs logs-back shell setup bootstrap refresh test routes swagger key migrate fresh clean \
-	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
+.PHONY: help init setup up run reload rebuild down restart logs logs-back shell status test routes swagger migrate fresh key composer-install \
+	docker-up docker-up-build docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
+	bootstrap-full bootstrap-fast ensure-env \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh
 
 BACKEND_DIR := backend
 COMPOSE := docker compose
 BACKEND_SERVICE := backend
 
-help: ## Afficher les commandes principales (Docker-first)
+help: ## Afficher les commandes disponibles
 	@echo Usage: make ^<commande^>
 	@echo.
 	@findstr /R "^[a-zA-Z0-9_.-][a-zA-Z0-9_.-]*:.*## " Makefile
 
 # -----------------------------------------
-# Docker-first workflow (commande a utiliser au quotidien)
+# Workflow principal (Docker-first)
 # -----------------------------------------
 
-run: up ## Alias intuitif pour demarrer tout l'environnement
+init: ensure-env docker-up-build bootstrap-full ## Setup initial lourd (1ere fois): build image + install + key + migrate + swagger
 
-up: docker-up bootstrap ## Lancer Docker + preparer backend (deps, key, cache, migrations, swagger)
+setup: init ## Alias intuitif de init
 
-reload: refresh ## Alias intuitif pour reappliquer les changements backend
+up: ensure-env docker-up ## Demarrage rapide quotidien (pas de rebuild, pas de composer install)
 
-refresh: bootstrap ## Recharger backend apres des modifs (deps, cache, migrations, swagger)
+run: up ## Alias intuitif de up
 
-setup: up ## Setup complet de l'environnement Docker
+reload: bootstrap-fast ## Synchroniser backend apres modifs code/config/routes/swagger (rapide)
 
-bootstrap: ## Pipeline backend dans le container (sans commande manuelle)
-	@if not exist $(BACKEND_DIR)\.env copy $(BACKEND_DIR)\.env.example $(BACKEND_DIR)\.env >nul
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction"
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan key:generate --force"
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan optimize:clear"
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan migrate --force --graceful"
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan l5-swagger:generate"
+rebuild: ensure-env docker-up-build bootstrap-full ## Rebuild complet (Dockerfile/deps systeme)
 
-down: docker-down ## Arreter l'environnement Docker
+restart: docker-restart ## Redemarrer les conteneurs
 
-restart: docker-restart bootstrap ## Redemarrer Docker puis reappliquer le bootstrap backend
+down: docker-down ## Arreter l'environnement
+
+status: ## Afficher l'etat des conteneurs du projet
+	$(COMPOSE) ps
 
 logs: docker-logs ## Suivre tous les logs Docker
 
 logs-back: docker-logs-back ## Suivre les logs du backend uniquement
 
-shell: docker-shell-back ## Ouvrir un shell dans le container backend
+shell: docker-shell-back ## Ouvrir un shell dans le conteneur backend
 
 test: docker-test ## Lancer les tests backend dans Docker
 
@@ -52,17 +50,43 @@ swagger: docker-swagger ## Regenerer Swagger dans Docker
 
 migrate: docker-migrate ## Executer les migrations dans Docker
 
-fresh: docker-fresh ## Reset DB dans Docker (migrate:fresh --seed)
+fresh: docker-fresh ## Reset DB dans Docker (destructif)
 
 key: docker-key ## Regenerer APP_KEY dans Docker
 
-clean: docker-clean ## Supprimer conteneurs + volumes (attention: DB perdue)
+composer-install: ## Installer/mettre a jour les dependances PHP dans le conteneur
+	$(COMPOSE) up -d
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction"
+
+# -----------------------------------------
+# Pipelines backend
+# -----------------------------------------
+
+ensure-env: ## Creer backend/.env si absent
+	@if not exist $(BACKEND_DIR)\.env copy $(BACKEND_DIR)\.env.example $(BACKEND_DIR)\.env >nul
+
+bootstrap-full: ## Pipeline complet backend (utilise par init/rebuild)
+	$(COMPOSE) up -d
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan key:generate --force"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan optimize:clear"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan migrate --force --graceful"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan l5-swagger:generate"
+
+bootstrap-fast: ## Pipeline rapide backend (utilise par reload)
+	$(COMPOSE) up -d
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan optimize:clear"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan migrate --force --graceful"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan l5-swagger:generate"
 
 # -----------------------------------------
 # Docker primitives (bas niveau)
 # -----------------------------------------
 
-docker-up: ## Build et lancer les conteneurs
+docker-up: ## Lancer les conteneurs (rapide, sans rebuild)
+	$(COMPOSE) up -d
+
+docker-up-build: ## Build + lancer les conteneurs
 	$(COMPOSE) up -d --build
 
 docker-down: ## Arreter et supprimer les conteneurs
@@ -113,6 +137,8 @@ docker-routes: ## Lister les routes API dans Docker
 
 docker-clean: ## Supprimer conteneurs + volumes (attention: DB perdue)
 	$(COMPOSE) down -v
+
+clean: docker-clean ## Alias de docker-clean
 
 # -----------------------------------------
 # Local (urgence / legacy, sans Docker)
