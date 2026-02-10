@@ -64,3 +64,17 @@ make down
 
 - Les commandes `local-*` sont legacy et gardees pour compatibilite.
 - Le backend reste en mode squelette API v1 (stubs), sans logique metier/BDD finale.
+
+## Depannage rapide (Windows)
+
+Si `make up` echoue avec `dockerDesktopLinuxEngine`:
+
+1. Ouvrir Docker Desktop.
+2. Verifier Docker:
+```bash
+docker version
+```
+3. Relancer:
+```bash
+make up
+```
