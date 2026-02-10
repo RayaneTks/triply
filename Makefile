@@ -56,7 +56,7 @@ key: docker-key ## Regenerer APP_KEY dans Docker
 
 composer-install: ## Installer/mettre a jour les dependances PHP dans le conteneur
 	$(COMPOSE) up -d
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction --prefer-dist --optimize-autoloader"
 
 # -----------------------------------------
 # Pipelines backend
@@ -67,7 +67,7 @@ ensure-env: ## Creer backend/.env si absent
 
 bootstrap-full: ## Pipeline complet backend (utilise par init/rebuild)
 	$(COMPOSE) up -d
-	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction"
+	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction --prefer-dist --optimize-autoloader"
 	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan key:generate --force"
 	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan optimize:clear"
 	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan migrate --force --graceful"

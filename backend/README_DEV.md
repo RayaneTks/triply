@@ -19,6 +19,9 @@ Commande lourde volontairement:
 ```bash
 make up
 ```
+- demarrage sans rebuild
+- pas de reinstall composer
+- `vendor` charge depuis un volume Docker dedie (gain de performance)
 
 ## 3) Synchroniser apres modifs backend
 ```bash
@@ -47,6 +50,16 @@ make down
 - API v1: `http://127.0.0.1:8000/api/v1`
 - Health v1: `http://127.0.0.1:8000/api/v1/health`
 - Swagger UI: `http://127.0.0.1:8000/api/documentation`
+
+## Performance API
+
+- Lenteur principale historique: acces disque Docker Windows sur `vendor`.
+- Correctif applique: `vendor` isole dans un volume Docker (`backend_vendor`) + opcache configure.
+- Cible: endpoints stubs generalement <1s.
+- Mesure rapide:
+```bash
+curl -s -o NUL -w "total=%{time_total}s start=%{time_starttransfer}s\n" http://127.0.0.1:8000/api/v1/health
+```
 
 ## Depannage rapide (Windows)
 
