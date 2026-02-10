@@ -1,6 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Tooltip, Cell, Legend, ResponsiveContainer } from 'recharts';
-import {PieChartDataPoint} from "../../../types/piechart.ts";
+import {PieChartDataPoint} from "../../../types/piechart";
 
 interface PieChartWidgetProps {
     data: PieChartDataPoint[];

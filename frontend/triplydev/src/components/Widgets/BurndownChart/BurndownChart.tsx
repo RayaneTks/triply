@@ -10,7 +10,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
-import {BurndownDataPoint} from "../../../types/burndown.ts";
+import {BurndownDataPoint} from "../../../types/burndown";
 
 interface BurndownChartProps {
     data: BurndownDataPoint[];

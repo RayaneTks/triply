@@ -1,6 +1,6 @@
-import {Button, ButtonProps} from "../Button/Button.tsx";
+import {Button, ButtonProps} from "../Button/Button";
 import {FC} from "react";
-import { Logo } from '../Logo/Logo.tsx'; // NOUVEAU : Importer le composant Logo
+import { Logo } from '../Logo/Logo'; // NOUVEAU : Importer le composant Logo
 
 export interface NavItem {
     id: number | string;

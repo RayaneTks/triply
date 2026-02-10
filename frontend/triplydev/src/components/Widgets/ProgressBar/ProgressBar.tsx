@@ -1,5 +1,5 @@
 import React from 'react';
-import {ProgressBarData} from "../../../types/progress.ts";
+import {ProgressBarData} from "../../../types/progress";
 
 interface ProgressBarProps extends ProgressBarData {
     /** Hauteur de la barre en pixels. */

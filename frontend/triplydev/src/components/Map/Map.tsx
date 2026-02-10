@@ -32,8 +32,10 @@ const POI_LAYER_IDS_CLASSIC = [
     'poi-scalerank4',
 ];
 
+type PoiFeatureInput = { id?: string | number; layer?: { id?: string }; source?: string; sourceLayer?: string; properties?: Record<string, unknown> | null; geometry?: GeoJSON.Geometry };
+
 /** Retourne la feature POI la plus pertinente (classic ou Standard) */
-function pickPoiFeature(features: Array<{ layer?: { id?: string }; properties?: Record<string, unknown> }>): typeof features[0] | undefined {
+function pickPoiFeature<T extends PoiFeatureInput>(features: T[]): T | undefined {
     if (!features.length) return undefined;
     const byLayer = features.find((f) => f.layer?.id && POI_LAYER_IDS_CLASSIC.includes(f.layer.id));
     if (byLayer) return byLayer;

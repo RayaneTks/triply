@@ -15,9 +15,7 @@ export const SearchBar: FC<SearchBarProps> = ({
     return (
         <div
             className={`input-assistant w-full max-w-md ${className}`}
-            style={containerStyle}
-            className={`flex items-center border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full max-w-md focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-colors ${className}`}
-            style={{ ...containerStyle, backgroundColor: containerStyle?.backgroundColor || '#222' }}
+            style={{ ...containerStyle, backgroundColor: containerStyle?.backgroundColor || 'rgba(255, 255, 255, 0.1)' }}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -35,9 +33,8 @@ export const SearchBar: FC<SearchBarProps> = ({
             <input
                 type="text"
                 placeholder={placeholder}
-                className="flex-grow"
+                className="flex-grow bg-transparent focus:outline-none placeholder-white/50"
                 style={{ color: rest.style?.color || 'var(--foreground, #ededed)' }}
-                className="flex-grow bg-transparent focus:outline-none placeholder-white/50 text-white"
                 {...rest}
             />
         </div>
