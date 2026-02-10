@@ -28,6 +28,7 @@ make up
 ```
 - lance les conteneurs sans rebuild
 - ne relance pas composer install
+- utilise un volume Docker dedie pour `vendor` (optimise perfs sur Windows)
 
 ### 3) Apres des modifications backend
 ```bash
@@ -64,6 +65,16 @@ make down
 - API locale : `http://127.0.0.1:8000`
 - API v1 health : `http://127.0.0.1:8000/api/v1/health`
 - Swagger UI : `http://127.0.0.1:8000/api/documentation`
+
+## Perf API (important)
+
+- `vendor` est isole dans un volume Docker (`backend_vendor`) pour accelerer le bootstrap Laravel.
+- En usage normal, les endpoints stubs doivent repondre en dessous d'une seconde.
+- Si tu vois encore plusieurs secondes:
+1. verifier que Docker Desktop est bien actif,
+2. lancer `make reload`,
+3. verifier charge machine (CPU/RAM/disque),
+4. envisager execution depuis WSL2 pour meilleures performances I/O.
 
 ## Depannage Docker (Windows)
 
