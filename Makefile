@@ -27,7 +27,7 @@ refresh: bootstrap ## Recharger backend apres des modifs (deps, cache, migration
 setup: up ## Setup complet de l'environnement Docker
 
 bootstrap: ## Pipeline backend dans le container (sans commande manuelle)
-	@if [ ! -f $(BACKEND_DIR)/.env ]; then cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env; fi
+	@if not exist $(BACKEND_DIR)\.env copy $(BACKEND_DIR)\.env.example $(BACKEND_DIR)\.env >nul
 	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "composer install --no-interaction"
 	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan key:generate --force"
 	$(COMPOSE) exec $(BACKEND_SERVICE) sh -lc "php artisan optimize:clear"
@@ -122,7 +122,7 @@ local-install: ## [Urgence] Installer les dependances backend (composer)
 	composer install --working-dir $(BACKEND_DIR)
 
 local-env: ## [Urgence] Creer backend/.env depuis .env.example (si absent)
-	@if [ ! -f $(BACKEND_DIR)/.env ]; then cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env; fi
+	@if not exist $(BACKEND_DIR)\.env copy $(BACKEND_DIR)\.env.example $(BACKEND_DIR)\.env >nul
 
 local-key: ## [Urgence] Generer APP_KEY
 	php $(BACKEND_DIR)/artisan key:generate

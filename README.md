@@ -57,3 +57,11 @@ make down
 - Les commandes `local-*` existent encore mais sont legacy.
 - Le workflow recommande est 100% Docker via `make up` / `make reload`.
 - Les details backend sont dans `backend/README_DEV.md`.
+
+## Depannage Docker (Windows)
+
+Si `make up` retourne une erreur du type `dockerDesktopLinuxEngine` introuvable:
+
+1. Demarrer Docker Desktop.
+2. Attendre que Docker soit pret (`docker version` fonctionne).
+3. Relancer `make up`.
