@@ -14,7 +14,7 @@ export const SearchBar: FC<SearchBarProps> = ({
                                               }) => {
     return (
         <div
-            className={`flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full max-w-md focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-colors ${className}`}
+            className={`input-assistant w-full max-w-md ${className}`}
             style={containerStyle}
         >
             <svg
@@ -25,6 +25,7 @@ export const SearchBar: FC<SearchBarProps> = ({
                 stroke="currentColor"
                 strokeWidth={2}
                 style={{ color: containerStyle?.color || 'rgba(255, 255, 255, 0.5)' }}
+                aria-hidden
             >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -32,18 +33,10 @@ export const SearchBar: FC<SearchBarProps> = ({
             <input
                 type="text"
                 placeholder={placeholder}
-                className="flex-grow focus:outline-none bg-transparent"
-                style={{ 
-                    color: rest.style?.color || 'var(--foreground, #ededed)',
-                    backgroundColor: 'transparent',
-                }}
+                className="flex-grow"
+                style={{ color: rest.style?.color || 'var(--foreground, #ededed)' }}
                 {...rest}
             />
-            <style>{`
-                input::placeholder {
-                    color: ${containerStyle?.color || 'rgba(255, 255, 255, 0.5)'} !important;
-                }
-            `}</style>
         </div>
     );
 };

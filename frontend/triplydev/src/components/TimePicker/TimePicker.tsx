@@ -321,16 +321,13 @@ export const TimePicker: FC<TimePickerProps> = ({
                     {label}
                 </label>
             )}
-            <div className="flex items-center">
+            <div className="input-assistant w-full">
                 <input
                     type="time"
                     value={value}
                     onChange={handleInputChange}
-                    className="flex-1 bg-white border border-gray-300 rounded-lg py-2.5 sm:py-2 px-3 sm:px-4 text-sm sm:text-base [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                    className="flex-1 text-sm sm:text-base [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none [&::-webkit-calendar-picker-indicator]:appearance-none"
                     style={{ 
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                        color: 'var(--foreground, #ededed)',
                         WebkitAppearance: 'none',
                         MozAppearance: 'textfield'
                     }}

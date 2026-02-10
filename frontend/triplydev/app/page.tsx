@@ -96,21 +96,14 @@ const getMockSlides = (
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
                             Nombre de jours de voyage
                         </label>
-                        <div
-                            className="rounded-lg border py-2.5 px-4 w-full"
-                            style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                            }}
-                        >
+                        <div className="input-assistant w-full">
                             <input
                                 type="number"
                                 min={1}
                                 value={travelDays === 0 ? '' : travelDays}
                                 onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))}
                                 placeholder="Ex. 3"
-                                className="w-full bg-transparent focus:outline-none"
-                                style={{ color: 'var(--foreground, #ededed)' }}
+                                className="w-full flex-grow"
                             />
                         </div>
                     </div>
@@ -137,19 +130,14 @@ const getMockSlides = (
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
                             Budget maximum (€)
                         </label>
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full"
-                             style={{ 
-                                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                 borderColor: 'rgba(255, 255, 255, 0.2)',
-                             }}>
+                        <div className="input-assistant w-full">
                             <span className="mr-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>€</span>
                             <input
                                 type="number"
                                 value={budget}
                                 onChange={(e) => setBudget(e.target.value)}
                                 placeholder="0"
-                                className="flex-grow bg-transparent focus:outline-none"
-                                style={{ color: 'var(--foreground, #ededed)' }}
+                                className="flex-grow"
                             />
                         </div>
                     </div>
@@ -159,11 +147,7 @@ const getMockSlides = (
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
                             Temps par jour d'activité (heures)
                         </label>
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full"
-                             style={{ 
-                                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                 borderColor: 'rgba(255, 255, 255, 0.2)',
-                             }}>
+                        <div className="input-assistant w-full">
                             <input
                                 type="number"
                                 value={activityTime}
@@ -171,8 +155,7 @@ const getMockSlides = (
                                 placeholder="0"
                                 min="0"
                                 max="24"
-                                className="flex-grow bg-transparent focus:outline-none"
-                                style={{ color: 'var(--foreground, #ededed)' }}
+                                className="flex-grow"
                             />
                             <span className="ml-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>h</span>
                         </div>

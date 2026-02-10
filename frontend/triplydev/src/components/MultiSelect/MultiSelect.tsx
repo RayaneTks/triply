@@ -69,13 +69,11 @@ export const MultiSelect: FC<MultiSelectProps> = ({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between rounded-lg py-2.5 px-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 hover:border-opacity-60"
+                className="w-full flex items-center justify-between rounded-lg py-2.5 px-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 cursor-pointer"
                 style={{ 
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: isOpen ? 'rgba(0, 150, 199, 0.5)' : 'rgba(255, 255, 255, 0.2)',
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
-                    color: 'var(--foreground, #ededed)'
+                    border: `1px solid ${isOpen ? 'rgba(0, 150, 199, 0.5)' : 'rgba(255, 255, 255, 0.2)'}`,
+                    color: 'var(--foreground, #ededed)',
                 }}
             >
                 <div className="flex-1 flex flex-wrap gap-2 items-center min-h-[24px]">

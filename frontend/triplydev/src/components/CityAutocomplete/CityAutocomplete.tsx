@@ -91,13 +91,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     {label}
                 </label>
             )}
-            <div
-                className="relative rounded-lg border py-2.5 px-4 w-full"
-                style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                }}
-            >
+            <div className="relative input-assistant w-full">
                 <input
                     type="text"
                     value={inputValue}

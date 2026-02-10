@@ -45,7 +45,7 @@ export const TravelerCounter: FC<TravelerCounterProps> = ({
     return (
         <div
             onClick={onClick}
-            className={`flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full ${className}`}
+            className={`input-assistant w-full cursor-pointer ${className}`}
             style={style}
         >
             <div style={{ color: style?.color || 'rgba(255, 255, 255, 0.5)' }}>
