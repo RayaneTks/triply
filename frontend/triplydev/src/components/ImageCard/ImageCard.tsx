@@ -6,7 +6,7 @@ export interface ImageCardProps {
     imageSrc: string;
     imageAlt: string;
     title: string;
-    description: string;
+    description: React.ReactNode;
     buttonText: string;
     onButtonClick: () => void;
     className?: string;
