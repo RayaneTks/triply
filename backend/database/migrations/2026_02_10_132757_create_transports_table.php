@@ -13,6 +13,15 @@ return new class extends Migration
     {
         Schema::create('transports', function (Blueprint $table) {
             $table->id();
+            $table->string('type', 128);
+            $table->string('depart_lieu');
+            $table->string('arrivee_lieu');
+            $table->dateTime('depart_le');
+            $table->dateTime('arrivee_le');
+            $table->integer('prix');
+            $table->string('devise', 16)->nullable();
+            $table->text('information_supplementaire')->nullable();
+
             $table->timestamps();
         });
     }

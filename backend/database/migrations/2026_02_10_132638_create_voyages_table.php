@@ -13,17 +13,18 @@ return new class extends Migration
     {
         Schema::create('voyages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-        
             $table->string('titre');
             $table->string('destination');
-            $table->date('date_debut')->nullable();
-            $table->date('date_fin')->nullable();
-        
-            $table->decimal('budget_total', 10, 2)->nullable();
-            $table->unsignedSmallInteger('nb_voyageurs')->default(1);
+            $table->date('date_debut');
+            $table->date('date_fin');
+            $table->integer('budget_total');
+            $table->integer('nb_voyageurs')->default(1);
             $table->text('description')->nullable();
-        
+
+            $table->foreignId('user_id')
+                    ->constrained('users')
+                    ->cascadeOnDelete();
+            
             $table->timestamps();
         });
     }

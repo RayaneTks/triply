@@ -13,6 +13,13 @@ return new class extends Migration
     {
         Schema::create('journees', function (Blueprint $table) {
             $table->id();
+            $table->date('date_jour');
+            $table->integer(('numero_jour'));
+            
+            $table->foreignId('voyage_id')
+                    ->constrained('voyages')
+                    ->cascadeOnDelete();
+            
             $table->timestamps();
         });
     }

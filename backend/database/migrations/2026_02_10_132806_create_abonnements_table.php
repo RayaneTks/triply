@@ -13,6 +13,15 @@ return new class extends Migration
     {
         Schema::create('abonnements', function (Blueprint $table) {
             $table->id();
+            $table->text('abonnement_stripe_id');
+            $table->string('statut', 64);
+            $table->dateTime('date_debut');
+            $table->dateTime('date_fin');
+            
+            $table->foreignId('utilisateur_id')
+                ->constrained('utilisateurs')
+                ->cascadeOnDelete();
+
             $table->timestamps();
         });
     }

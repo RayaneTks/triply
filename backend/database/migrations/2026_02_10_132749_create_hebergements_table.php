@@ -13,6 +13,17 @@ return new class extends Migration
     {
         Schema::create('hebergements', function (Blueprint $table) {
             $table->id();
+            $table->string('type', 128);
+            $table->text('nom');
+            $table->text('adresse');
+            $table->text('code_postal')->nullable();
+            $table->text('ville')->nullable();
+            $table->dateTime('arrivee_le');
+            $table->dateTime('depart_le');
+            $table->integer('prix');
+            $table->string('devise', 16)->nullable();
+            $table->text('informations_supplementaire')->nullable();
+
             $table->timestamps();
         });
     }
