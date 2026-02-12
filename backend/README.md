@@ -1,102 +1,97 @@
 # Triply Backend (Laravel)
 
-Backend API de Triply, documente avec Swagger pour developper et tester sans frontend.
-
-## Documentation de travail
-
-- Carte backend (fichiers, routes, swagger, workflow): `backend/docs/BACKEND_WORKING_MAP.md`
+Guide d'installation backend robuste sous Docker (Windows, macOS, Linux) avec Makefile.
 
 ## Prerequis
 
-- PHP 8.2+
-- Composer
-- Extensions PHP actives : `fileinfo`, `zip`
+- Docker Desktop demarre
+- Docker Compose v2 (`docker compose version`)
+- Port `8000` libre (API)
+- Port `5432` libre (PostgreSQL)
 
-Verification rapide :
-```powershell
-php -m | findstr /i "fileinfo zip"
-```
+## Workflow recommande (Docker-first)
 
-## Installation
+Depuis la racine du repo (`triply/`) :
 
-Le flux recommande passe par le `Makefile` a la racine.
-
-1. Depuis la racine du repo, executer :
+1. Setup initial (une seule fois, one-shot)
 ```bash
-make local-setup
-```
-2. Verifier et ajuster `backend/.env` si besoin.
-
-Config minimale sans base de donnees :
-```env
-APP_ENV=local
-APP_DEBUG=true
-APP_KEY=
-CACHE_STORE=file
-SESSION_DRIVER=file
-QUEUE_CONNECTION=sync
+make init
 ```
 
-## Swagger
-
-Generer la doc :
+2. Demarrage quotidien (rapide, sans rebuild)
 ```bash
-make local-swagger
+make up
 ```
 
-Lancer l'API :
+3. Apres modifications backend
 ```bash
-make local-serve
+make reload
 ```
 
-Ouvrir Swagger UI :
-`http://127.0.0.1:8000/api/documentation`
+4. Arret
+```bash
+make down
+```
 
-## Endpoints principaux (squelette V1)
+5. Verification rapide
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+```
 
-- `GET /api/health`
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-- `GET /api/v1/users`
-- `GET /api/v1/users/{id}`
-- `PATCH /api/v1/users/{id}`
-- `GET /api/v1/trips`
-- `POST /api/v1/trips`
-- `GET /api/v1/trips/{id}`
-- `PATCH /api/v1/trips/{id}`
-- `DELETE /api/v1/trips/{id}`
-- `POST /api/v1/trips/{id}/publish`
-- `GET /api/v1/bookings`
-- `POST /api/v1/bookings`
-- `GET /api/v1/bookings/{id}`
-- `PATCH /api/v1/bookings/{id}/status`
-- `POST /api/v1/bookings/{id}/cancel`
-- `POST /api/v1/payments/intents`
-- `POST /api/v1/payments/webhook`
-- `GET /api/v1/trips/{tripId}/reviews`
-- `POST /api/v1/reviews`
-- `GET /api/v1/notifications`
-- `PATCH /api/v1/notifications/{id}/read`
-- `PATCH /api/v1/notifications/read-all`
+Si `curl` n'est pas disponible : ouvrir `http://127.0.0.1:8000/api/v1/health` dans le navigateur.
+
+## Variables d'environnement Docker
+
+Le service backend Docker est deja configure dans `docker-compose.yml` pour utiliser PostgreSQL :
+
+- `DB_CONNECTION=pgsql`
+- `DB_HOST=db`
+- `DB_PORT=5432`
+- `DB_DATABASE=TriplyDB`
+- `DB_USERNAME=backend`
+- `DB_PASSWORD=backend`
+
+Un exemple est fourni dans `backend/.env.docker.example`.
 
 ## Commandes utiles
 
-- `make help` : voir toutes les commandes
-- `make local-install` : installer les dependances backend
-- `make local-env` : creer `backend/.env` si absent
-- `make local-key` : generer `APP_KEY`
-- `make local-cache-clear` : vider les caches Laravel
-- `make local-swagger` : regenerer Swagger
-- `make local-routes` : lister les routes API
-- `make local-test` : lancer les tests
-- `make local-tinker` : ouvrir Tinker
-- `make docker-up` : demarrer Docker
-- `make docker-swagger` : regenerer Swagger dans Docker
-- `make docker-routes` : lister les routes API dans Docker
+- `make init` : setup complet (build, db-ensure, env-sync, cache clear, migrate, swagger)
+- `make db-ensure` : cree le role `backend` et la base `TriplyDB` si absents
+- `make up` / `make run` : demarrage quotidien rapide
+- `make reload` : clear cache + migrate graceful + swagger
+- `make env-sync` : cree/met a jour `backend/.env` avec la config Docker standard (APP + DB)
+- `make down` : arret conteneurs
+- `make rebuild` : rebuild complet Docker
+- `make composer-install` : a lancer si `composer.json`/`composer.lock` changent
+- `make composer-install-dev` : installer aussi les dependances dev
+- `make restart` : redemarrage backend + db
+- `make status` : etat des services
+- `make logs` : logs complets
+- `make logs-back` : logs backend uniquement
+- `make shell` : shell backend
+- `make routes` : liste routes API
+- `make swagger` : regen Swagger
+- `make test` : tests backend
+- `make clean` : suppression volumes (destructif)
 
-## Perimetre
+## Reset complet (DB + volumes)
 
-- Ce README couvre uniquement le backend.
-- Le frontend n'est pas traite ici.
+Attention: supprime les donnees PostgreSQL locales.
+
+```bash
+make clean
+make init
+```
+
+## Compatibilite Windows/macOS
+
+- Le flux principal passe par `make`.
+- Les commandes Docker appelees dans le Makefile utilisent `docker compose exec -T` pour eviter les problemes TTY selon shell/OS.
+- Le `.env` backend est synchronise automatiquement via `make init` et `make reload`.
+- Si `make` n'est pas disponible sur ta machine, utilise les commandes `docker compose` equivalentes.
+
+## URLs
+
+- API: `http://127.0.0.1:8000`
+- Health: `http://127.0.0.1:8000/api/v1/health`
+- Swagger: `http://127.0.0.1:8000/api/documentation`
