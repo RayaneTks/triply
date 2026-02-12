@@ -3,8 +3,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
-import { SearchBar } from '@/src/components/Searchbar/Searchbar';
-import { Button } from '@/src/components/Button/Button';
 import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
 import { SlideDefinition } from '@/src/components/PowerPoint/types';
@@ -14,7 +12,19 @@ import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
+import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import {Login} from "@/src/components/Login/Login";
+import Assistant from "@/src/components/Assistant/Assistant";
+
+interface Coordinates {
+    latitude: number;
+    longitude: number;
+}
+interface Location {
+    id: string;
+    title: string;
+    coordinates: Coordinates;
+}
 
 // Données de démonstration pour les slides
 const getMockSlides = (
@@ -26,6 +36,9 @@ const getMockSlides = (
     arrivalTime: string,
     departureTime: string,
     selectedOptions: string[],
+    departureCity: string,
+    arrivalCity: string,
+    travelDays: number,
     setTravelerCount: (count: number) => void,
     setBudget: (budget: string) => void,
     setActivityTime: (time: string) => void,
@@ -34,7 +47,11 @@ const getMockSlides = (
     setArrivalTime: (time: string) => void,
     setDepartureTime: (time: string) => void,
     setSelectedOptions: (options: string[]) => void,
-    multiSelectOptions: string[]
+    setDepartureCity: (city: string) => void,
+    setArrivalCity: (city: string) => void,
+    setTravelDays: (days: number) => void,
+    multiSelectOptions: string[],
+    mapboxToken: string
 ): SlideDefinition[] => [
     { 
         id: '1', 
@@ -55,6 +72,48 @@ const getMockSlides = (
                 <h1 className="text-3xl font-bold mb-6" style={{ color: 'var(--foreground, #ededed)' }}>Configurez votre voyage</h1>
                 
                 <div className="space-y-4 max-w-2xl">
+                    {/* Ville de départ / Ville d'arrivée / Nombre de jours */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <CityAutocomplete
+                            value={departureCity}
+                            onChange={setDepartureCity}
+                            label="Ville de départ"
+                            placeholder="Ex. Paris, Lyon..."
+                            mapboxToken={mapboxToken}
+                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
+                        />
+                        <CityAutocomplete
+                            value={arrivalCity}
+                            onChange={setArrivalCity}
+                            label="Ville d'arrivée"
+                            placeholder="Ex. Marseille, Bordeaux..."
+                            mapboxToken={mapboxToken}
+                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                            Nombre de jours de voyage
+                        </label>
+                        <div
+                            className="rounded-lg border py-2.5 px-4 w-full"
+                            style={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                            }}
+                        >
+                            <input
+                                type="number"
+                                min={1}
+                                value={travelDays === 0 ? '' : travelDays}
+                                onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))}
+                                placeholder="Ex. 3"
+                                className="w-full bg-transparent focus:outline-none"
+                                style={{ color: 'var(--foreground, #ededed)' }}
+                            />
+                        </div>
+                    </div>
+
                     {/* Nombre de voyageurs */}
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
@@ -201,6 +260,8 @@ export default function Home() {
     const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [message, setMessage] = useState('');
+
+    const [mapLocations, setMapLocations] = useState<any[]>([]);
     
     // États pour la première slide
     const [travelerCount, setTravelerCount] = useState(1);
@@ -211,6 +272,9 @@ export default function Home() {
     const [arrivalTime, setArrivalTime] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+    const [departureCity, setDepartureCity] = useState('');
+    const [arrivalCity, setArrivalCity] = useState('');
+    const [travelDays, setTravelDays] = useState<number>(3);
 
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
@@ -343,6 +407,9 @@ export default function Home() {
         setCurrentView('home');
     };
 
+    // Token Mapbox (utilisé pour les slides et la carte)
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
+
     // Générer les slides avec les états actuels
     const mockSlides = getMockSlides(
         travelerCount,
@@ -353,6 +420,9 @@ export default function Home() {
         arrivalTime,
         departureTime,
         selectedOptions,
+        departureCity,
+        arrivalCity,
+        travelDays,
         setTravelerCount,
         setBudget,
         setActivityTime,
@@ -361,7 +431,11 @@ export default function Home() {
         setArrivalTime,
         setDepartureTime,
         setSelectedOptions,
-        multiSelectOptions
+        setDepartureCity,
+        setArrivalCity,
+        setTravelDays,
+        multiSelectOptions,
+        MAPBOX_TOKEN
     );
 
     const handleNext = () => {
@@ -383,9 +457,6 @@ export default function Home() {
         setSlideDirection(direction);
         setCurrentSlideIndex(index);
     };
-
-    // Token Mapbox - À remplacer par votre token ou une variable d'environnement
-    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
 
     return (
         <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
@@ -423,6 +494,7 @@ export default function Home() {
                         onPoiClick={handlePoiClick}
                         onPoiHover={handlePoiHover}
                         onPoiLeave={handlePoiLeave}
+                        locations={mapLocations}
                     />
                     <PoiReviewsModal
                         visible={(!!poiHover || mouseInModal) && (!!poiReviews || poiReviewsLoading)}
@@ -444,60 +516,25 @@ export default function Home() {
                 </div>
 
                 {/* Div mère contenant LLM et Slide - positionnée en overlay sur la map */}
-                <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                    {/* Module LLM en haut */}
-                    <div className="p-6 rounded-lg flex-shrink-0 min-h-[300px]" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                        <div className="max-w-2xl mx-auto h-full flex flex-col">
-                            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground, #ededed)' }}>Triply Assistant</h2>
-                            <div className="flex-1"></div>
-                            <div className="flex gap-2 items-stretch mt-auto">
-                                <div className="flex-1">
-                                    <SearchBar 
-                                        placeholder="Posez votre question à l'assistant..."
-                                        className="w-full"
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        containerStyle={{ 
-                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                        }}
-                                        style={{ 
-                                            color: 'var(--foreground, #ededed)',
-                                            backgroundColor: 'transparent'
-                                        }}
-                                    />
-                                </div>
-                                <div className="flex-shrink-0">
-                                    <Button
-                                        label="Envoyer"
-                                        onClick={handleSubmitMessage}
-                                        variant="dark"
-                                        tone="tone1"
-                                        className="h-full"
-                                    />
-                                </div>
+                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
+                            <Assistant onUpdateLocations={setMapLocations} />
+
+                            {/* Slide en dessous du LLM */}
+                            <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
+                                <AnimatePresence mode="wait" custom={slideDirection}>
+                                    <Slide
+                                        key={currentSlideIndex}
+                                        direction={slideDirection}
+                                        onNext={handleNext}
+                                        onPrev={handlePrev}
+                                        canNext={currentSlideIndex < mockSlides.length - 1}
+                                        canPrev={currentSlideIndex > 0}
+                                    >
+                                        {mockSlides[currentSlideIndex]?.content}
+                                    </Slide>
+                                </AnimatePresence>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Slide en dessous du LLM */}
-                    <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                        <AnimatePresence mode="wait" custom={slideDirection}>
-                            <Slide
-                                key={currentSlideIndex}
-                                direction={slideDirection}
-                                onNext={handleNext}
-                                onPrev={handlePrev}
-                                canNext={currentSlideIndex < mockSlides.length - 1}
-                                canPrev={currentSlideIndex > 0}
-                            >
-                                {mockSlides[currentSlideIndex]?.content}
-                            </Slide>
-                        </AnimatePresence>
-                    </div>
-                </div>
                     </>
                 )}
             </div>

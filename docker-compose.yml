@@ -6,6 +6,7 @@ services:
       target: dev
     volumes:
       - ./backend:/app
+      - backend_vendor:/app/vendor
     ports:
       - "8000:80"
     depends_on:
@@ -51,3 +52,4 @@ services:
 
 volumes:
   pg_data:
+  backend_vendor:
