@@ -7,32 +7,85 @@ Plateforme de voyage avec un frontend et un backend Laravel documente avec Swagg
 - `frontend/` : application front
 - `backend/` : API Laravel
 
-## Demarrage rapide
+## Workflow recommande (Docker-first)
 
-1. Aller dans le backend :
-```powershell
-cd backend
+### 1) Setup initial (une seule fois)
+```bash
+make init
 ```
-2. Installer les dependances :
-```powershell
-composer install
+Utilise cette commande pour un environnement neuf.
+Elle est volontairement lourde:
+- build Docker
+- install dependencies backend
+- generation APP_KEY
+- clear cache
+- migrations
+- regeneration Swagger
+
+### 2) Demarrage quotidien (rapide)
+```bash
+make up
 ```
-3. Generer la documentation Swagger :
-```powershell
-php artisan l5-swagger:generate
+- lance les conteneurs sans rebuild
+- ne relance pas composer install
+- utilise un volume Docker dedie pour `vendor` (optimise perfs sur Windows)
+
+### 3) Apres des modifications backend
+```bash
+make reload
 ```
-4. Lancer le serveur API :
-```powershell
-php artisan serve
+- clear cache
+- migrate (graceful)
+- regeneration Swagger
+
+### 4) Arret
+```bash
+make down
 ```
+
+## Commandes utiles et cas d'usage
+
+- `make init` : premier setup complet (one-shot)
+- `make up` / `make run` : demarrage rapide au quotidien
+- `make reload` : sync backend apres changement code/config/routes/swagger
+- `make rebuild` : rebuild complet quand Dockerfile/deps systeme changent
+- `make composer-install` : quand `composer.json`/`composer.lock` changent
+- `make restart` : redemarrer conteneurs
+- `make status` : etat des services docker
+- `make logs` : logs complets
+- `make logs-back` : logs backend uniquement
+- `make shell` : shell dans le conteneur backend
+- `make routes` : lister routes API
+- `make swagger` : regenerer Swagger
+- `make test` : lancer tests backend
+- `make clean` : stop + suppression volumes (destructif)
 
 ## URLs utiles
 
 - API locale : `http://127.0.0.1:8000`
+- API v1 health : `http://127.0.0.1:8000/api/v1/health`
 - Swagger UI : `http://127.0.0.1:8000/api/documentation`
-- Healthcheck : `http://127.0.0.1:8000/api/health`
+
+## Perf API (important)
+
+- `vendor` est isole dans un volume Docker (`backend_vendor`) pour accelerer le bootstrap Laravel.
+- En usage normal, les endpoints stubs doivent repondre en dessous d'une seconde.
+- Si tu vois encore plusieurs secondes:
+1. verifier que Docker Desktop est bien actif,
+2. lancer `make reload`,
+3. verifier charge machine (CPU/RAM/disque),
+4. envisager execution depuis WSL2 pour meilleures performances I/O.
+
+## Depannage Docker (Windows)
+
+Si `make up` retourne une erreur du type `dockerDesktopLinuxEngine` introuvable:
+
+1. Demarrer Docker Desktop.
+2. Attendre que Docker soit pret (`docker version`).
+3. Relancer `make up`.
 
 ## Notes
 
-- Le frontend est gere separement.
-- Les details backend (variables d'environnement, endpoints V1, workflow Swagger) sont dans `backend/README.md`.
+- Les commandes `local-*` existent encore pour urgence/legacy.
+- Le workflow recommande reste 100% Docker.
+- Les details backend sont dans `backend/README_DEV.md`.

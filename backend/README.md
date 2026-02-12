@@ -2,6 +2,10 @@
 
 Backend API de Triply, documente avec Swagger pour developper et tester sans frontend.
 
+## Documentation de travail
+
+- Carte backend (fichiers, routes, swagger, workflow): `backend/docs/BACKEND_WORKING_MAP.md`
+
 ## Prerequis
 
 - PHP 8.2+
@@ -15,19 +19,15 @@ php -m | findstr /i "fileinfo zip"
 
 ## Installation
 
-1. Aller dans le dossier backend :
-```powershell
-cd backend
+Le flux recommande passe par le `Makefile` a la racine.
+
+1. Depuis la racine du repo, executer :
+```bash
+make local-setup
 ```
-2. Installer les dependances :
-```powershell
-composer install
-```
-3. Creer `.env` (si absent) :
-```powershell
-Copy-Item .env.example .env
-```
-4. Config minimale sans base de donnees :
+2. Verifier et ajuster `backend/.env` si besoin.
+
+Config minimale sans base de donnees :
 ```env
 APP_ENV=local
 APP_DEBUG=true
@@ -36,21 +36,17 @@ CACHE_STORE=file
 SESSION_DRIVER=file
 QUEUE_CONNECTION=sync
 ```
-5. Generer la cle application :
-```powershell
-php artisan key:generate
-```
 
 ## Swagger
 
 Generer la doc :
-```powershell
-php artisan l5-swagger:generate
+```bash
+make local-swagger
 ```
 
 Lancer l'API :
-```powershell
-php artisan serve
+```bash
+make local-serve
 ```
 
 Ouvrir Swagger UI :
@@ -87,9 +83,18 @@ Ouvrir Swagger UI :
 
 ## Commandes utiles
 
-- Regenerer Swagger : `php artisan l5-swagger:generate`
-- Lister les routes API : `php artisan route:list --path=api`
-- Nettoyer le cache config : `php artisan optimize:clear`
+- `make help` : voir toutes les commandes
+- `make local-install` : installer les dependances backend
+- `make local-env` : creer `backend/.env` si absent
+- `make local-key` : generer `APP_KEY`
+- `make local-cache-clear` : vider les caches Laravel
+- `make local-swagger` : regenerer Swagger
+- `make local-routes` : lister les routes API
+- `make local-test` : lancer les tests
+- `make local-tinker` : ouvrir Tinker
+- `make docker-up` : demarrer Docker
+- `make docker-swagger` : regenerer Swagger dans Docker
+- `make docker-routes` : lister les routes API dans Docker
 
 ## Perimetre
 
