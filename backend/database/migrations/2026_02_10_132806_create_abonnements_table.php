@@ -17,9 +17,10 @@ return new class extends Migration
             $table->string('statut', 64);
             $table->dateTime('date_debut');
             $table->dateTime('date_fin');
-            
+
+            // Clé étrangère vers la table "users" (utilisateur Laravel standard)
             $table->foreignId('utilisateur_id')
-                ->constrained('utilisateurs')
+                ->constrained('users')
                 ->cascadeOnDelete();
 
             $table->timestamps();
