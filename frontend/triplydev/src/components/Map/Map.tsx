@@ -227,10 +227,13 @@ export const WorldMap: React.FC<MapProps> = ({
         }
     }, [mapConfig, mapStyle, isMapLoaded]);
 
+    const prevLocationsRef = useRef<typeof locations>([]);
+
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current) return;
 
         if (locations.length === 0) {
+            prevLocationsRef.current = locations;
             mapRef.current.flyTo({
                 center: [0, 0],
                 zoom: 1,
@@ -247,6 +250,10 @@ export const WorldMap: React.FC<MapProps> = ({
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
 
+        // Durée plus courte lors du rafraîchissement (hôtels ajoutés) pour un affichage plus réactif
+        const isRefresh = prevLocationsRef.current.length > 0 && locations.length > prevLocationsRef.current.length;
+        prevLocationsRef.current = locations;
+
         mapRef.current.fitBounds(
             [
                 [minLng, minLat],
@@ -254,7 +261,7 @@ export const WorldMap: React.FC<MapProps> = ({
             ],
             {
                 padding: { top: 100, bottom: 100, left: 100, right: 100 },
-                duration: 3500,
+                duration: isRefresh ? 800 : 2000,
                 essential: true,
                 maxZoom: 11
             }
