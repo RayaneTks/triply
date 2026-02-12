@@ -55,12 +55,14 @@ Un exemple est fourni dans `backend/.env.docker.example`.
 
 ## Commandes utiles
 
-- `make init` : setup complet (build, deps, key, cache clear, migrate, swagger)
+- `make init` : setup complet (build, env-sync, cache clear, migrate, swagger)
 - `make up` / `make run` : demarrage quotidien rapide
 - `make reload` : clear cache + migrate graceful + swagger
+- `make env-sync` : cree/met a jour `backend/.env` avec la config Docker standard (APP + DB)
 - `make down` : arret conteneurs
 - `make rebuild` : rebuild complet Docker
 - `make composer-install` : a lancer si `composer.json`/`composer.lock` changent
+- `make composer-install-dev` : installer aussi les dependances dev
 - `make restart` : redemarrage backend + db
 - `make status` : etat des services
 - `make logs` : logs complets
@@ -84,6 +86,7 @@ make init
 
 - Le flux principal passe par `make`.
 - Les commandes Docker appelees dans le Makefile utilisent `docker compose exec -T` pour eviter les problemes TTY selon shell/OS.
+- Le `.env` backend est synchronise automatiquement via `make init` et `make reload`.
 - Si `make` n'est pas disponible sur ta machine, utilise les commandes `docker compose` equivalentes.
 
 ## URLs

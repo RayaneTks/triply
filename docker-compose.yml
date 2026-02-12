@@ -25,7 +25,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: sh -c "php artisan optimize && apache2-foreground"
+    command: sh -lc "export PATH=$$PATH:/usr/sbin:/usr/local/sbin; rm -f bootstrap/cache/*.php; php artisan package:discover --ansi || true; php artisan optimize || true; exec apache2-foreground"
     healthcheck:
       test: ["CMD-SHELL", "php -r \"exit((int) !@file_get_contents('http://127.0.0.1/api/v1/health'));\""]
       interval: 10s
@@ -72,3 +72,4 @@ services:
 volumes:
   pg_data:
   backend_vendor:
+    name: triply_backend_vendor_v2

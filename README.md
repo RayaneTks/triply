@@ -48,8 +48,10 @@ curl http://127.0.0.1:8000/api/v1/health
 
 - Voir toutes les commandes : `make help`
 - Setup one-shot : `make init`
+  Note: l'installation des dependances runtime est faite pendant le build Docker de l'image backend.
 - Demarrage rapide : `make up` ou `make run`
 - Reload backend : `make reload`
+- Installer dependencies PHP manuellement si `composer.lock` change : `make composer-install`
 - Logs API : `make logs-back`
 - Arreter : `make down`
 - Reset complet DB : `make clean`

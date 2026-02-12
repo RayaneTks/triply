@@ -1,7 +1,7 @@
 .RECIPEPREFIX := >
 
 .PHONY: help \
-	init up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install \
+	init up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
@@ -23,33 +23,41 @@ endif
 # Workflow recommande (Docker-first)
 # -----------------------------------------
 
-init: ## Premier setup complet (build + deps + key + cache clear + migrate + swagger)
+init: ## Premier setup complet (build + key + cache clear + migrate + swagger)
+> $(COMPOSE) down --remove-orphans
 > $(COMPOSE) up -d --build db backend
-> $(COMPOSE) exec -T backend composer install --no-interaction --prefer-dist --optimize-autoloader
-> $(COMPOSE) exec -T backend php artisan key:generate --force
+> $(MAKE) env-sync
 > $(COMPOSE) exec -T backend php artisan optimize:clear
 > $(COMPOSE) exec -T backend php artisan migrate --force
-> $(COMPOSE) exec -T backend php artisan l5-swagger:generate
+> -$(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
 up: ## Demarrage quotidien rapide (sans rebuild)
-> $(COMPOSE) up -d db backend
+> $(COMPOSE) up -d --remove-orphans db backend
 
 run: up ## Alias de up
 
 reload: ## Sync backend apres changements (cache clear + migrate graceful + swagger)
+> $(MAKE) env-sync
 > $(COMPOSE) exec -T backend php artisan optimize:clear
 > $(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
-> $(COMPOSE) exec -T backend php artisan l5-swagger:generate
+> -$(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
 down: ## Arreter les conteneurs
-> $(COMPOSE) down
+> $(COMPOSE) down --remove-orphans
 
 rebuild: ## Rebuild complet quand Dockerfile/deps systeme changent
-> $(COMPOSE) down
+> $(COMPOSE) down --remove-orphans
 > $(COMPOSE) up -d --build db backend
 
 composer-install: ## Installer/mettre a jour les dependances PHP backend
-> $(COMPOSE) exec -T backend composer install --no-interaction --prefer-dist --optimize-autoloader
+> $(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
+
+composer-install-dev: ## Installer les dependances PHP backend avec require-dev
+> $(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+
+env-sync: ## Creer ou mettre a jour backend/.env avec la config Docker standard
+> $(COMPOSE) up -d db backend
+> $(COMPOSE) exec -T backend sh /app/scripts/ensure-env.sh
 
 restart: ## Redemarrer les conteneurs backend + db
 > $(COMPOSE) restart db backend
@@ -72,11 +80,12 @@ routes: ## Lister les routes API
 swagger: ## Regenerer Swagger
 > $(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
-test: ## Lancer les tests backend
+test: ## Lancer les tests backend (avec installation dev si necessaire)
+> $(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
 > $(COMPOSE) exec -T backend php artisan test
 
 clean: ## Stop + suppression des volumes (destructif)
-> $(COMPOSE) down -v
+> $(COMPOSE) down -v --remove-orphans
 
 # -----------------------------------------
 # Local (sans Docker)
@@ -120,7 +129,7 @@ bootstrap: local-setup ## Alias de setup local
 # Compatibilite anciennes commandes docker-*
 # -----------------------------------------
 
-docker-up: init ## Compat
+docker-up: up ## Compat
 
 docker-down: down ## Compat
 
