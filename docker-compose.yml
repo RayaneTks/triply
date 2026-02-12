@@ -58,6 +58,8 @@ services:
       PGADMIN_DEFAULT_EMAIL: "contact@triply.ovh"
       PGADMIN_DEFAULT_PASSWORD: "admin"
       PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      PGPASS_FILE: "/pgpass"
     volumes:
       - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
       - ./pgadmin/pgpass:/pgpass:ro
