@@ -13,8 +13,11 @@ import Assistant from "@/src/components/Assistant/Assistant";
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
 import { FlightDetailModal } from '@/src/components/FlightDetailModal/FlightDetailModal';
+import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
+import { HotelDetailModal } from '@/src/components/HotelDetailModal/HotelDetailModal';
 import { generateFlightRequest } from '@/utils/amadeus';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
 // Interface pour la définition des slides
 interface SlideDefinition {
@@ -140,6 +143,13 @@ export default function Home() {
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
+    const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
+    const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
+    const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
+    const [hotelApiResponse, setHotelApiResponse] = useState<any>(null);
+    const [isLoadingHotel, setIsLoadingHotel] = useState(false);
+    const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
+
     const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
         setSelectedFlightOffer(offer);
         setSelectedFlightCarrierName(carrierName);
@@ -175,6 +185,16 @@ export default function Home() {
         if (offer.travelerPricings?.length) {
             setTravelerCount(offer.travelerPricings.length);
         }
+    };
+
+    const handleHotelSelect = (offer: HotelOffer) => {
+        setSelectedHotelOffer(offer);
+        setIsHotelModalOpen(false);
+        setArrivalCity(offer.cityCode);
+        setOutboundDate(offer.checkInDate);
+        setReturnDate(offer.checkOutDate);
+        if (offer.price?.total) setBudget(offer.price.total);
+        if (offer.guests?.adults) setTravelerCount(offer.guests.adults);
     };
 
     // Gestion de la recherche de vol
@@ -215,6 +235,42 @@ export default function Home() {
         }
     };
 
+    const handleHotelSearch = async () => {
+        const city = arrivalCity || departureCity;
+        if (!city) {
+            setHotelApiResponse({ error: 'Veuillez sélectionner une ville de destination.' });
+            return;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+        const checkIn = outboundDate || today;
+        const checkOut = returnDate || tomorrow;
+
+        setIsLoadingHotel(true);
+        try {
+            const res = await fetch('/api/hotels/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cityCode: city,
+                    checkInDate: checkIn,
+                    checkOutDate: checkOut,
+                    adults: travelerCount,
+                    roomQuantity: 1,
+                    maxPrice: budget ? parseInt(budget, 10) : undefined,
+                    preferences: hotelSelectedOptions,
+                }),
+            });
+            const data = await res.json();
+            setHotelApiResponse(data);
+        } catch (error) {
+            console.error('Erreur recherche hôtels:', error);
+            setHotelApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
+        } finally {
+            setIsLoadingHotel(false);
+        }
+    };
+
     const multiSelectOptions = [
         'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
         'Plage', 'Équipement', 'Retour positif', 'Hôtel de luxe',
@@ -252,6 +308,15 @@ export default function Home() {
                         setSelectedFlightCarrierName('');
                         setIsFlightDetailModalOpen(false);
                     }}
+                    onOpenHotelSearch={() => setIsHotelModalOpen(true)}
+                    onCloseHotelSearch={() => setIsHotelModalOpen(false)}
+                    hotelSearchChecked={isHotelModalOpen}
+                    selectedHotel={selectedHotelOffer}
+                    onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
+                    onRemoveHotel={() => {
+                        setSelectedHotelOffer(null);
+                        setIsHotelDetailModalOpen(false);
+                    }}
                 />
             )
         },
@@ -260,7 +325,9 @@ export default function Home() {
         outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
         isFlightModalOpen,
         selectedFlightOffer,
-        selectedFlightCarrierName
+        selectedFlightCarrierName,
+        isHotelModalOpen,
+        selectedHotelOffer,
     ]);
 
     // --- Logique Map (POI, Hover, Click) ---
@@ -480,6 +547,35 @@ export default function Home() {
                                 onClose={() => setIsFlightDetailModalOpen(false)}
                                 offer={selectedFlightOffer}
                                 carrierName={selectedFlightCarrierName}
+                            />
+
+                            <HotelSearchModal
+                                visible={isHotelModalOpen}
+                                onClose={() => setIsHotelModalOpen(false)}
+                                cityCode={arrivalCity}
+                                setCityCode={setArrivalCity}
+                                arrivalDate={outboundDate}
+                                setArrivalDate={setOutboundDate}
+                                departureDate={returnDate}
+                                setDepartureDate={setReturnDate}
+                                travelerCount={travelerCount}
+                                setTravelerCount={setTravelerCount}
+                                budget={budget}
+                                setBudget={setBudget}
+                                selectedOptions={hotelSelectedOptions}
+                                setSelectedOptions={setHotelSelectedOptions}
+                                multiSelectOptions={multiSelectOptions}
+                                onSearch={handleHotelSearch}
+                                onNewSearch={() => setHotelApiResponse(null)}
+                                onSelectOffer={handleHotelSelect}
+                                isLoading={isLoadingHotel}
+                                apiResponse={hotelApiResponse}
+                            />
+
+                            <HotelDetailModal
+                                visible={isHotelDetailModalOpen}
+                                onClose={() => setIsHotelDetailModalOpen(false)}
+                                offer={selectedHotelOffer}
                             />
 
                             <div className="absolute bottom-4 right-4 z-20" ref={mapViewMenuRef}>
