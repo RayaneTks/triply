@@ -30,8 +30,9 @@ interface TripConfigurationFormProps {
     selectedOptions: string[];
     setSelectedOptions: (options: string[]) => void;
     multiSelectOptions: string[];
-    onSearch: () => void;
-    isLoading: boolean;
+    onOpenFlightSearch: () => void;
+    onCloseFlightSearch?: () => void;
+    flightSearchChecked?: boolean;
 }
 
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
@@ -47,8 +48,9 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                                                                                 departureTime, setDepartureTime,
                                                                                 selectedOptions, setSelectedOptions,
                                                                                 multiSelectOptions,
-                                                                                onSearch,
-                                                                                isLoading,
+                                                                                onOpenFlightSearch,
+                                                                                onCloseFlightSearch,
+                                                                                flightSearchChecked = false,
                                                                             }) => {
     return (
         <div
@@ -62,6 +64,18 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
             </h1>
 
             <div className="space-y-4 max-w-2xl">
+                <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                        type="checkbox"
+                        checked={flightSearchChecked}
+                        onChange={(e) => (e.target.checked ? onOpenFlightSearch() : onCloseFlightSearch?.())}
+                        className="w-4 h-4 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
+                        style={{ accentColor: 'var(--primary, #0096c7)' }}
+                    />
+                    <span className="text-sm font-medium" style={{ color: 'var(--foreground, #ededed)' }}>
+                        Rechercher des vols
+                    </span>
+                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <CityAutocomplete
                         value={departureCity}
@@ -201,17 +215,6 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                         onChange={setSelectedOptions}
                         placeholder="Sélectionner des préférences..."
                         className="w-full"
-                    />
-                </div>
-
-                <div className="pt-4">
-                    <Button
-                        label="Rechercher les vols"
-                        onClick={!isLoading ? onSearch : undefined}
-                        variant="light"
-                        loading={isLoading}
-                        disabled={isLoading}
-                        className="w-full py-3 text-lg font-bold"
                     />
                 </div>
             </div>

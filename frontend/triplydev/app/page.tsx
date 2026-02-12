@@ -11,8 +11,8 @@ import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import Assistant from "@/src/components/Assistant/Assistant";
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
+import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
 import { generateFlightRequest } from '@/utils/amadeus';
-import { FlightResults } from '@/src/components/FlightResults/FlightResults';
 
 // Interface pour la définition des slides
 interface SlideDefinition {
@@ -95,7 +95,6 @@ export default function Home() {
     const [departureCity, setDepartureCity] = useState('');
     const [arrivalCity, setArrivalCity] = useState('');
     const [travelDays, setTravelDays] = useState<number>(3);
-    const [flightResults, setFlightResults] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
     const [apiResponse, setApiResponse] = useState<any>(null);
@@ -107,6 +106,7 @@ export default function Home() {
     const [mapPitch, setMapPitch] = useState<number>(0);
     const [mapViewMenuOpen, setMapViewMenuOpen] = useState(false);
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
+    const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
 
     // Gestion de la recherche de vol
     const handleFlightSearch = async () => {
@@ -140,33 +140,16 @@ export default function Home() {
 
             const data = await res.json();
 
-            // 4. On sauvegarde la réponse
+            // 4. On sauvegarde la réponse (affichée dans la modal)
             setApiResponse(data);
-
-            // 5. On passe à la slide suivante pour voir le résultat
-            handleNext();
 
         } catch (error) {
             console.error("Erreur critique:", error);
             setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
-            handleNext(); // On passe quand même à la slide pour voir l'erreur
         } finally {
             setIsLoading(false);
         }
     };
-
-    const JsonViewer = ({ title, data }: { title: string, data: any }) => (
-        <div className="flex flex-col h-1/2 min-h-0 mb-4">
-            <h3 className="text-lg font-bold mb-2 sticky top-0 bg-[#222] py-2 z-10" style={{ color: 'var(--foreground, #ededed)' }}>
-                {title}
-            </h3>
-            <div className="flex-1 overflow-auto rounded-lg border border-white/10 bg-black/50 p-4">
-            <pre className="text-xs sm:text-sm font-mono text-green-400 whitespace-pre-wrap break-all">
-                {data ? JSON.stringify(data, null, 2) : 'Aucune donnée...'}
-            </pre>
-            </div>
-        </div>
-    );
 
     const multiSelectOptions = [
         'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
@@ -195,30 +178,16 @@ export default function Home() {
                     departureTime={departureTime} setDepartureTime={setDepartureTime}
                     selectedOptions={selectedOptions} setSelectedOptions={setSelectedOptions}
                     multiSelectOptions={multiSelectOptions}
-                    isLoading={isLoading}
-                    onSearch={handleFlightSearch}
+                    onOpenFlightSearch={() => setIsFlightModalOpen(true)}
+                    onCloseFlightSearch={() => setIsFlightModalOpen(false)}
+                    flightSearchChecked={isFlightModalOpen}
                 />
             )
         },
-        {
-            id: 'flight-results',
-            title: 'Résultats des vols',
-            content: (
-                <div className="flex flex-col h-full w-full">
-                    <h1 className="text-3xl font-bold mb-6 pl-8 pt-8" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Meilleures offres trouvées
-                    </h1>
-
-                    {/* On passe l'objet complet apiResponse qui contient { data, dictionaries, ... } */}
-                    <FlightResults data={apiResponse} />
-                </div>
-            )
-        },
     ], [
-        // Dépendances du useMemo (ajouter les nouveaux états pour que la slide se mette à jour)
         departureCity, arrivalCity, travelDays, travelerCount, budget, activityTime,
         outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
-        lastRequestPayload, apiResponse, isLoading // <--- Ajoute ces dépendances !
+        isFlightModalOpen
     ]);
 
     // --- Logique Map (POI, Hover, Click) inchangée mais nettoyée ---
@@ -403,6 +372,33 @@ export default function Home() {
                                     setIsPointerInModal(false);
                                     scheduleHide();
                                 }}
+                            />
+
+                            <FlightSearchModal
+                                visible={isFlightModalOpen}
+                                onClose={() => {
+                                    setIsFlightModalOpen(false);
+                                }}
+                                departureCity={departureCity}
+                                setDepartureCity={setDepartureCity}
+                                arrivalCity={arrivalCity}
+                                setArrivalCity={setArrivalCity}
+                                arrivalDate={outboundDate}
+                                setArrivalDate={setOutboundDate}
+                                departureDate={returnDate}
+                                setDepartureDate={setReturnDate}
+                                arrivalTime={arrivalTime}
+                                setArrivalTime={setArrivalTime}
+                                departureTime={departureTime}
+                                setDepartureTime={setDepartureTime}
+                                travelerCount={travelerCount}
+                                setTravelerCount={setTravelerCount}
+                                budget={budget}
+                                setBudget={setBudget}
+                                onSearch={handleFlightSearch}
+                                onNewSearch={() => setApiResponse(null)}
+                                isLoading={isLoading}
+                                apiResponse={apiResponse}
                             />
 
                             <div className="absolute bottom-4 right-4 z-20" ref={mapViewMenuRef}>

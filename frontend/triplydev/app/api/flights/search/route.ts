@@ -8,6 +8,15 @@ const AMADEUS_BASE_URL = 'https://test.api.amadeus.com';
 
 export async function POST(request: Request) {
     try {
+        // Vérification des variables d'environnement
+        if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
+            console.error('Variables manquantes: AMADEUS_CLIENT_ID et/ou AMADEUS_CLIENT_SECRET dans .env');
+            return NextResponse.json(
+                { error: 'Configuration serveur incomplète : AMADEUS_CLIENT_ID et AMADEUS_CLIENT_SECRET requis dans .env' },
+                { status: 500 }
+            );
+        }
+
         // 1. Récupérer le JSON envoyé par ton frontend
         const body = await request.json();
 
@@ -20,11 +29,19 @@ export async function POST(request: Request) {
             body: `grant_type=client_credentials&client_id=${AMADEUS_CLIENT_ID}&client_secret=${AMADEUS_CLIENT_SECRET}`,
         });
 
+        const authData = await authResponse.json();
+
         if (!authResponse.ok) {
-            throw new Error('Erreur authentification Amadeus');
+            console.error('Erreur auth Amadeus:', authResponse.status, authData);
+            return NextResponse.json(
+                {
+                    error: 'Erreur authentification Amadeus',
+                    details: authData?.error_description || authData?.error || authData,
+                },
+                { status: 500 }
+            );
         }
 
-        const authData = await authResponse.json();
         const accessToken = authData.access_token;
 
         // 3. Envoyer la recherche de vols à Amadeus
@@ -34,16 +51,33 @@ export async function POST(request: Request) {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(body), // On transmet le JSON que ton utilitaire a créé
+            body: JSON.stringify(body),
         });
 
         const searchData = await searchResponse.json();
+
+        if (!searchResponse.ok) {
+            console.error('Erreur recherche Amadeus:', searchResponse.status, searchData);
+            return NextResponse.json(
+                {
+                    error: 'Erreur recherche de vols Amadeus',
+                    details: searchData?.errors || searchData,
+                },
+                { status: searchResponse.status }
+            );
+        }
 
         // 4. Renvoyer les résultats à ton frontend
         return NextResponse.json(searchData);
 
     } catch (error) {
         console.error('Erreur API Route:', error);
-        return NextResponse.json({ error: 'Erreur lors de la recherche' }, { status: 500 });
+        return NextResponse.json(
+            {
+                error: 'Erreur lors de la recherche',
+                details: error instanceof Error ? error.message : String(error),
+            },
+            { status: 500 }
+        );
     }
 }
