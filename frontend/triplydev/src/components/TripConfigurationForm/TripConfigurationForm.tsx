@@ -13,6 +13,7 @@ interface TripConfigurationFormProps {
     setDepartureCity: (value: string) => void;
     arrivalCity: string;
     setArrivalCity: (value: string) => void;
+    setArrivalCityName?: (value: string) => void;
     travelDays: number;
     setTravelDays: (value: number) => void;
     travelerCount: number;
@@ -61,6 +62,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                                                                                 selectedFlightCarrierName = '',
                                                                                 onFlightCardClick,
                                                                                 onRemoveFlight,
+                                                                                setArrivalCityName,
                                                                             }) => {
     return (
         <div
@@ -112,6 +114,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                     <CityAutocomplete
                         value={arrivalCity}
                         onChange={setArrivalCity}
+                        onSelectName={(name) => setArrivalCityName?.(name)}
                         label="Ville d'arrivée"
                         placeholder="Ex. Marseille, Bordeaux..."
                         containerStyle={{ color: 'var(--foreground, #ededed)' }}
