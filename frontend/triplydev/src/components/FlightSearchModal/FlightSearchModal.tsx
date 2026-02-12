@@ -31,6 +31,7 @@ export interface FlightSearchModalProps {
     setBudget: (value: string) => void;
     onSearch: () => void;
     onNewSearch?: () => void;
+    onSelectOffer?: (offer: any, carrierName: string) => void;
     isLoading: boolean;
     apiResponse: any;
 }
@@ -56,6 +57,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
     setBudget,
     onSearch,
     onNewSearch,
+    onSelectOffer,
     isLoading,
     apiResponse,
 }) => {
@@ -225,7 +227,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                         Meilleures offres trouvées
                                     </h3>
                                     <div className="flex-1 min-h-[300px] overflow-y-auto">
-                                        <FlightResults data={apiResponse} />
+                                        <FlightResults data={apiResponse} onSelectOffer={onSelectOffer} />
                                     </div>
                                     <div className="pt-4 mt-4 border-t shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
                                         <Button

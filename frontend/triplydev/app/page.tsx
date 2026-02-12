@@ -12,7 +12,9 @@ import { Login } from "@/src/components/Login/Login";
 import Assistant from "@/src/components/Assistant/Assistant";
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
+import { FlightDetailModal } from '@/src/components/FlightDetailModal/FlightDetailModal';
 import { generateFlightRequest } from '@/utils/amadeus';
+import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 
 // Interface pour la définition des slides
 interface SlideDefinition {
@@ -134,6 +136,46 @@ export default function Home() {
         }
     };
     const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
+    const [selectedFlightOffer, setSelectedFlightOffer] = useState<FlightOffer | null>(null);
+    const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
+    const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
+
+    const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
+        setSelectedFlightOffer(offer);
+        setSelectedFlightCarrierName(carrierName);
+        setIsFlightModalOpen(false);
+
+        const outbound = offer.itineraries?.[0];
+        const returnItin = offer.itineraries?.[1];
+        const firstSeg = outbound?.segments?.[0];
+        const lastOutboundSeg = outbound?.segments?.[outbound?.segments?.length ? outbound.segments.length - 1 : 0];
+        const firstReturnSeg = returnItin?.segments?.[0];
+        const lastReturnSeg = returnItin?.segments?.[returnItin?.segments?.length ? returnItin.segments.length - 1 : 0];
+
+        if (firstSeg?.departure) {
+            setDepartureCity(firstSeg.departure.iataCode || '');
+            const dt = firstSeg.departure.at;
+            if (dt) {
+                setOutboundDate(dt.slice(0, 10));
+                setArrivalTime(dt.slice(11, 16));
+            }
+        }
+        if (lastOutboundSeg?.arrival) {
+            setArrivalCity(lastOutboundSeg.arrival.iataCode || '');
+            if (returnItin && firstReturnSeg?.departure?.at) {
+                setReturnDate(firstReturnSeg.departure.at.slice(0, 10));
+                setDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
+            } else if (lastOutboundSeg.arrival.at) {
+                setDepartureTime(lastOutboundSeg.arrival.at.slice(11, 16));
+            }
+        }
+        if (offer.price?.grandTotal) {
+            setBudget(offer.price.grandTotal);
+        }
+        if (offer.travelerPricings?.length) {
+            setTravelerCount(offer.travelerPricings.length);
+        }
+    };
 
     // Gestion de la recherche de vol
     const handleFlightSearch = async () => {
@@ -164,13 +206,10 @@ export default function Home() {
 
             // 4. On sauvegarde la réponse (affichée dans la modal)
             setApiResponse(data);
-            handleNext();
-
 
         } catch (error) {
             console.error("Erreur critique:", error);
             setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
-            handleNext();
         } finally {
             setIsLoading(false);
         }
@@ -205,27 +244,23 @@ export default function Home() {
                     onOpenFlightSearch={() => setIsFlightModalOpen(true)}
                     onCloseFlightSearch={() => setIsFlightModalOpen(false)}
                     flightSearchChecked={isFlightModalOpen}
+                    selectedFlight={selectedFlightOffer}
+                    selectedFlightCarrierName={selectedFlightCarrierName}
+                    onFlightCardClick={() => setIsFlightDetailModalOpen(true)}
+                    onRemoveFlight={() => {
+                        setSelectedFlightOffer(null);
+                        setSelectedFlightCarrierName('');
+                        setIsFlightDetailModalOpen(false);
+                    }}
                 />
             )
         },
-        {
-            id: 'flight-results',
-            title: 'Résultats des vols',
-            content: (
-                <div className="flex flex-col h-full w-full">
-                    <h1 className="text-3xl font-bold mb-6 pl-8 pt-8" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Meilleures offres trouvées
-                    </h1>
-                    <FlightResults data={apiResponse} />
-                </div>
-            )
-        },
-    ], [
     ], [
         departureCity, arrivalCity, travelDays, travelerCount, budget, activityTime,
         outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
-        lastRequestPayload, apiResponse, isLoading
-        isFlightModalOpen
+        isFlightModalOpen,
+        selectedFlightOffer,
+        selectedFlightCarrierName
     ]);
 
     // --- Logique Map (POI, Hover, Click) ---
@@ -435,8 +470,16 @@ export default function Home() {
                                 setBudget={setBudget}
                                 onSearch={handleFlightSearch}
                                 onNewSearch={() => setApiResponse(null)}
+                                onSelectOffer={handleFlightSelect}
                                 isLoading={isLoading}
                                 apiResponse={apiResponse}
+                            />
+
+                            <FlightDetailModal
+                                visible={isFlightDetailModalOpen}
+                                onClose={() => setIsFlightDetailModalOpen(false)}
+                                offer={selectedFlightOffer}
+                                carrierName={selectedFlightCarrierName}
                             />
 
                             <div className="absolute bottom-4 right-4 z-20" ref={mapViewMenuRef}>

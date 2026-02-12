@@ -5,6 +5,8 @@ import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicke
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { Button } from '@/src/components/Button/Button';
+import { SelectedFlightCard } from '@/src/components/SelectedFlightCard/SelectedFlightCard';
+import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 
 interface TripConfigurationFormProps {
     departureCity: string;
@@ -33,6 +35,10 @@ interface TripConfigurationFormProps {
     onOpenFlightSearch: () => void;
     onCloseFlightSearch?: () => void;
     flightSearchChecked?: boolean;
+    selectedFlight?: FlightOffer | null;
+    selectedFlightCarrierName?: string;
+    onFlightCardClick?: () => void;
+    onRemoveFlight?: () => void;
 }
 
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
@@ -51,6 +57,10 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                                                                                 onOpenFlightSearch,
                                                                                 onCloseFlightSearch,
                                                                                 flightSearchChecked = false,
+                                                                                selectedFlight,
+                                                                                selectedFlightCarrierName = '',
+                                                                                onFlightCardClick,
+                                                                                onRemoveFlight,
                                                                             }) => {
     return (
         <div
@@ -76,6 +86,21 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                         Rechercher des vols
                     </span>
                 </label>
+
+                {selectedFlight && (
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                            Billet sélectionné
+                        </label>
+                        <SelectedFlightCard
+                            offer={selectedFlight}
+                            carrierName={selectedFlightCarrierName}
+                            onClick={onFlightCardClick || (() => {})}
+                            onRemove={onRemoveFlight}
+                        />
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <CityAutocomplete
                         value={departureCity}

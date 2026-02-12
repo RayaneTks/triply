@@ -49,7 +49,7 @@ export interface FlightOffer {
 export interface FlightOfferCardProps {
     offer: FlightOffer;
     carrierName: string;
-    onSelect?: (offerId: string) => void;
+    onSelect?: (offer: FlightOffer) => void;
     className?: string;
 }
 
@@ -258,7 +258,7 @@ export const FlightOfferCard: React.FC<FlightOfferCardProps> = ({
             <div className="px-4 py-3">
                 <Button
                     label="Sélectionner cette offre"
-                    onClick={() => onSelect?.(offer.id)}
+                    onClick={() => onSelect?.(offer)}
                     variant="light"
                     tone="tone1"
                     className="w-full"

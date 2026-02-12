@@ -10,7 +10,12 @@ interface AmadeusResponse {
     };
 }
 
-export const FlightResults = ({ data }: { data: AmadeusResponse | null }) => {
+interface FlightResultsProps {
+    data: AmadeusResponse | null;
+    onSelectOffer?: (offer: FlightOffer, carrierName: string) => void;
+}
+
+export const FlightResults = ({ data, onSelectOffer }: FlightResultsProps) => {
     if (!data || !data.data) return <div className="text-white">Aucun résultat.</div>;
 
     return (
@@ -24,7 +29,7 @@ export const FlightResults = ({ data }: { data: AmadeusResponse | null }) => {
                         key={offer.id}
                         offer={offer}
                         carrierName={carrierName}
-                        onSelect={(id) => console.log('Offre sélectionnée:', id)}
+                        onSelect={onSelectOffer ? () => onSelectOffer(offer, carrierName) : undefined}
                         className="w-full"
                     />
                 );
