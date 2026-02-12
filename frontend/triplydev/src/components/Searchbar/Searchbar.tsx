@@ -15,7 +15,7 @@ export const SearchBar: FC<SearchBarProps> = ({
     return (
         <div
             className={`input-assistant w-full max-w-md ${className}`}
-            style={{ ...containerStyle, backgroundColor: containerStyle?.backgroundColor || 'rgba(255, 255, 255, 0.1)' }}
+            style={containerStyle}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
