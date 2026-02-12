@@ -20,7 +20,7 @@ use OpenApi\Attributes as OA;
     scheme: 'bearer',
     bearerFormat: 'Sanctum'
 )]
-#[OA\Tag(name: 'Sante')]
+#[OA\Tag(name: 'Health')]
 #[OA\Tag(name: 'Authentification')]
 #[OA\Tag(name: 'Profil')]
 #[OA\Tag(name: 'Voyages')]
@@ -62,5 +62,4 @@ use OpenApi\Attributes as OA;
 final class OpenApiSpec
 {
 }
-
 

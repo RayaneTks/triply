@@ -3,14 +3,39 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dev
+      target: prod
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: TriplyDB
+      DB_USERNAME: backend
+      DB_PASSWORD: backend
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
     volumes:
+<<<<<<< HEAD
       - ./backend:/app
+=======
+      - ./backend:/app:delegated
+>>>>>>> origin/TRI-637
       - backend_vendor:/app/vendor
     ports:
       - "8000:80"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    command: sh -lc "export PATH=$$PATH:/usr/sbin:/usr/local/sbin; rm -f bootstrap/cache/*.php; php artisan package:discover --ansi || true; php artisan optimize || true; exec apache2-foreground"
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit((int) !@file_get_contents('http://127.0.0.1/api/v1/health'));\""]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
 
 #  frontend:
 #    build:
@@ -29,11 +54,16 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: backend
+      POSTGRES_DB: TriplyDB
       POSTGRES_USER: backend
       POSTGRES_PASSWORD: backend
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U backend -d TriplyDB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
       
 #  phpmyadmin:
 #    image: phpmyadmin/phpmyadmin
@@ -46,3 +76,7 @@ services:
 volumes:
   pg_data:
   backend_vendor:
+<<<<<<< HEAD
+=======
+    name: triply_backend_vendor_v2
+>>>>>>> origin/TRI-637
