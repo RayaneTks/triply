@@ -6,7 +6,7 @@ export interface ImageCardProps {
     imageSrc: string;
     imageAlt: string;
     title: string;
-    description: string;
+    description: React.ReactNode;
     buttonText: string;
     onButtonClick: () => void;
     className?: string;
@@ -76,9 +76,9 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
                                     {title}
                                 </h3>
-                                <p className="text-gray-600 text-sm flex-grow mb-4">
+                                <div className="text-gray-600 text-sm flex-grow mb-4">
                                     {description}
-                                </p>
+                                </div>
                                 <div className="mt-auto">
                                     <Button
                                         label={buttonText}

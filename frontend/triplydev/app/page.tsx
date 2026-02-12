@@ -1,359 +1,433 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
-import { SlideDefinition } from '@/src/components/PowerPoint/types';
-import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
-import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
-import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
-import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
-import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
-import {Login} from "@/src/components/Login/Login";
+import { Button } from '@/src/components/Button/Button';
+import { Login } from "@/src/components/Login/Login";
 import Assistant from "@/src/components/Assistant/Assistant";
+import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
+import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
+import { FlightDetailModal } from '@/src/components/FlightDetailModal/FlightDetailModal';
+import { generateFlightRequest } from '@/utils/amadeus';
+import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
+import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 
-interface Coordinates {
-    latitude: number;
-    longitude: number;
-}
-interface Location {
+// Interface pour la définition des slides
+interface SlideDefinition {
     id: string;
     title: string;
-    coordinates: Coordinates;
+    content: React.ReactNode;
 }
 
-// Données de démonstration pour les slides
-const getMockSlides = (
-    travelerCount: number,
-    budget: string,
-    activityTime: string,
-    arrivalDate: string,
-    departureDate: string,
-    arrivalTime: string,
-    departureTime: string,
-    selectedOptions: string[],
-    departureCity: string,
-    arrivalCity: string,
-    travelDays: number,
-    setTravelerCount: (count: number) => void,
-    setBudget: (budget: string) => void,
-    setActivityTime: (time: string) => void,
-    setArrivalDate: (date: string) => void,
-    setDepartureDate: (date: string) => void,
-    setArrivalTime: (time: string) => void,
-    setDepartureTime: (time: string) => void,
-    setSelectedOptions: (options: string[]) => void,
-    setDepartureCity: (city: string) => void,
-    setArrivalCity: (city: string) => void,
-    setTravelDays: (days: number) => void,
-    multiSelectOptions: string[],
-    mapboxToken: string
-): SlideDefinition[] => [
-    { 
-        id: '1', 
-        title: 'Paramètres de voyage', 
-        content: (
-            <div 
-                className="flex flex-col h-full p-8 overflow-y-auto slide-content-scroll"
-                style={{
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                }}
-            >
-                <style>{`
-                    .slide-content-scroll::-webkit-scrollbar {
-                        display: none !important;
-                    }
-                `}</style>
-                <h1 className="text-3xl font-bold mb-6" style={{ color: 'var(--foreground, #ededed)' }}>Configurez votre voyage</h1>
-                
-                <div className="space-y-4 max-w-2xl">
-                    {/* Ville de départ / Ville d'arrivée / Nombre de jours */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <CityAutocomplete
-                            value={departureCity}
-                            onChange={setDepartureCity}
-                            label="Ville de départ"
-                            placeholder="Ex. Paris, Lyon..."
-                            mapboxToken={mapboxToken}
-                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
-                        />
-                        <CityAutocomplete
-                            value={arrivalCity}
-                            onChange={setArrivalCity}
-                            label="Ville d'arrivée"
-                            placeholder="Ex. Marseille, Bordeaux..."
-                            mapboxToken={mapboxToken}
-                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Nombre de jours de voyage
-                        </label>
-                        <div
-                            className="rounded-lg border py-2.5 px-4 w-full"
-                            style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                            }}
-                        >
-                            <input
-                                type="number"
-                                min={1}
-                                value={travelDays === 0 ? '' : travelDays}
-                                onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))}
-                                placeholder="Ex. 3"
-                                className="w-full bg-transparent focus:outline-none"
-                                style={{ color: 'var(--foreground, #ededed)' }}
-                            />
-                        </div>
-                    </div>
+function LoginWithMapBackground({
+                                    mapboxToken,
+                                    onLoginSuccess,
+                                    onBack,
+                                }: {
+    mapboxToken: string;
+    onLoginSuccess: () => void;
+    onBack: () => void;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [padding, setPadding] = useState({ left: 600, top: 400, right: 0, bottom: 0 });
 
-                    {/* Nombre de voyageurs */}
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Nombre de voyageurs
-                        </label>
-                        <TravelerCounter
-                            count={travelerCount}
-                            onChange={setTravelerCount}
-                            className="w-full"
-                            style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                                color: 'rgba(255, 255, 255, 0.5)',
-                            }}
-                        />
-                    </div>
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const update = () => {
+            const { width, height } = el.getBoundingClientRect();
+            setPadding({ left: width * 0.55, top: height * 0.5, right: 0, bottom: 0 });
+        };
+        update();
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
-                    {/* Budget maximum */}
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Budget maximum (€)
-                        </label>
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full"
-                             style={{ 
-                                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                 borderColor: 'rgba(255, 255, 255, 0.2)',
-                             }}>
-                            <span className="mr-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>€</span>
-                            <input
-                                type="number"
-                                value={budget}
-                                onChange={(e) => setBudget(e.target.value)}
-                                placeholder="0"
-                                className="flex-grow bg-transparent focus:outline-none"
-                                style={{ color: 'var(--foreground, #ededed)' }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Temps par jour d'activité */}
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Temps par jour d'activité (heures)
-                        </label>
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg py-2 px-4 shadow-sm w-full"
-                             style={{ 
-                                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                 borderColor: 'rgba(255, 255, 255, 0.2)',
-                             }}>
-                            <input
-                                type="number"
-                                value={activityTime}
-                                onChange={(e) => setActivityTime(e.target.value)}
-                                placeholder="0"
-                                min="0"
-                                max="24"
-                                className="flex-grow bg-transparent focus:outline-none"
-                                style={{ color: 'var(--foreground, #ededed)' }}
-                            />
-                            <span className="ml-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>h</span>
-                        </div>
-                    </div>
-
-                    {/* Date et heure d'arrivée/départ */}
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Date d'arrivée / Départ
-                        </label>
-                        <DateRangePicker
-                            startDate={arrivalDate}
-                            endDate={departureDate}
-                            onDatesChange={(start, end) => {
-                                setArrivalDate(start);
-                                setDepartureDate(end);
-                            }}
-                            className="w-full mb-2"
-                            containerStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                                color: 'rgba(255, 255, 255, 0.5)',
-                            }}
-                        />
-                        <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                            <div className="flex-1 min-w-0">
-                                <TimePicker
-                                    value={arrivalTime}
-                                    onChange={setArrivalTime}
-                                    label="Heure d'arrivée"
-                                    containerStyle={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                    }}
-                                />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <TimePicker
-                                    value={departureTime}
-                                    onChange={setDepartureTime}
-                                    label="Heure de départ"
-                                    containerStyle={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* MultiSelect */}
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Préférences
-                        </label>
-                        <MultiSelect
-                            options={multiSelectOptions}
-                            selectedValues={selectedOptions}
-                            onChange={setSelectedOptions}
-                            placeholder="Sélectionner des préférences..."
-                            className="w-full"
-                        />
-                    </div>
-                </div>
+    return (
+        <div ref={containerRef} className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 z-0" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                <WorldMap
+                    accessToken={mapboxToken}
+                    initialLatitude={20}
+                    initialLongitude={0}
+                    initialZoom={1.2}
+                    mapStyle="mapbox://styles/mapbox/standard"
+                    mapConfig={{ lightPreset: 'night' }}
+                    pitch={60}
+                    interactive={false}
+                    autoRotateSpeed={6}
+                    padding={padding}
+                    height="100%"
+                    width="100%"
+                    className="h-full w-full"
+                />
             </div>
-        )
-    },
-    { 
-        id: '2', 
-        title: 'Architecture', 
-        content: (
-            <div className="flex flex-col items-center justify-center h-full p-8">
-                <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--foreground, #ededed)' }}>Architecture</h1>
-                <p className="text-lg max-w-md text-center" style={{ color: 'var(--foreground, #ededed)' }}>
-                    Vue d'ensemble de l'architecture du système.
-                </p>
+            <div className="absolute inset-0 z-10">
+                <Login onLoginSuccess={onLoginSuccess} onBack={onBack} />
             </div>
-        )
-    },
-];
+        </div>
+    );
+}
 
 export default function Home() {
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
+
+    // Etats Globaux
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
     const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [message, setMessage] = useState('');
-
+    const [isConnected, setIsConnected] = useState(false);
+    const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [mapLocations, setMapLocations] = useState<any[]>([]);
-    
-    // États pour la première slide
+    const [isLoadingHotels, setIsLoadingHotels] = useState(false);
+
+    // AUTO-COLLAPSE SIDEBAR IF CONNECTED
+    useEffect(() => {
+        if (isConnected) {
+            setIsSidebarCollapsed(true);
+        }
+    }, [isConnected]);
+
+    // Etats Formulaire Voyage
     const [travelerCount, setTravelerCount] = useState(1);
     const [budget, setBudget] = useState('');
     const [activityTime, setActivityTime] = useState('');
-    const [arrivalDate, setArrivalDate] = useState('');
-    const [departureDate, setDepartureDate] = useState('');
+    const [outboundDate, setOutboundDate] = useState('');
+    const [returnDate, setReturnDate] = useState('');
     const [arrivalTime, setArrivalTime] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
     const [departureCity, setDepartureCity] = useState('');
     const [arrivalCity, setArrivalCity] = useState('');
+    const [arrivalCityName, setArrivalCityName] = useState('');
     const [travelDays, setTravelDays] = useState<number>(3);
+    const [isLoading, setIsLoading] = useState(false);
+    const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
+    const [apiResponse, setApiResponse] = useState<any>(null);
 
-    const [isConnected, setIsConnected] = useState(false);
-    const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
-
+    // Etats Mapbox
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
+    const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/standard');
+    const [mapConfig, setMapConfig] = useState<{ lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' }>({ lightPreset: 'day' });
+    const [mapPitch, setMapPitch] = useState<number>(0);
+    const [mapViewMenuOpen, setMapViewMenuOpen] = useState(false);
+    const mapViewMenuRef = useRef<HTMLDivElement>(null);
+    const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
+    const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
+    const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
+    const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
 
-    const [poiHover, setPoiHover] = useState<{
+    // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
+    const handleAirportSelect = (iata: string, name: string) => {
+        console.log(`Aéroport sélectionné: ${name} (${iata})`);
+
+        // Logique intelligente pour remplir les champs
+        if (!departureCity) {
+            setDepartureCity(iata);
+            // Pas de setDepartureCityName prévu dans ton state, mais pas grave pour l'assistant
+        }
+        // 2. Sinon, on remplit l'Arrivée (C'est là que ça se joue)
+        else {
+            // Évite de mettre la même ville en départ et arrivée
+            if (departureCity !== iata) {
+                setArrivalCity(iata);     // Met à jour le code (ex: FCO)
+                setArrivalCityName(name); // <--- AJOUTE CECI : Met à jour le nom (ex: Fiumicino)
+            }
+        }
+    };
+
+    const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: any, ratingsFilter?: number[] | null) => {
+        lastSearchRef.current = { lat, lng, cityCenter };
+        const ratingsParam = ratingsFilter && ratingsFilter.length > 0 ? ratingsFilter.join(',') : undefined;
+        console.log("🏨 Recherche d'hôtels demandée pour :", lat, lng, ratingsParam || 'tous');
+        setIsLoadingHotels(true);
+
+        try {
+            const url = new URL('/api/hotels/search', window.location.origin);
+            url.searchParams.set('lat', String(lat));
+            url.searchParams.set('lng', String(lng));
+            if (ratingsParam) url.searchParams.set('ratings', ratingsParam);
+
+            const res = await fetch(url.toString());
+            const data = await res.json();
+
+            if (data.locations && data.locations.length > 0) {
+                const merged = mergeCityCenterWithHotels(cityCenter, data.locations);
+                const spread = spreadOverlappingPoints(merged);
+                setMapLocations(spread);
+            } else if (cityCenter) {
+                setMapLocations([cityCenter]);
+            }
+        } catch (error) {
+            console.error("Erreur chargement hôtels:", error);
+            if (cityCenter) setMapLocations([cityCenter]);
+        } finally {
+            setIsLoadingHotels(false);
+        }
+    }, []);
+
+    const handleAssistantUpdate = useCallback((locations: any[]) => {
+        const cityCenter = locations.find((l) => l.type === 'city-center') ?? locations[0] ?? null;
+
+        // Affichage immédiat du centre ville (rafraîchissement fluide)
+        if (cityCenter) {
+            setMapLocations([cityCenter]);
+        } else {
+            setMapLocations(locations);
+        }
+
+        if (locations.length > 0 && locations[0]?.coordinates) {
+            const { latitude, longitude } = locations[0].coordinates;
+            searchHotelsAtLocation(latitude, longitude, cityCenter, hotelStarsFilter);
+        }
+    }, [searchHotelsAtLocation, hotelStarsFilter]);
+
+    const applyHotelFilter = useCallback((stars: number[] | null) => {
+        setHotelStarsFilter(stars);
+        setHotelFilterMenuOpen(false);
+        const last = lastSearchRef.current;
+        if (last) {
+            searchHotelsAtLocation(last.lat, last.lng, last.cityCenter, stars);
+        }
+    }, [searchHotelsAtLocation]);
+
+    const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
+    const [selectedFlightOffer, setSelectedFlightOffer] = useState<FlightOffer | null>(null);
+    const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
+    const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
+
+    const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
+        setSelectedFlightOffer(offer);
+        setSelectedFlightCarrierName(carrierName);
+        setIsFlightModalOpen(false);
+
+        const outbound = offer.itineraries?.[0];
+        const returnItin = offer.itineraries?.[1];
+        const firstSeg = outbound?.segments?.[0];
+        const lastOutboundSeg = outbound?.segments?.[outbound?.segments?.length ? outbound.segments.length - 1 : 0];
+        const firstReturnSeg = returnItin?.segments?.[0];
+        const lastReturnSeg = returnItin?.segments?.[returnItin?.segments?.length ? returnItin.segments.length - 1 : 0];
+
+        if (firstSeg?.departure) {
+            setDepartureCity(firstSeg.departure.iataCode || '');
+            const dt = firstSeg.departure.at;
+            if (dt) {
+                setOutboundDate(dt.slice(0, 10));
+                setArrivalTime(dt.slice(11, 16));
+            }
+        }
+        if (lastOutboundSeg?.arrival) {
+            setArrivalCity(lastOutboundSeg.arrival.iataCode || '');
+            if (returnItin && firstReturnSeg?.departure?.at) {
+                setReturnDate(firstReturnSeg.departure.at.slice(0, 10));
+                setDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
+            } else if (lastOutboundSeg.arrival.at) {
+                setDepartureTime(lastOutboundSeg.arrival.at.slice(11, 16));
+            }
+        }
+        if (offer.price?.grandTotal) {
+            setBudget(offer.price.grandTotal);
+        }
+        if (offer.travelerPricings?.length) {
+            setTravelerCount(offer.travelerPricings.length);
+        }
+    };
+
+    // Gestion de la recherche de vol
+    const handleFlightSearch = async () => {
+        setIsLoading(true);
+
+        const payload = generateFlightRequest(
+            departureCity,
+            arrivalCity,
+            outboundDate,
+            returnDate,
+            travelerCount,
+            budget,
+            arrivalTime,
+            departureTime
+        );
+
+        setLastRequestPayload(payload);
+
+        try {
+            console.log("Envoi de la requête...", payload);
+            const res = await fetch('/api/flights/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            // 4. On sauvegarde la réponse (affichée dans la modal)
+            setApiResponse(data);
+
+        } catch (error) {
+            console.error("Erreur critique:", error);
+            setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const multiSelectOptions = [
+        'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
+        'Plage', 'Équipement', 'Retour positif', 'Hôtel de luxe',
+        'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly'
+    ];
+
+    const slides: SlideDefinition[] = useMemo(() => [
+        {
+            id: 'trip-config',
+            title: 'Paramètres de voyage',
+            content: (
+                <TripConfigurationForm
+                    departureCity={departureCity} setDepartureCity={setDepartureCity}
+                    arrivalCity={arrivalCity} setArrivalCity={setArrivalCity}
+                    setArrivalCityName={setArrivalCityName}
+                    travelDays={travelDays} setTravelDays={setTravelDays}
+                    travelerCount={travelerCount} setTravelerCount={setTravelerCount}
+                    budget={budget} setBudget={setBudget}
+                    activityTime={activityTime} setActivityTime={setActivityTime}
+                    arrivalDate={outboundDate}
+                    setArrivalDate={setOutboundDate}
+                    departureDate={returnDate}
+                    setDepartureDate={setReturnDate}
+                    arrivalTime={arrivalTime} setArrivalTime={setArrivalTime}
+                    departureTime={departureTime} setDepartureTime={setDepartureTime}
+                    selectedOptions={selectedOptions} setSelectedOptions={setSelectedOptions}
+                    multiSelectOptions={multiSelectOptions}
+                    onOpenFlightSearch={() => setIsFlightModalOpen(true)}
+                    onCloseFlightSearch={() => setIsFlightModalOpen(false)}
+                    flightSearchChecked={isFlightModalOpen}
+                    selectedFlight={selectedFlightOffer}
+                    selectedFlightCarrierName={selectedFlightCarrierName}
+                    onFlightCardClick={() => setIsFlightDetailModalOpen(true)}
+                    onRemoveFlight={() => {
+                        setSelectedFlightOffer(null);
+                        setSelectedFlightCarrierName('');
+                        setIsFlightDetailModalOpen(false);
+                    }}
+                />
+            )
+        },
+    ], [
+        departureCity, arrivalCity, travelDays, travelerCount, budget, activityTime,
+        outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
+        isFlightModalOpen,
+        selectedFlightOffer,
+        selectedFlightCarrierName
+    ]);
+
+    // --- Logique Map (POI, Hover, Click) ---
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as Node;
+            if (mapViewMenuOpen && mapViewMenuRef.current && !mapViewMenuRef.current.contains(target)) {
+                setMapViewMenuOpen(false);
+            }
+            if (hotelFilterMenuOpen && hotelFilterMenuRef.current && !hotelFilterMenuRef.current.contains(target)) {
+                setHotelFilterMenuOpen(false);
+            }
+        };
+        if (mapViewMenuOpen || hotelFilterMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [mapViewMenuOpen, hotelFilterMenuOpen]);
+
+    const [displayPoi, setDisplayPoi] = useState<{
         feature: MapboxPoiFeature;
         lngLat: { lng: number; lat: number };
         point: { x: number; y: number };
     } | null>(null);
     const [poiReviews, setPoiReviews] = useState<{
-        name: string;
-        rating: number | null;
-        reviews: { author_name: string; rating: number; text: string; relative_time_description: string }[];
-        url: string | null;
+        name: string; rating: number | null; reviews: any[]; url: string | null;
     } | null>(null);
     const [poiReviewsLoading, setPoiReviewsLoading] = useState(false);
-    const [mouseInModal, setMouseInModal] = useState(false);
-    const mouseInModalRef = useRef(false);
-    const hoverFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const hideModalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [isPointerInModal, setIsPointerInModal] = useState(false);
+    const isPointerInModalRef = useRef(false);
+    const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hideDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastFetchIdRef = useRef(0);
 
-    mouseInModalRef.current = mouseInModal;
+    isPointerInModalRef.current = isPointerInModal;
 
-    const fetchPoiReviews = useCallback(async (name: string, lat: number, lng: number) => {
-        setPoiReviewsLoading(true);
-        setPoiReviews(null);
-        try {
-            const res = await fetch(
-                `/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`
-            );
-            const data = await res.json();
-            setPoiReviews({
-                name: data.name ?? name,
-                rating: data.rating ?? null,
-                reviews: data.reviews ?? [],
-                url: data.url ?? null,
-            });
-        } catch {
-            setPoiReviews({ name, rating: null, reviews: [], url: null });
-        } finally {
-            setPoiReviewsLoading(false);
+    const scheduleHide = useCallback(() => {
+        if (hideDebounceRef.current) clearTimeout(hideDebounceRef.current);
+        hideDebounceRef.current = setTimeout(() => {
+            hideDebounceRef.current = null;
+            if (!isPointerInModalRef.current) {
+                setDisplayPoi(null);
+                setPoiReviews(null);
+                setPoiReviewsLoading(false);
+            }
+        }, 300);
+    }, []);
+
+    const cancelHide = useCallback(() => {
+        if (hideDebounceRef.current) {
+            clearTimeout(hideDebounceRef.current);
+            hideDebounceRef.current = null;
         }
     }, []);
 
     const handlePoiHover = useCallback(
         (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => {
-            setPoiHover({ feature, lngLat, point });
+            cancelHide();
+            const poi = { feature, lngLat, point };
+            setDisplayPoi(poi);
 
-            if (hoverFetchTimer.current) clearTimeout(hoverFetchTimer.current);
+            if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
             const name = String(
                 feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu'
             ).trim();
             if (!name) return;
 
-            hoverFetchTimer.current = setTimeout(() => {
-                hoverFetchTimer.current = null;
-                fetchPoiReviews(name, lngLat.lat, lngLat.lng);
-            }, 500);
+            fetchDebounceRef.current = setTimeout(() => {
+                fetchDebounceRef.current = null;
+                const fetchId = ++lastFetchIdRef.current;
+                setPoiReviewsLoading(true);
+                setPoiReviews(null);
+                fetch(`/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lngLat.lat}&lng=${lngLat.lng}`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (fetchId !== lastFetchIdRef.current) return;
+                        setPoiReviews({
+                            name: data.name ?? name,
+                            rating: data.rating ?? null,
+                            reviews: data.reviews ?? [],
+                            url: data.url ?? null,
+                        });
+                    })
+                    .catch(() => {
+                        if (fetchId !== lastFetchIdRef.current) return;
+                        setPoiReviews({ name, rating: null, reviews: [], url: null });
+                    })
+                    .finally(() => {
+                        if (fetchId !== lastFetchIdRef.current) return;
+                        setPoiReviewsLoading(false);
+                    });
+            }, 400);
         },
-        [fetchPoiReviews]
+        [cancelHide]
     );
 
     const handlePoiLeave = useCallback(() => {
-        setPoiHover(null);
-        if (hoverFetchTimer.current) {
-            clearTimeout(hoverFetchTimer.current);
-            hoverFetchTimer.current = null;
+        if (fetchDebounceRef.current) {
+            clearTimeout(fetchDebounceRef.current);
+            fetchDebounceRef.current = null;
         }
-        if (hideModalTimer.current) clearTimeout(hideModalTimer.current);
-        hideModalTimer.current = setTimeout(() => {
-            if (!mouseInModalRef.current) {
-                setPoiReviews(null);
-                setPoiReviewsLoading(false);
-            }
-            hideModalTimer.current = null;
-        }, 250);
-    }, []);
+        scheduleHide();
+    }, [scheduleHide]);
 
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
@@ -361,85 +435,8 @@ export default function Home() {
         console.log('POI cliqué:', { name, feature, lngLat });
     };
 
-    const multiSelectOptions = [
-        'Petit déjeuner inclus',
-        'Proche du centre ville',
-        'Spa/piscine',
-        'Plage',
-        'Équipement',
-        'Retour positif',
-        'Hôtel de luxe',
-        'Animaux domestiques',
-        'Réservé aux adultes',
-        'LGBTQIA+ friendly'
-    ];
-
-    const handleSubmitMessage = () => {
-        if (message.trim()) {
-            // TODO: Implémenter la logique d'envoi du message
-            console.log('Message envoyé:', message);
-            setMessage('');
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSubmitMessage();
-        }
-    };
-
-    const handleLoginClick = () => {
-        setCurrentView('login');
-    };
-
-    const handleLogoutClick = () => {
-        // plus tard : signOut()
-        setIsConnected(false);
-        setCurrentView('home');
-    };
-
-    const handleLoginSuccess = () => {
-        setIsConnected(true);
-        setCurrentView('home');
-    };
-
-    const handleBackToHome = () => {
-        setCurrentView('home');
-    };
-
-    // Token Mapbox (utilisé pour les slides et la carte)
-    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
-
-    // Générer les slides avec les états actuels
-    const mockSlides = getMockSlides(
-        travelerCount,
-        budget,
-        activityTime,
-        arrivalDate,
-        departureDate,
-        arrivalTime,
-        departureTime,
-        selectedOptions,
-        departureCity,
-        arrivalCity,
-        travelDays,
-        setTravelerCount,
-        setBudget,
-        setActivityTime,
-        setArrivalDate,
-        setDepartureDate,
-        setArrivalTime,
-        setDepartureTime,
-        setSelectedOptions,
-        setDepartureCity,
-        setArrivalCity,
-        setTravelDays,
-        multiSelectOptions,
-        MAPBOX_TOKEN
-    );
-
     const handleNext = () => {
-        if (currentSlideIndex < mockSlides.length - 1) {
+        if (currentSlideIndex < slides.length - 1) {
             setSlideDirection(1);
             setCurrentSlideIndex(currentSlideIndex + 1);
         }
@@ -452,15 +449,13 @@ export default function Home() {
         }
     };
 
-    const handleJumpTo = (index: number) => {
-        const direction = index > currentSlideIndex ? 1 : -1;
-        setSlideDirection(direction);
-        setCurrentSlideIndex(index);
-    };
+    const handleLoginClick = () => setCurrentView('login');
+    const handleLogoutClick = () => { setIsConnected(false); setCurrentView('home'); };
+    const handleLoginSuccess = () => { setIsConnected(true); setCurrentView('home'); };
+    const handleBackToHome = () => setCurrentView('home');
 
     return (
         <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
-            {/* Sidebar à gauche */}
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -469,10 +464,10 @@ export default function Home() {
                 onLogoutClick={handleLogoutClick}
             />
 
-            {/* Contenu principal */}
             <div className="flex-1 flex overflow-hidden min-w-0 relative">
                 {currentView === 'login' && (
-                    <Login
+                    <LoginWithMapBackground
+                        mapboxToken={MAPBOX_TOKEN}
                         onLoginSuccess={handleLoginSuccess}
                         onBack={handleBackToHome}
                     />
@@ -480,46 +475,186 @@ export default function Home() {
 
                 {currentView === 'home' && (
                     <>
-                {/* Map en arrière-plan (prend tout l'espace avec centre décalé) */}
-                <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
-                    <WorldMap
-                        accessToken={MAPBOX_TOKEN}
-                        initialLatitude={46.6034}
-                        initialLongitude={1.8883}
-                        initialZoom={5}
-                        height="100%"
-                        width="100%"
-                        className="h-full"
-                        padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
-                        onPoiClick={handlePoiClick}
-                        onPoiHover={handlePoiHover}
-                        onPoiLeave={handlePoiLeave}
-                        locations={mapLocations}
-                    />
-                    <PoiReviewsModal
-                        visible={(!!poiHover || mouseInModal) && (!!poiReviews || poiReviewsLoading)}
-                        name={poiReviews?.name ?? (poiHover ? String(poiHover.feature.properties?.name ?? poiHover.feature.properties?.name_en ?? poiHover.feature.layer?.id ?? 'Lieu') : '')}
-                        rating={poiReviews?.rating ?? null}
-                        reviews={poiReviews?.reviews ?? []}
-                        url={poiReviews?.url ?? null}
-                        position={poiHover?.point ?? { x: 0, y: 0 }}
-                        loading={poiReviewsLoading}
-                        onMouseEnter={() => setMouseInModal(true)}
-                        onMouseLeave={() => {
-                            setMouseInModal(false);
-                            if (!poiHover) {
-                                setPoiReviews(null);
-                                setPoiReviewsLoading(false);
-                            }
-                        }}
-                    />
-                </div>
+                        <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                            <WorldMap
+                                accessToken={MAPBOX_TOKEN}
+                                initialLatitude={46.6034}
+                                initialLongitude={1.8883}
+                                initialZoom={5}
+                                mapStyle={mapStyle}
+                                mapConfig={mapConfig}
+                                pitch={mapPitch}
+                                height="100%"
+                                width="100%"
+                                className="h-full"
+                                padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
+                                onPoiClick={handlePoiClick}
+                                onPoiHover={handlePoiHover}
+                                onPoiLeave={handlePoiLeave}
+                                locations={mapLocations}
+                                onAirportSelect={handleAirportSelect}
+                            />
+                            <PoiReviewsModal
+                                visible={!!displayPoi && (!!poiReviews || poiReviewsLoading)}
+                                name={poiReviews?.name ?? (displayPoi ? String(displayPoi.feature.properties?.name ?? displayPoi.feature.properties?.name_en ?? displayPoi.feature.layer?.id ?? 'Lieu') : '')}
+                                rating={poiReviews?.rating ?? null}
+                                reviews={poiReviews?.reviews ?? []}
+                                url={poiReviews?.url ?? null}
+                                position={displayPoi?.point ?? { x: 0, y: 0 }}
+                                loading={poiReviewsLoading}
+                                leftPanelWidth={400}
+                                onMouseEnter={() => {
+                                    setIsPointerInModal(true);
+                                    cancelHide();
+                                }}
+                                onMouseLeave={() => {
+                                    setIsPointerInModal(false);
+                                    scheduleHide();
+                                }}
+                            />
 
-                {/* Div mère contenant LLM et Slide - positionnée en overlay sur la map */}
+                            <FlightSearchModal
+                                visible={isFlightModalOpen}
+                                onClose={() => {
+                                    setIsFlightModalOpen(false);
+                                }}
+                                departureCity={departureCity}
+                                setDepartureCity={setDepartureCity}
+                                arrivalCity={arrivalCity}
+                                setArrivalCity={setArrivalCity}
+                                arrivalDate={outboundDate}
+                                setArrivalDate={setOutboundDate}
+                                departureDate={returnDate}
+                                setDepartureDate={setReturnDate}
+                                arrivalTime={arrivalTime}
+                                setArrivalTime={setArrivalTime}
+                                departureTime={departureTime}
+                                setDepartureTime={setDepartureTime}
+                                travelerCount={travelerCount}
+                                setTravelerCount={setTravelerCount}
+                                budget={budget}
+                                setBudget={setBudget}
+                                onSearch={handleFlightSearch}
+                                onNewSearch={() => setApiResponse(null)}
+                                onSelectOffer={handleFlightSelect}
+                                isLoading={isLoading}
+                                apiResponse={apiResponse}
+                            />
+
+                            <FlightDetailModal
+                                visible={isFlightDetailModalOpen}
+                                onClose={() => setIsFlightDetailModalOpen(false)}
+                                offer={selectedFlightOffer}
+                                carrierName={selectedFlightCarrierName}
+                            />
+
+                            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
+                                <div className="relative" ref={hotelFilterMenuRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setHotelFilterMenuOpen((o) => !o)}
+                                        className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:bg-white/10 ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
+                                        style={{
+                                            backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                                        }}
+                                        title="Filtrer les hôtels"
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--foreground, #ededed)' }}>
+                                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                                        </svg>
+                                    </button>
+                                    <AnimatePresence>
+                                        {hotelFilterMenuOpen && (
+                                            <div
+                                                className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[200px]"
+                                                style={{
+                                                    backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+                                                }}
+                                            >
+                                                <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Étoiles</span>
+                                                </div>
+                                                <div className="py-2">
+                                                    {[
+                                                        { label: 'Tous', value: null },
+                                                        { label: '2, 3, 4 étoiles', value: [2, 3, 4] },
+                                                        { label: '4 et 5 étoiles', value: [4, 5] },
+                                                        { label: '5 étoiles uniquement', value: [5] },
+                                                    ].map(({ label, value }) => {
+                                                        const isActive = value === null
+                                                            ? !hotelStarsFilter || hotelStarsFilter.length === 0
+                                                            : hotelStarsFilter?.length === value.length && value.every((s) => hotelStarsFilter?.includes(s));
+                                                        return (
+                                                            <button
+                                                                key={label}
+                                                                type="button"
+                                                                onClick={() => applyHotelFilter(value)}
+                                                                className="w-full text-left py-2.5 px-4 text-sm font-medium hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                                style={{
+                                                                    color: isActive ? '#0096c7' : 'var(--foreground, #ededed)',
+                                                                }}
+                                                            >
+                                                                {isActive && <span className="text-cyan-400">●</span>}
+                                                                {label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                <Button
+                                    label="Changer de vue"
+                                    onClick={() => setMapViewMenuOpen((o) => !o)}
+                                    variant="dark"
+                                    tone="tone1"
+                                />
+                                <AnimatePresence>
+                                    {mapViewMenuOpen && (
+                                        <div
+                                            className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[180px]"
+                                            style={{
+                                                backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+                                            }}
+                                        >
+                                            <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                                <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Style</span>
+                                            </div>
+                                            {[
+                                                { id: 'dark', label: 'Sombre', style: 'mapbox://styles/mapbox/standard', config: { lightPreset: 'night' as const } },
+                                                { id: 'light', label: 'Clair', style: 'mapbox://styles/mapbox/standard', config: { lightPreset: 'day' as const } },
+                                                { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/standard-satellite', config: { lightPreset: 'day' as const } },
+                                            ].map(({ id, label, style, config }) => (
+                                                <button
+                                                    key={id} type="button"
+                                                    onClick={() => { setMapStyle(style); setMapConfig(config); setMapPitch(0); setMapViewMenuOpen(false); }}
+                                                    className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors"
+                                                    style={{ color: 'var(--foreground, #ededed)' }}
+                                                >
+                                                    {label}
+                                                </button>
+                                            ))}
+                                            <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+                                            <button type="button" onClick={() => { setMapPitch(0); setMapViewMenuOpen(false); }} className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors" style={{ color: 'var(--foreground, #ededed)' }}>Vue 2D</button>
+                                            <button type="button" onClick={() => { setMapPitch(60); setMapViewMenuOpen(false); }} className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors" style={{ color: 'var(--foreground, #ededed)' }}>Vue 3D</button>
+                                        </div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+
                         <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                            <Assistant onUpdateLocations={setMapLocations} />
-
-                            {/* Slide en dessous du LLM */}
+                            <Assistant
+                                onUpdateLocations={handleAssistantUpdate} // On utilise la nouvelle fonction
+                                destination={arrivalCityName || arrivalCity}
+                            />
                             <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
                                 <AnimatePresence mode="wait" custom={slideDirection}>
                                     <Slide
@@ -527,10 +662,10 @@ export default function Home() {
                                         direction={slideDirection}
                                         onNext={handleNext}
                                         onPrev={handlePrev}
-                                        canNext={currentSlideIndex < mockSlides.length - 1}
+                                        canNext={currentSlideIndex < slides.length - 1}
                                         canPrev={currentSlideIndex > 0}
                                     >
-                                        {mockSlides[currentSlideIndex]?.content}
+                                        {slides[currentSlideIndex]?.content}
                                     </Slide>
                                 </AnimatePresence>
                             </div>

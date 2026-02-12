@@ -1,6 +1,6 @@
 
 import React from 'react';
-import {KpiCardData} from "../../../types/kpi.ts";
+import {KpiCardData} from "../../../types/kpi";
 interface KpiCardProps extends KpiCardData {
     /** Couleur d'accentuation (optionnel) */
     accentColor?: string;
@@ -56,7 +56,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
             </div>
 
             <div style={{fontSize: '0.9rem', color: '#6c757d'}}>
-                <span style={getTrendStyle(trendType)}>{trendText}</span>
+                <span style={getTrendStyle(trendType ?? 'neutral')}>{trendText}</span>
                 {trendValue && <span> vs période précédente</span>}
             </div>
         </div>
