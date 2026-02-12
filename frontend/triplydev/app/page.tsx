@@ -181,7 +181,6 @@ export default function Home() {
             title: 'Paramètres de voyage',
             content: (
                 <TripConfigurationForm
-                    mapboxToken={MAPBOX_TOKEN}
                     departureCity={departureCity} setDepartureCity={setDepartureCity}
                     arrivalCity={arrivalCity} setArrivalCity={setArrivalCity}
                     travelDays={travelDays} setTravelDays={setTravelDays}

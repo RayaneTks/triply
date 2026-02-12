@@ -7,7 +7,6 @@ import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { Button } from '@/src/components/Button/Button';
 
 interface TripConfigurationFormProps {
-    mapboxToken: string;
     departureCity: string;
     setDepartureCity: (value: string) => void;
     arrivalCity: string;
@@ -35,15 +34,7 @@ interface TripConfigurationFormProps {
     isLoading: boolean;
 }
 
-const loaderIcon = (
-    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-);
-
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
-                                                                                mapboxToken,
                                                                                 departureCity, setDepartureCity,
                                                                                 arrivalCity, setArrivalCity,
                                                                                 travelDays, setTravelDays,
@@ -77,7 +68,6 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                         onChange={setDepartureCity}
                         label="Ville de départ"
                         placeholder="Ex. Paris, Lyon..."
-                        mapboxToken={mapboxToken}
                         containerStyle={{ color: 'var(--foreground, #ededed)' }}
                     />
                     <CityAutocomplete
@@ -85,7 +75,6 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                         onChange={setArrivalCity}
                         label="Ville d'arrivée"
                         placeholder="Ex. Marseille, Bordeaux..."
-                        mapboxToken={mapboxToken}
                         containerStyle={{ color: 'var(--foreground, #ededed)' }}
                     />
                 </div>
@@ -217,25 +206,12 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
 
                 <div className="pt-4">
                     <Button
-                        // Change le label si ça charge
-                        label={
-                            isLoading ? (
-                                <div className="flex items-center justify-center">
-                                    {loaderIcon} Recherche...
-                                </div>
-                            ) : (
-                                "Rechercher les vols"
-                            )
-                        }
-
-                        // Empêche le clic si ça charge
+                        label="Rechercher les vols"
                         onClick={!isLoading ? onSearch : undefined}
-
                         variant="light"
-                        className={`w-full py-3 text-lg font-bold ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-
-                        // Si ton composant Button accepte une prop disabled, utilise-la :
-                        // disabled={isLoading}
+                        loading={isLoading}
+                        disabled={isLoading}
+                        className="w-full py-3 text-lg font-bold"
                     />
                 </div>
             </div>
