@@ -1,46 +1,55 @@
 # Triply
 
-Plateforme de voyage avec un frontend et un backend Laravel documente avec Swagger.
+Plateforme de voyage avec frontend et backend Laravel (API documentee Swagger).
 
 ## Structure du repo
 
 - `frontend/` : application front
 - `backend/` : API Laravel
 
-## Demarrage rapide
+## Demarrage rapide (Docker via Makefile)
 
-Utiliser le `Makefile` a la racine.
+Prerquis (Windows/macOS/Linux) :
+- Docker Desktop installe et demarre
+- `make` installe
 
-1. Afficher les commandes disponibles :
+1. Build et lancement :
 ```bash
-make help
-```
-2. Initialiser le backend en local :
-```bash
-make local-setup
-```
-3. Lancer l'API :
-```bash
-make local-serve
+make init
 ```
 
-## URLs utiles
+2. Demarrage quotidien (rapide) :
+```bash
+make up
+```
+
+3. Apres modifications backend :
+```bash
+make reload
+```
+
+4. Verifier l'API :
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+```
+
+## URLs utiles (backend)
 
 - API locale : `http://127.0.0.1:8000`
 - Swagger UI : `http://127.0.0.1:8000/api/documentation`
-- Healthcheck : `http://127.0.0.1:8000/api/health`
+- Healthcheck : `http://127.0.0.1:8000/api/v1/health`
 
 ## Notes
 
 - Le frontend est gere separement.
-- Les details backend (variables d'environnement, endpoints V1, workflow Swagger) sont dans `backend/README.md`.
-- La carte des fichiers backend a modifier selon la feature est dans `backend/docs/BACKEND_WORKING_MAP.md`.
+- Pour le detail backend (Docker, env, depannage) voir `backend/README.md`.
 
-## Commandes principales
+## Commandes utiles
 
-- `make local-setup` : setup backend local complet
-- `make local-swagger` : regenerer Swagger
-- `make local-routes` : lister les routes API
-- `make local-test` : lancer les tests
-- `make docker-up` : lancer l'environnement Docker
-- `make docker-swagger` : regenerer Swagger dans Docker
+- Voir toutes les commandes : `make help`
+- Setup one-shot : `make init`
+- Demarrage rapide : `make up` ou `make run`
+- Reload backend : `make reload`
+- Logs API : `make logs-back`
+- Arreter : `make down`
+- Reset complet DB : `make clean`
