@@ -16,25 +16,27 @@ interface AmadeusLocation {
 }
 
 export interface CityAutocompleteProps {
-    value: string; // Ce sera le code IATA (ex: "PAR")
-    onChange: (iataCode: string) => void; // On renvoie le code IATA
+    value: string; // Code IATA (ex: "PAR")
+    onChange: (iataCode: string) => void;
+
+    // La prop magique pour remonter le nom à l'Assistant
+    onSelectName?: (cityName: string) => void;
+
     placeholder?: string;
     label?: string;
     className?: string;
     containerStyle?: React.CSSProperties;
-    // Plus besoin de mapboxToken ici
 }
 
 export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                                                 value,
                                                                 onChange,
+                                                                onSelectName,
                                                                 placeholder = 'Rechercher une ville...',
                                                                 label,
                                                                 className = '',
                                                                 containerStyle,
                                                             }) => {
-    // displayValue est ce que l'utilisateur voit (ex: "Paris")
-    // value est ce que le code utilise (ex: "PAR")
     const [displayValue, setDisplayValue] = useState('');
     const [suggestions, setSuggestions] = useState<AmadeusLocation[]>([]);
     const [isOpen, setIsOpen] = useState(false);
@@ -43,14 +45,15 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Initialisation : Si on a un code "PAR", on l'affiche tel quel au début
-    // (Pour faire mieux, il faudrait une prop "initialDisplayName" ou faire un fetch inverse)
+    // Initialisation : Si le parent envoie une value (ex: FCO), on l'affiche
+    // Sauf si on a déjà une valeur d'affichage plus jolie (ex: Rome (FCO))
     useEffect(() => {
-        if (value && !displayValue) {
+        if (value && value !== displayValue && !displayValue.includes(value)) {
             setDisplayValue(value);
         }
     }, [value]);
 
+    // Fermeture au clic dehors
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -61,38 +64,59 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Fonction de recherche déclenchée par la frappe
+    // GESTION DE LA SAISIE (AUTOCOMPLETION)
     const handleInputChange = (text: string) => {
         setDisplayValue(text);
 
         if (!text.trim() || text.length < 2) {
             setSuggestions([]);
+            setIsOpen(false);
             return;
         }
+
+        setIsOpen(true);
 
         if (debounceRef.current) clearTimeout(debounceRef.current);
 
         debounceRef.current = setTimeout(() => {
             setLoading(true);
-            // Appel à TON API locale créée à l'étape 1
+
+            // --- C'EST ICI QUE TU AVAIS PERDU L'AUTOCOMPLETION ---
+            // J'ai remis l'URL standard qui marche pour ton projet
             fetch(`/api/places/search?keyword=${encodeURIComponent(text)}`)
-                .then((res) => res.json())
-                .then((data) => {
-                    setSuggestions(data || []);
-                    setIsOpen(true);
+                .then((res) => {
+                    if (!res.ok) throw new Error('Erreur API');
+                    return res.json();
                 })
-                .catch(() => setSuggestions([]))
+                .then((data) => {
+                    // Sécurité pour gérer les différents formats de réponse
+                    const results = Array.isArray(data) ? data : (data.data || []);
+                    setSuggestions(results);
+                })
+                .catch((e) => {
+                    console.error(e);
+                    setSuggestions([]);
+                })
                 .finally(() => setLoading(false));
         }, 300);
     };
 
+    // GESTION DE LA SÉLECTION
     const handleSelect = (feature: AmadeusLocation) => {
-        // On affiche "Paris (PAR)" dans le champ
-        const displayName = `${feature.name} (${feature.iataCode})`;
+        // 1. On construit le joli nom : "Rome (ROM)"
+        const cityName = feature.address?.cityName || feature.name;
+        const displayName = `${cityName} (${feature.iataCode})`;
+
+        // 2. On met à jour l'affichage local
         setDisplayValue(displayName);
 
-        // MAIS on envoie uniquement "PAR" au parent !
+        // 3. On envoie le CODE IATA au formulaire (pour les vols)
         onChange(feature.iataCode);
+
+        // 4. On envoie le NOM VILLE à l'Assistant (pour le chat)
+        if (onSelectName) {
+            onSelectName(cityName);
+        }
 
         setIsOpen(false);
         setSuggestions([]);
@@ -110,13 +134,20 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     type="text"
                     value={displayValue}
                     onChange={(e) => handleInputChange(e.target.value)}
-                    onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+                    onFocus={() => { if(suggestions.length > 0) setIsOpen(true); }}
                     placeholder={placeholder}
-                    className="w-full bg-transparent focus:outline-none text-sm uppercase placeholder-normal" // Uppercase pour le style aéroport
+                    className="w-full bg-transparent focus:outline-none text-sm placeholder-normal uppercase"
                     style={{ color: 'var(--foreground, #ededed)' }}
                 />
+
+                {loading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    </div>
+                )}
+
                 <AnimatePresence>
-                    {isOpen && (suggestions.length > 0 || loading) && (
+                    {isOpen && suggestions.length > 0 && (
                         <motion.ul
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -128,34 +159,28 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                             }}
                         >
-                            {loading ? (
-                                <li className="px-4 py-3 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                                    Recherche vols...
+                            {suggestions.map((feature) => (
+                                <li
+                                    key={feature.id}
+                                    onClick={() => handleSelect(feature)}
+                                    className="px-4 py-2 text-sm cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                                    style={{ color: 'var(--foreground, #ededed)' }}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-bold">
+                                            {feature.address?.cityName || feature.name}
+                                        </span>
+                                        <span className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono text-blue-300">
+                                            {feature.iataCode}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs opacity-60 flex gap-2">
+                                        <span>{feature.subType === 'AIRPORT' ? '✈️ Aéroport' : '🏙️ Ville'}</span>
+                                        <span>•</span>
+                                        <span>{feature.address?.countryName}</span>
+                                    </div>
                                 </li>
-                            ) : (
-                                suggestions.map((feature) => (
-                                    <li
-                                        key={feature.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => handleSelect(feature)}
-                                        className="px-4 py-2 text-sm cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
-                                        style={{ color: 'var(--foreground, #ededed)' }}
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-bold">{feature.address?.cityName || feature.name}</span>
-                                            <span className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono text-blue-300">
-                                                {feature.iataCode}
-                                            </span>
-                                        </div>
-                                        <div className="text-xs opacity-60 flex gap-2">
-                                            <span>{feature.subType === 'AIRPORT' ? '✈️ Aéroport' : '🏙️ Ville'}</span>
-                                            <span>•</span>
-                                            <span>{feature.address?.countryName}</span>
-                                        </div>
-                                    </li>
-                                ))
-                            )}
+                            ))}
                         </motion.ul>
                     )}
                 </AnimatePresence>

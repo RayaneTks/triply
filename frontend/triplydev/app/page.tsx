@@ -84,6 +84,7 @@ export default function Home() {
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [mapLocations, setMapLocations] = useState<any[]>([]);
+    const [isLoadingHotels, setIsLoadingHotels] = useState(false);
 
     // AUTO-COLLAPSE SIDEBAR IF CONNECTED
     useEffect(() => {
@@ -103,6 +104,7 @@ export default function Home() {
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
     const [departureCity, setDepartureCity] = useState('');
     const [arrivalCity, setArrivalCity] = useState('');
+    const [arrivalCityName, setArrivalCityName] = useState('');
     const [travelDays, setTravelDays] = useState<number>(3);
     const [isLoading, setIsLoading] = useState(false);
     const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
@@ -123,18 +125,49 @@ export default function Home() {
         // Logique intelligente pour remplir les champs
         if (!departureCity) {
             setDepartureCity(iata);
-        } else if (!arrivalCity) {
+            // Pas de setDepartureCityName prévu dans ton state, mais pas grave pour l'assistant
+        }
+        // 2. Sinon, on remplit l'Arrivée (C'est là que ça se joue)
+        else {
             // Évite de mettre la même ville en départ et arrivée
             if (departureCity !== iata) {
-                setArrivalCity(iata);
-            }
-        } else {
-            // Si les deux sont pleins, on remplace l'arrivée (comportement standard)
-            if (departureCity !== iata) {
-                setArrivalCity(iata);
+                setArrivalCity(iata);     // Met à jour le code (ex: FCO)
+                setArrivalCityName(name); // <--- AJOUTE CECI : Met à jour le nom (ex: Fiumicino)
             }
         }
     };
+
+    const searchHotelsAtLocation = async (lat: number, lng: number) => {
+        console.log("🏨 Recherche d'hôtels demandée pour :", lat, lng);
+        setIsLoadingHotels(true);
+
+        try {
+            // Note: j'utilise /api/hotels/search car tu as dit l'avoir nommé ainsi
+            const res = await fetch(`/api/hotels/search?lat=${lat}&lng=${lng}`);
+            const data = await res.json();
+
+            if (data.locations && data.locations.length > 0) {
+                // On fusionne avec le centre ville pour garder le point de repère
+                setMapLocations(data.locations);
+            }
+        } catch (error) {
+            console.error("Erreur chargement hôtels:", error);
+        } finally {
+            setIsLoadingHotels(false);
+        }
+    };
+
+    const handleAssistantUpdate = (locations: any[]) => {
+        // On affiche d'abord le centre ville (pour le zoom)
+        setMapLocations(locations);
+
+        // Si on a reçu un point (le centre ville), on lance la recherche d'hôtels immédiatement
+        if (locations.length > 0 && locations[0].coordinates) {
+            const { latitude, longitude } = locations[0].coordinates;
+            searchHotelsAtLocation(latitude, longitude);
+        }
+    };
+
     const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
     const [selectedFlightOffer, setSelectedFlightOffer] = useState<FlightOffer | null>(null);
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
@@ -229,6 +262,7 @@ export default function Home() {
                 <TripConfigurationForm
                     departureCity={departureCity} setDepartureCity={setDepartureCity}
                     arrivalCity={arrivalCity} setArrivalCity={setArrivalCity}
+                    setArrivalCityName={setArrivalCityName}
                     travelDays={travelDays} setTravelDays={setTravelDays}
                     travelerCount={travelerCount} setTravelerCount={setTravelerCount}
                     budget={budget} setBudget={setBudget}
@@ -425,7 +459,6 @@ export default function Home() {
                                 onPoiHover={handlePoiHover}
                                 onPoiLeave={handlePoiLeave}
                                 locations={mapLocations}
-                                // AJOUT DU PROP
                                 onAirportSelect={handleAirportSelect}
                             />
                             <PoiReviewsModal
@@ -526,8 +559,10 @@ export default function Home() {
                         </div>
 
                         <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                            <Assistant onUpdateLocations={setMapLocations} />
-
+                            <Assistant
+                                onUpdateLocations={handleAssistantUpdate} // On utilise la nouvelle fonction
+                                destination={arrivalCityName || arrivalCity}
+                            />
                             <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
                                 <AnimatePresence mode="wait" custom={slideDirection}>
                                     <Slide
