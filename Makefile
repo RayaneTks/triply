@@ -1,5 +1,6 @@
 .PHONY: help \
 	init up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
+	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
@@ -37,7 +38,7 @@ help:
 
 init:
 	$(COMPOSE) down --remove-orphans
-	$(COMPOSE) up -d --build db backend
+	$(COMPOSE) up -d --build db backend pgadmin
 	$(MAKE) db-ensure
 	$(MAKE) env-sync
 	$(COMPOSE) exec -T backend php artisan optimize:clear
@@ -45,7 +46,7 @@ init:
 	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
 up:
-	$(COMPOSE) up -d --remove-orphans db backend
+	$(COMPOSE) up -d --remove-orphans db backend pgadmin
 
 run: up
 
@@ -60,10 +61,10 @@ down:
 
 rebuild:
 	$(COMPOSE) down --remove-orphans
-	$(COMPOSE) up -d --build db backend
+	$(COMPOSE) up -d --build db backend pgadmin
 
 restart:
-	$(COMPOSE) restart db backend
+	$(COMPOSE) restart db backend pgadmin
 
 status:
 	$(COMPOSE) ps
@@ -103,6 +104,8 @@ db-ensure:
 
 clean:
 	$(COMPOSE) down -v --remove-orphans
+
+clear: clean
 
 # -----------------------------------------
 # Local (without Docker)
