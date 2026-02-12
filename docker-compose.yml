@@ -18,11 +18,7 @@ services:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
     volumes:
-<<<<<<< HEAD
-      - ./backend:/app
-=======
       - ./backend:/app:delegated
->>>>>>> origin/TRI-637
       - backend_vendor:/app/vendor
     ports:
       - "8000:80"
@@ -37,18 +33,6 @@ services:
       retries: 10
       start_period: 20s
 
-#  frontend:
-#    build:
-#      context: ./frontend
-#      dockerfile: Dockerfile
-#    volumes:
-#      - ./frontend:/app
-#    ports:
-#      - "5173:5173"
-#    env_file:
-#      - ./frontend/.env.docker
-#    command: sh -c "npm install --save-dev @rollup/rollup-linux-x64-gnu && npm run dev -- --host 0.0.0.0"
-
   db:
     image: postgres:16
     ports:
@@ -57,6 +41,7 @@ services:
       POSTGRES_DB: TriplyDB
       POSTGRES_USER: backend
       POSTGRES_PASSWORD: backend
+      POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -64,19 +49,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
-      
-#  phpmyadmin:
-#    image: phpmyadmin/phpmyadmin
-#    ports:
-#      - "8080:80"
-#    environment:
-#      PMA_HOST: db
-#      MYSQL_ROOT_PASSWORD: root
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "contact@triply.ovh"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./pgadmin/pgpass:/pgpass:ro
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pg_data:
   backend_vendor:
-<<<<<<< HEAD
-=======
     name: triply_backend_vendor_v2
->>>>>>> origin/TRI-637
