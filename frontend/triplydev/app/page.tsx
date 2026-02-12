@@ -83,6 +83,13 @@ export default function Home() {
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [mapLocations, setMapLocations] = useState<any[]>([]);
 
+    // AUTO-COLLAPSE SIDEBAR IF CONNECTED
+    useEffect(() => {
+        if (isConnected) {
+            setIsSidebarCollapsed(true);
+        }
+    }, [isConnected]);
+
     // Etats Formulaire Voyage
     const [travelerCount, setTravelerCount] = useState(1);
     const [budget, setBudget] = useState('');
@@ -95,7 +102,6 @@ export default function Home() {
     const [departureCity, setDepartureCity] = useState('');
     const [arrivalCity, setArrivalCity] = useState('');
     const [travelDays, setTravelDays] = useState<number>(3);
-    const [flightResults, setFlightResults] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
     const [apiResponse, setApiResponse] = useState<any>(null);
@@ -108,30 +114,45 @@ export default function Home() {
     const [mapViewMenuOpen, setMapViewMenuOpen] = useState(false);
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
 
+    // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
+    const handleAirportSelect = (iata: string, name: string) => {
+        console.log(`Aéroport sélectionné: ${name} (${iata})`);
+
+        // Logique intelligente pour remplir les champs
+        if (!departureCity) {
+            setDepartureCity(iata);
+        } else if (!arrivalCity) {
+            // Évite de mettre la même ville en départ et arrivée
+            if (departureCity !== iata) {
+                setArrivalCity(iata);
+            }
+        } else {
+            // Si les deux sont pleins, on remplace l'arrivée (comportement standard)
+            if (departureCity !== iata) {
+                setArrivalCity(iata);
+            }
+        }
+    };
+
     // Gestion de la recherche de vol
     const handleFlightSearch = async () => {
         setIsLoading(true);
 
-        // 1. Génération du JSON (Payload)
         const payload = generateFlightRequest(
             departureCity,
             arrivalCity,
-            outboundDate, // Premier argument : Date Aller (ex: 20)
-            returnDate,   // Second argument : Date Retour (ex: 22)
+            outboundDate,
+            returnDate,
             travelerCount,
             budget,
             arrivalTime,
             departureTime
         );
 
-        // 2. On sauvegarde la requête pour l'afficher dans la slide 2
         setLastRequestPayload(payload);
 
         try {
             console.log("Envoi de la requête...", payload);
-
-            // 3. Appel à TON API (qui elle appelle Amadeus)
-            // Assure-toi d'avoir créé le fichier app/api/flights/search/route.ts comme vu précédemment
             const res = await fetch('/api/flights/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -139,34 +160,17 @@ export default function Home() {
             });
 
             const data = await res.json();
-
-            // 4. On sauvegarde la réponse
             setApiResponse(data);
-
-            // 5. On passe à la slide suivante pour voir le résultat
             handleNext();
 
         } catch (error) {
             console.error("Erreur critique:", error);
             setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
-            handleNext(); // On passe quand même à la slide pour voir l'erreur
+            handleNext();
         } finally {
             setIsLoading(false);
         }
     };
-
-    const JsonViewer = ({ title, data }: { title: string, data: any }) => (
-        <div className="flex flex-col h-1/2 min-h-0 mb-4">
-            <h3 className="text-lg font-bold mb-2 sticky top-0 bg-[#222] py-2 z-10" style={{ color: 'var(--foreground, #ededed)' }}>
-                {title}
-            </h3>
-            <div className="flex-1 overflow-auto rounded-lg border border-white/10 bg-black/50 p-4">
-            <pre className="text-xs sm:text-sm font-mono text-green-400 whitespace-pre-wrap break-all">
-                {data ? JSON.stringify(data, null, 2) : 'Aucune donnée...'}
-            </pre>
-            </div>
-        </div>
-    );
 
     const multiSelectOptions = [
         'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
@@ -174,7 +178,6 @@ export default function Home() {
         'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly'
     ];
 
-    // Définition des slides (utilisation de useMemo pour éviter la recréation à chaque render sauf si states changent)
     const slides: SlideDefinition[] = useMemo(() => [
         {
             id: 'trip-config',
@@ -208,20 +211,17 @@ export default function Home() {
                     <h1 className="text-3xl font-bold mb-6 pl-8 pt-8" style={{ color: 'var(--foreground, #ededed)' }}>
                         Meilleures offres trouvées
                     </h1>
-
-                    {/* On passe l'objet complet apiResponse qui contient { data, dictionaries, ... } */}
                     <FlightResults data={apiResponse} />
                 </div>
             )
         },
     ], [
-        // Dépendances du useMemo (ajouter les nouveaux états pour que la slide se mette à jour)
         departureCity, arrivalCity, travelDays, travelerCount, budget, activityTime,
         outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
-        lastRequestPayload, apiResponse, isLoading // <--- Ajoute ces dépendances !
+        lastRequestPayload, apiResponse, isLoading
     ]);
 
-    // --- Logique Map (POI, Hover, Click) inchangée mais nettoyée ---
+    // --- Logique Map (POI, Hover, Click) ---
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -326,7 +326,6 @@ export default function Home() {
         console.log('POI cliqué:', { name, feature, lngLat });
     };
 
-    // Navigation Slides
     const handleNext = () => {
         if (currentSlideIndex < slides.length - 1) {
             setSlideDirection(1);
@@ -341,7 +340,6 @@ export default function Home() {
         }
     };
 
-    // Gestion Auth & View
     const handleLoginClick = () => setCurrentView('login');
     const handleLogoutClick = () => { setIsConnected(false); setCurrentView('home'); };
     const handleLoginSuccess = () => { setIsConnected(true); setCurrentView('home'); };
@@ -385,6 +383,8 @@ export default function Home() {
                                 onPoiHover={handlePoiHover}
                                 onPoiLeave={handlePoiLeave}
                                 locations={mapLocations}
+                                // AJOUT DU PROP
+                                onAirportSelect={handleAirportSelect}
                             />
                             <PoiReviewsModal
                                 visible={!!displayPoi && (!!poiReviews || poiReviewsLoading)}
