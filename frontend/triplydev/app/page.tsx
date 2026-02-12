@@ -83,6 +83,13 @@ export default function Home() {
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [mapLocations, setMapLocations] = useState<any[]>([]);
 
+    // AUTO-COLLAPSE SIDEBAR IF CONNECTED
+    useEffect(() => {
+        if (isConnected) {
+            setIsSidebarCollapsed(true);
+        }
+    }, [isConnected]);
+
     // Etats Formulaire Voyage
     const [travelerCount, setTravelerCount] = useState(1);
     const [budget, setBudget] = useState('');
@@ -106,32 +113,47 @@ export default function Home() {
     const [mapPitch, setMapPitch] = useState<number>(0);
     const [mapViewMenuOpen, setMapViewMenuOpen] = useState(false);
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
+
+    // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
+    const handleAirportSelect = (iata: string, name: string) => {
+        console.log(`Aéroport sélectionné: ${name} (${iata})`);
+
+        // Logique intelligente pour remplir les champs
+        if (!departureCity) {
+            setDepartureCity(iata);
+        } else if (!arrivalCity) {
+            // Évite de mettre la même ville en départ et arrivée
+            if (departureCity !== iata) {
+                setArrivalCity(iata);
+            }
+        } else {
+            // Si les deux sont pleins, on remplace l'arrivée (comportement standard)
+            if (departureCity !== iata) {
+                setArrivalCity(iata);
+            }
+        }
+    };
     const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
 
     // Gestion de la recherche de vol
     const handleFlightSearch = async () => {
         setIsLoading(true);
 
-        // 1. Génération du JSON (Payload)
         const payload = generateFlightRequest(
             departureCity,
             arrivalCity,
-            outboundDate, // Premier argument : Date Aller (ex: 20)
-            returnDate,   // Second argument : Date Retour (ex: 22)
+            outboundDate,
+            returnDate,
             travelerCount,
             budget,
             arrivalTime,
             departureTime
         );
 
-        // 2. On sauvegarde la requête pour l'afficher dans la slide 2
         setLastRequestPayload(payload);
 
         try {
             console.log("Envoi de la requête...", payload);
-
-            // 3. Appel à TON API (qui elle appelle Amadeus)
-            // Assure-toi d'avoir créé le fichier app/api/flights/search/route.ts comme vu précédemment
             const res = await fetch('/api/flights/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -142,10 +164,13 @@ export default function Home() {
 
             // 4. On sauvegarde la réponse (affichée dans la modal)
             setApiResponse(data);
+            handleNext();
+
 
         } catch (error) {
             console.error("Erreur critique:", error);
             setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
+            handleNext();
         } finally {
             setIsLoading(false);
         }
@@ -157,7 +182,6 @@ export default function Home() {
         'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly'
     ];
 
-    // Définition des slides (utilisation de useMemo pour éviter la recréation à chaque render sauf si states changent)
     const slides: SlideDefinition[] = useMemo(() => [
         {
             id: 'trip-config',
@@ -184,13 +208,27 @@ export default function Home() {
                 />
             )
         },
+        {
+            id: 'flight-results',
+            title: 'Résultats des vols',
+            content: (
+                <div className="flex flex-col h-full w-full">
+                    <h1 className="text-3xl font-bold mb-6 pl-8 pt-8" style={{ color: 'var(--foreground, #ededed)' }}>
+                        Meilleures offres trouvées
+                    </h1>
+                    <FlightResults data={apiResponse} />
+                </div>
+            )
+        },
+    ], [
     ], [
         departureCity, arrivalCity, travelDays, travelerCount, budget, activityTime,
         outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
+        lastRequestPayload, apiResponse, isLoading
         isFlightModalOpen
     ]);
 
-    // --- Logique Map (POI, Hover, Click) inchangée mais nettoyée ---
+    // --- Logique Map (POI, Hover, Click) ---
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -295,7 +333,6 @@ export default function Home() {
         console.log('POI cliqué:', { name, feature, lngLat });
     };
 
-    // Navigation Slides
     const handleNext = () => {
         if (currentSlideIndex < slides.length - 1) {
             setSlideDirection(1);
@@ -310,7 +347,6 @@ export default function Home() {
         }
     };
 
-    // Gestion Auth & View
     const handleLoginClick = () => setCurrentView('login');
     const handleLogoutClick = () => { setIsConnected(false); setCurrentView('home'); };
     const handleLoginSuccess = () => { setIsConnected(true); setCurrentView('home'); };
@@ -354,6 +390,8 @@ export default function Home() {
                                 onPoiHover={handlePoiHover}
                                 onPoiLeave={handlePoiLeave}
                                 locations={mapLocations}
+                                // AJOUT DU PROP
+                                onAirportSelect={handleAirportSelect}
                             />
                             <PoiReviewsModal
                                 visible={!!displayPoi && (!!poiReviews || poiReviewsLoading)}
