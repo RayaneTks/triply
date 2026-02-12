@@ -55,7 +55,8 @@ Un exemple est fourni dans `backend/.env.docker.example`.
 
 ## Commandes utiles
 
-- `make init` : setup complet (build, env-sync, cache clear, migrate, swagger)
+- `make init` : setup complet (build, db-ensure, env-sync, cache clear, migrate, swagger)
+- `make db-ensure` : cree le role `backend` et la base `TriplyDB` si absents
 - `make up` / `make run` : demarrage quotidien rapide
 - `make reload` : clear cache + migrate graceful + swagger
 - `make env-sync` : cree/met a jour `backend/.env` avec la config Docker standard (APP + DB)

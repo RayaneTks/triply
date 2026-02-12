@@ -1,7 +1,5 @@
-.RECIPEPREFIX := >
-
 .PHONY: help \
-	init up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync \
+	init up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
@@ -10,164 +8,173 @@
 BACKEND_DIR := backend
 COMPOSE := docker compose
 
-help: ## Afficher toutes les commandes disponibles
-> @echo Usage: make ^<commande^>
-> @echo.
-ifeq ($(OS),Windows_NT)
-> @awk "BEGIN {FS=\":.*## \"}; /^[a-zA-Z0-9_.-]+:.*## / {printf \"%-20s %s\n\", $$1, $$2}" Makefile 2>NUL || findstr /R "^[a-zA-Z0-9_.-][a-zA-Z0-9_.-]*:.*## " Makefile
-else
-> @awk 'BEGIN {FS=":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-20s %s\n", $$1, $$2}' Makefile
-endif
-
 # -----------------------------------------
-# Workflow recommande (Docker-first)
+# Help
 # -----------------------------------------
 
-init: ## Premier setup complet (build + key + cache clear + migrate + swagger)
-> $(COMPOSE) down --remove-orphans
-> $(COMPOSE) up -d --build db backend
-> $(MAKE) env-sync
-> $(COMPOSE) exec -T backend php artisan optimize:clear
-> $(COMPOSE) exec -T backend php artisan migrate --force
-> -$(COMPOSE) exec -T backend php artisan l5-swagger:generate
-
-up: ## Demarrage quotidien rapide (sans rebuild)
-> $(COMPOSE) up -d --remove-orphans db backend
-
-run: up ## Alias de up
-
-reload: ## Sync backend apres changements (cache clear + migrate graceful + swagger)
-> $(MAKE) env-sync
-> $(COMPOSE) exec -T backend php artisan optimize:clear
-> $(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
-> -$(COMPOSE) exec -T backend php artisan l5-swagger:generate
-
-down: ## Arreter les conteneurs
-> $(COMPOSE) down --remove-orphans
-
-rebuild: ## Rebuild complet quand Dockerfile/deps systeme changent
-> $(COMPOSE) down --remove-orphans
-> $(COMPOSE) up -d --build db backend
-
-composer-install: ## Installer/mettre a jour les dependances PHP backend
-> $(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
-
-composer-install-dev: ## Installer les dependances PHP backend avec require-dev
-> $(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
-
-env-sync: ## Creer ou mettre a jour backend/.env avec la config Docker standard
-> $(COMPOSE) up -d db backend
-> $(COMPOSE) exec -T backend sh /app/scripts/ensure-env.sh
-
-restart: ## Redemarrer les conteneurs backend + db
-> $(COMPOSE) restart db backend
-
-status: ## Etat des services Docker
-> $(COMPOSE) ps
-
-logs: ## Logs complets Docker
-> $(COMPOSE) logs -f
-
-logs-back: ## Logs backend uniquement
-> $(COMPOSE) logs -f backend
-
-shell: ## Shell dans le conteneur backend
-> $(COMPOSE) exec backend bash
-
-routes: ## Lister les routes API
-> $(COMPOSE) exec -T backend php artisan route:list --path=api
-
-swagger: ## Regenerer Swagger
-> $(COMPOSE) exec -T backend php artisan l5-swagger:generate
-
-test: ## Lancer les tests backend (avec installation dev si necessaire)
-> $(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
-> $(COMPOSE) exec -T backend php artisan test
-
-clean: ## Stop + suppression des volumes (destructif)
-> $(COMPOSE) down -v --remove-orphans
+help:
+	@echo Usage: make target
+	@echo.
+	@echo Docker workflow:
+	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
+	@echo   make up                - daily startup
+	@echo   make reload            - backend sync after changes
+	@echo   make down              - stop containers
+	@echo   make clean             - remove containers and volumes
+	@echo.
+	@echo Tools:
+	@echo   make status            - docker service status
+	@echo   make logs              - all logs
+	@echo   make logs-back         - backend logs
+	@echo   make shell             - backend shell
+	@echo   make routes            - list API routes
+	@echo   make swagger           - regenerate swagger
+	@echo   make test              - backend tests
 
 # -----------------------------------------
-# Local (sans Docker)
+# Recommended workflow (Docker-first)
 # -----------------------------------------
 
-local-install: ## Installer les dependances backend (composer)
-> composer install --working-dir $(BACKEND_DIR)
+init:
+	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) up -d --build db backend
+	$(MAKE) db-ensure
+	$(MAKE) env-sync
+	$(COMPOSE) exec -T backend php artisan optimize:clear
+	$(COMPOSE) exec -T backend php artisan migrate --force
+	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
-local-env: ## Creer backend/.env depuis .env.example (si absent)
-> @if [ ! -f $(BACKEND_DIR)/.env ]; then cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env; fi
+up:
+	$(COMPOSE) up -d --remove-orphans db backend
 
-local-key: ## Generer APP_KEY
-> php $(BACKEND_DIR)/artisan key:generate
+run: up
 
-local-cache-clear: ## Vider les caches Laravel
-> php $(BACKEND_DIR)/artisan optimize:clear
+reload:
+	$(MAKE) env-sync
+	$(COMPOSE) exec -T backend php artisan optimize:clear
+	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
-local-swagger: ## Generer la documentation Swagger
-> php $(BACKEND_DIR)/artisan l5-swagger:generate
+down:
+	$(COMPOSE) down --remove-orphans
 
-local-routes: ## Lister les routes API
-> php $(BACKEND_DIR)/artisan route:list --path=api
+rebuild:
+	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) up -d --build db backend
 
-local-serve: ## Lancer le serveur backend en local
-> php $(BACKEND_DIR)/artisan serve
+restart:
+	$(COMPOSE) restart db backend
 
-local-test: ## Lancer les tests backend
-> php $(BACKEND_DIR)/artisan test
+status:
+	$(COMPOSE) ps
 
-local-tinker: ## Ouvrir Tinker
-> php $(BACKEND_DIR)/artisan tinker
+logs:
+	$(COMPOSE) logs -f
 
-local-fresh: ## Reset base sqlite locale (migrate:fresh --seed)
-> php $(BACKEND_DIR)/artisan migrate:fresh --seed
+logs-back:
+	$(COMPOSE) logs -f backend
 
-local-setup: local-env local-install local-key local-cache-clear local-swagger ## Setup local complet (sans DB externe)
+shell:
+	$(COMPOSE) exec backend bash
 
-bootstrap: local-setup ## Alias de setup local
+routes:
+	$(COMPOSE) exec -T backend php artisan route:list --path=api
+
+swagger:
+	$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+
+test:
+	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+	$(COMPOSE) exec -T backend php artisan test
+
+composer-install:
+	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
+
+composer-install-dev:
+	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+
+env-sync:
+	$(COMPOSE) up -d db backend
+	$(COMPOSE) exec -T backend sh /app/scripts/ensure-env.sh
+
+db-ensure:
+	$(COMPOSE) up -d db
+	$(COMPOSE) exec -T db sh -lc 'set -eu; ADMIN_USER=""; for u in backend postgres; do if psql -U "$$u" -d postgres -tAc "select 1" >/dev/null 2>&1; then ADMIN_USER="$$u"; break; fi; done; if [ -z "$$ADMIN_USER" ]; then echo "No PostgreSQL admin user found (backend/postgres)."; exit 1; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='\''backend'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE ROLE backend WITH LOGIN PASSWORD '\''backend'\''"; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='\''TriplyDB'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE DATABASE \"TriplyDB\" OWNER backend"; fi; psql -U "$$ADMIN_USER" -d postgres -c "ALTER DATABASE \"TriplyDB\" OWNER TO backend"; psql -U "$$ADMIN_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"TriplyDB\" TO backend";'
+
+clean:
+	$(COMPOSE) down -v --remove-orphans
 
 # -----------------------------------------
-# Compatibilite anciennes commandes docker-*
+# Local (without Docker)
 # -----------------------------------------
 
-docker-up: up ## Compat
+local-install:
+	composer install --working-dir $(BACKEND_DIR)
 
-docker-down: down ## Compat
+local-env:
+	@if [ ! -f $(BACKEND_DIR)/.env ]; then cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env; fi
 
-docker-start: up ## Compat
+local-key:
+	php $(BACKEND_DIR)/artisan key:generate
 
-docker-stop: ## Compat
-> $(COMPOSE) stop
+local-cache-clear:
+	php $(BACKEND_DIR)/artisan optimize:clear
 
-docker-restart: restart ## Compat
+local-swagger:
+	php $(BACKEND_DIR)/artisan l5-swagger:generate
 
-docker-rebuild: rebuild ## Compat
+local-routes:
+	php $(BACKEND_DIR)/artisan route:list --path=api
 
-docker-logs: logs ## Compat
+local-serve:
+	php $(BACKEND_DIR)/artisan serve
 
-docker-logs-back: logs-back ## Compat
+local-test:
+	php $(BACKEND_DIR)/artisan test
 
-docker-shell-back: shell ## Compat
+local-tinker:
+	php $(BACKEND_DIR)/artisan tinker
 
-docker-setup: ## Compat
-> $(COMPOSE) exec -T backend php artisan key:generate --force
-> $(COMPOSE) exec -T backend php artisan migrate --force
+local-fresh:
+	php $(BACKEND_DIR)/artisan migrate:fresh --seed
 
-docker-migrate: ## Compat
-> $(COMPOSE) exec -T backend php artisan migrate --force
+local-setup: local-env local-install local-key local-cache-clear local-swagger
 
-docker-fresh: ## Compat
-> $(COMPOSE) exec -T backend php artisan migrate:fresh --seed --force
+bootstrap: local-setup
 
-docker-seed: ## Compat
-> $(COMPOSE) exec -T backend php artisan db:seed --force
+# -----------------------------------------
+# Legacy docker-* aliases
+# -----------------------------------------
 
-docker-key: ## Compat
-> $(COMPOSE) exec -T backend php artisan key:generate --force
+docker-up: up
+docker-down: down
+docker-start: up
 
-docker-test: test ## Compat
+docker-stop:
+	$(COMPOSE) stop
 
-docker-swagger: swagger ## Compat
+docker-restart: restart
+docker-rebuild: rebuild
+docker-logs: logs
+docker-logs-back: logs-back
+docker-shell-back: shell
+docker-test: test
+docker-swagger: swagger
+docker-routes: routes
+docker-clean: clean
 
-docker-routes: routes ## Compat
+docker-setup:
+	$(COMPOSE) exec -T backend php artisan key:generate --force
+	$(COMPOSE) exec -T backend php artisan migrate --force
 
-docker-clean: clean ## Compat
+docker-migrate:
+	$(COMPOSE) exec -T backend php artisan migrate --force
+
+docker-fresh:
+	$(COMPOSE) exec -T backend php artisan migrate:fresh --seed --force
+
+docker-seed:
+	$(COMPOSE) exec -T backend php artisan db:seed --force
+
+docker-key:
+	$(COMPOSE) exec -T backend php artisan key:generate --force
