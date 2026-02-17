@@ -6,55 +6,56 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
-import { TimePicker } from '@/src/components/TimePicker/TimePicker';
+import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { Button } from '@/src/components/Button/Button';
-import { FlightResults } from '@/src/components/FlightResults/FlightResults';
+import { HotelResults } from '@/src/components/HotelResults/HotelResults';
+import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
-export interface FlightSearchModalProps {
+export const HOTEL_PREFERENCE_OPTIONS = [
+    'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
+    'Plage', 'Équipement', 'Retour positif', 'Hôtel de luxe',
+    'Animaux domestiques', 'Réservé aux adultes', 'Wi-Fi',
+];
+
+export interface HotelSearchModalProps {
     visible: boolean;
     onClose: () => void;
-    departureCity: string;
-    setDepartureCity: (value: string) => void;
-    arrivalCity: string;
-    setArrivalCity: (value: string) => void;
+    cityCode: string;
+    setCityCode: (value: string) => void;
     arrivalDate: string;
     setArrivalDate: (value: string) => void;
     departureDate: string;
     setDepartureDate: (value: string) => void;
-    arrivalTime: string;
-    setArrivalTime: (value: string) => void;
-    departureTime: string;
-    setDepartureTime: (value: string) => void;
     travelerCount: number;
     setTravelerCount: (value: number) => void;
     budget: string;
     setBudget: (value: string) => void;
+    selectedOptions?: string[];
+    setSelectedOptions?: (options: string[]) => void;
+    multiSelectOptions?: string[];
     onSearch: () => void;
     onNewSearch?: () => void;
-    onSelectOffer?: (offer: any, carrierName: string) => void;
+    onSelectOffer?: (offer: HotelOffer) => void;
     isLoading: boolean;
     apiResponse: any;
 }
 
-export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
+export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
     visible,
     onClose,
-    departureCity,
-    setDepartureCity,
-    arrivalCity,
-    setArrivalCity,
+    cityCode,
+    setCityCode,
     arrivalDate,
     setArrivalDate,
     departureDate,
     setDepartureDate,
-    arrivalTime,
-    setArrivalTime,
-    departureTime,
-    setDepartureTime,
     travelerCount,
     setTravelerCount,
     budget,
     setBudget,
+    selectedOptions = [],
+    setSelectedOptions,
+    multiSelectOptions = HOTEL_PREFERENCE_OPTIONS,
     onSearch,
     onNewSearch,
     onSelectOffer,
@@ -87,15 +88,14 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
-                        aria-labelledby="flight-search-title"
+                        aria-labelledby="hotel-search-title"
                     >
-                        {/* Header */}
                         <div
                             className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0"
                             style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
                         >
-                            <h2 id="flight-search-title" className="text-xl font-semibold" style={{ color: 'var(--foreground, #ededed)' }}>
-                                Recherche de vols
+                            <h2 id="hotel-search-title" className="text-xl font-semibold" style={{ color: 'var(--foreground, #ededed)' }}>
+                                Recherche d'hôtels
                             </h2>
                             <button
                                 onClick={onClose}
@@ -109,24 +109,17 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                             </button>
                         </div>
 
-                        {/* Content - scrollable */}
                         <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0" style={{ backgroundColor: '#222222' }}>
                             {!apiResponse?.data ? (
-                                /* Formulaire de recherche */
                                 <div className="max-w-2xl mx-auto space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                                            Ville / Destination
+                                        </label>
                                         <CityAutocomplete
-                                            value={departureCity}
-                                            onChange={setDepartureCity}
-                                            label="Ville de départ"
-                                            placeholder="Ex. Paris, Lyon..."
-                                            containerStyle={{ color: 'var(--foreground, #ededed)' }}
-                                        />
-                                        <CityAutocomplete
-                                            value={arrivalCity}
-                                            onChange={setArrivalCity}
-                                            label="Ville d'arrivée"
-                                            placeholder="Ex. Marseille, Bordeaux..."
+                                            value={cityCode}
+                                            onChange={setCityCode}
+                                            placeholder="Ex. Paris, Marseille..."
                                             containerStyle={{ color: 'var(--foreground, #ededed)' }}
                                         />
                                     </div>
@@ -181,37 +174,24 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                                 color: 'rgba(255, 255, 255, 0.5)',
                                             }}
                                         />
-                                        <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                                            <div className="flex-1 min-w-0">
-                                                <TimePicker
-                                                    value={arrivalTime}
-                                                    onChange={setArrivalTime}
-                                                    label="Heure d'arrivée"
-                                                    containerStyle={{
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                        color: 'rgba(255, 255, 255, 0.7)',
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <TimePicker
-                                                    value={departureTime}
-                                                    onChange={setDepartureTime}
-                                                    label="Heure de départ"
-                                                    containerStyle={{
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                        color: 'rgba(255, 255, 255, 0.7)',
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                                            Préférences
+                                        </label>
+                                        <MultiSelect
+                                            options={multiSelectOptions}
+                                            selectedValues={selectedOptions}
+                                            onChange={setSelectedOptions}
+                                            placeholder="Sélectionner des préférences..."
+                                            className="w-full"
+                                        />
                                     </div>
 
                                     <div className="pt-4">
                                         <Button
-                                            label="Rechercher les vols"
+                                            label="Rechercher les hôtels"
                                             onClick={!isLoading ? onSearch : undefined}
                                             variant="light"
                                             loading={isLoading}
@@ -221,13 +201,12 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                     </div>
                                 </div>
                             ) : (
-                                /* Résultats */
                                 <div className="flex flex-col min-h-[400px]" style={{ color: '#ededed' }}>
                                     <h3 className="text-lg font-semibold mb-4 shrink-0" style={{ color: '#ededed' }}>
                                         Meilleures offres trouvées
                                     </h3>
                                     <div className="flex-1 min-h-[300px] overflow-y-auto">
-                                        <FlightResults data={apiResponse} onSelectOffer={onSelectOffer} />
+                                        <HotelResults data={apiResponse} onSelectOffer={onSelectOffer} />
                                     </div>
                                     <div className="pt-4 mt-4 border-t shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
                                         <Button

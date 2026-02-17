@@ -36,6 +36,14 @@ final class V1TripEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Creer un voyage',
@@ -76,6 +84,14 @@ final class V1TripEndpoints
         tags: ['Voyages'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Lister les voyages',
@@ -128,6 +144,14 @@ final class V1TripEndpoints
             new OA\Parameter(name: 'trip', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Detail du voyage',
@@ -179,6 +203,14 @@ final class V1TripEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour le voyage',
@@ -226,6 +258,14 @@ final class V1TripEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Dupliquer le voyage',
@@ -266,6 +306,14 @@ final class V1TripEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Valider le sejour',

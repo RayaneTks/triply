@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
-import MessageList from "@/src/components/Messages/MessageList";
-import { SearchBar } from "@/src/components/Searchbar/Searchbar";
-import { Button } from "@/src/components/Button/Button";
+import MessageList from '@/src/components/Messages/MessageList';
+import { SearchBar } from '@/src/components/Searchbar/Searchbar';
+import { Button } from '@/src/components/Button/Button';
+import { getStoredSession } from '@/src/lib/auth-client';
 
 interface Coordinates {
     latitude: number;
@@ -32,7 +33,7 @@ export interface ChatMessage {
 
 interface AssistantProps {
     onUpdateLocations?: (locations: Location[]) => void;
-    destination?: string; // <--- NOUVELLE PROP : La ville venant du formulaire
+    destination?: string;
 }
 
 export default function Assistant({ onUpdateLocations, destination }: AssistantProps) {
@@ -41,13 +42,24 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
     const [loading, setLoading] = useState(false);
 
     const placeholderText = destination
-        ? `Rechercher des activités à ${destination}...`
-        : "Où souhaitez-vous aller ? (ex: Tokyo...)";
+        ? `Rechercher des activites a ${destination}...`
+        : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
 
     const sendMessage = async () => {
         if ((!message.trim() && !destination) || loading) return;
 
-        const currentMessageText = message.trim() || `Montre-moi les hôtels et activités à ${destination}`;
+        const session = getStoredSession();
+        if (!session?.token) {
+            const authRequired: ChatMessage = {
+                id: uuid(),
+                role: 'assistant',
+                content: "Connexion requise pour utiliser l'assistant.",
+            };
+            setMessages((prev) => [...prev, authRequired]);
+            return;
+        }
+
+        const currentMessageText = message.trim() || `Montre-moi les hotels et activites a ${destination}`;
 
         const userMessage: ChatMessage = {
             id: uuid(),
@@ -61,21 +73,24 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
         setLoading(true);
 
         try {
-            const apiMessages = newHistory.map(({ role, content }) => ({
-                role,
-                content
-            }));
+            const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
 
             const res = await fetch('/api/assistant', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.token}`,
+                },
                 body: JSON.stringify({
                     messages: apiMessages,
-                    destinationContext: destination
+                    destinationContext: destination,
                 }),
             });
 
-            if (!res.ok) throw new Error(res.statusText);
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                throw new Error(payload?.error || res.statusText || 'Erreur API');
+            }
 
             const data: AssistantResponse = await res.json();
 
@@ -85,20 +100,19 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
                 content: data.reply,
             };
 
-            setMessages(prev => [...prev, assistantMessage]);
+            setMessages((prev) => [...prev, assistantMessage]);
 
             if (data.locations && data.locations.length > 0 && onUpdateLocations) {
                 onUpdateLocations(data.locations);
             }
-
         } catch (error) {
-            console.error("Erreur API", error);
+            console.error('Erreur API', error);
             const errorMessage: ChatMessage = {
                 id: uuid(),
                 role: 'assistant',
-                content: "Désolé, une erreur est survenue."
+                content: error instanceof Error ? error.message : 'Desole, une erreur est survenue.',
             };
-            setMessages(prev => [...prev, errorMessage]);
+            setMessages((prev) => [...prev, errorMessage]);
         } finally {
             setLoading(false);
         }
@@ -107,7 +121,7 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendMessage();
+            void sendMessage();
         }
     };
 
@@ -119,9 +133,7 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
                 boxShadow: '0 2px 8px rgba(0,0,0,.3)',
             }}
         >
-            <h2 className="text-lg font-semibold mb-4 text-white">
-                Triply Assistant
-            </h2>
+            <h2 className="text-lg font-semibold mb-4 text-white">Triply Assistant</h2>
 
             <MessageList messages={messages} loading={loading} />
 
@@ -129,14 +141,16 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
                 <SearchBar
                     placeholder={placeholderText}
                     value={message}
-                    onChange={e => setMessage(e.target.value)}
+                    onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
                     className="flex-1"
                 />
 
                 <Button
                     label="Envoyer"
-                    onClick={sendMessage}
+                    onClick={() => {
+                        void sendMessage();
+                    }}
                     variant="dark"
                     tone="tone1"
                     disabled={loading}
