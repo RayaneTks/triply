@@ -7,7 +7,6 @@
       "Port": 5432,
       "MaintenanceDB": "TriplyDB",
       "Username": "backend",
-      "PassFile": "/pgpass",
       "SSLMode": "prefer"
     }
   }
