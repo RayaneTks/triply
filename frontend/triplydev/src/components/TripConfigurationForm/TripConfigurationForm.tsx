@@ -6,7 +6,9 @@ import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { Button } from '@/src/components/Button/Button';
 import { SelectedFlightCard } from '@/src/components/SelectedFlightCard/SelectedFlightCard';
+import { SelectedHotelCard } from '@/src/components/SelectedHotelCard/SelectedHotelCard';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
 interface TripConfigurationFormProps {
     departureCity: string;
@@ -40,6 +42,12 @@ interface TripConfigurationFormProps {
     selectedFlightCarrierName?: string;
     onFlightCardClick?: () => void;
     onRemoveFlight?: () => void;
+    onOpenHotelSearch: () => void;
+    onCloseHotelSearch?: () => void;
+    hotelSearchChecked?: boolean;
+    selectedHotel?: HotelOffer | null;
+    onHotelCardClick?: () => void;
+    onRemoveHotel?: () => void;
 }
 
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
@@ -63,6 +71,12 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                                                                                 onFlightCardClick,
                                                                                 onRemoveFlight,
                                                                                 setArrivalCityName,
+                                                                                onOpenHotelSearch,
+                                                                                onCloseHotelSearch,
+                                                                                hotelSearchChecked = false,
+                                                                                selectedHotel,
+                                                                                onHotelCardClick,
+                                                                                onRemoveHotel,
                                                                             }) => {
     return (
         <div
@@ -89,6 +103,19 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                     </span>
                 </label>
 
+                <label className="flex items-center gap-3 cursor-pointer mb-2">
+                    <input
+                        type="checkbox"
+                        checked={hotelSearchChecked}
+                        onChange={(e) => (e.target.checked ? onOpenHotelSearch() : onCloseHotelSearch?.())}
+                        className="w-4 h-4 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
+                        style={{ accentColor: 'var(--primary, #0096c7)' }}
+                    />
+                    <span className="text-sm font-medium" style={{ color: 'var(--foreground, #ededed)' }}>
+                        Rechercher des hôtels
+                    </span>
+                </label>
+
                 {selectedFlight && (
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
@@ -99,6 +126,19 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                             carrierName={selectedFlightCarrierName}
                             onClick={onFlightCardClick || (() => {})}
                             onRemove={onRemoveFlight}
+                        />
+                    </div>
+                )}
+
+                {selectedHotel && (
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                            Hôtel sélectionné
+                        </label>
+                        <SelectedHotelCard
+                            offer={selectedHotel}
+                            onClick={onHotelCardClick || (() => {})}
+                            onRemove={onRemoveHotel}
                         />
                     </div>
                 )}
