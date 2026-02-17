@@ -46,7 +46,7 @@ export const HotelDetailModal: React.FC<HotelDetailModalProps> = ({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-4 md:inset-12 lg:inset-16 z-[10001] flex flex-col rounded-xl overflow-hidden"
+                        className="fixed inset-2 sm:inset-4 md:inset-12 lg:inset-16 z-[10001] flex flex-col rounded-xl overflow-hidden max-h-[calc(100dvh-1rem)]"
                         style={{
                             backgroundColor: '#222222',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -58,7 +58,7 @@ export const HotelDetailModal: React.FC<HotelDetailModalProps> = ({
                         aria-labelledby="hotel-detail-title"
                     >
                         <div
-                            className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+                            className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0"
                             style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
                         >
                             <h2 id="hotel-detail-title" className="text-xl font-semibold" style={{ color: '#ededed' }}>
@@ -76,7 +76,7 @@ export const HotelDetailModal: React.FC<HotelDetailModalProps> = ({
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                             <div className="max-w-2xl mx-auto space-y-4">
                                 <HotelOfferCard offer={offer} className="w-full" />
 

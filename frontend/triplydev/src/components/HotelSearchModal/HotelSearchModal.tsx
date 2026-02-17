@@ -79,7 +79,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-4 md:inset-8 lg:inset-12 z-[9999] flex flex-col rounded-xl overflow-hidden"
+                        className="fixed inset-2 sm:inset-4 md:inset-8 lg:inset-12 z-[9999] flex flex-col rounded-xl overflow-hidden max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-4rem)]"
                         style={{
                             backgroundColor: 'var(--background, #222222)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -91,7 +91,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                         aria-labelledby="hotel-search-title"
                     >
                         <div
-                            className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+                            className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0"
                             style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
                         >
                             <h2 id="hotel-search-title" className="text-xl font-semibold" style={{ color: 'var(--foreground, #ededed)' }}>
@@ -109,7 +109,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 min-h-0" style={{ backgroundColor: '#222222' }}>
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0" style={{ backgroundColor: '#222222' }}>
                             {!apiResponse?.data ? (
                                 <div className="max-w-2xl mx-auto space-y-4">
                                     <div>

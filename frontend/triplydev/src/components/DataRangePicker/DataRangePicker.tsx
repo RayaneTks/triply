@@ -248,7 +248,8 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
                     top: `${position.top}px`,
                     right: `${position.right}px`,
-                    width: '340px',
+                    width: 'min(340px, calc(100vw - 24px))',
+                    maxWidth: '340px',
                     position: 'fixed',
                 }}
             >

@@ -20,7 +20,7 @@ export const Login: React.FC<LoginProps> = ({
     };
 
     return (
-        <div className="w-full h-full flex items-center justify-center relative p-6">
+        <div className="w-full min-h-[100dvh] flex items-center justify-center relative p-4 sm:p-6 overflow-y-auto">
             {/* Bouton retour */}
             <div className="absolute top-6 left-6">
                 <Button
@@ -32,7 +32,7 @@ export const Login: React.FC<LoginProps> = ({
             </div>
 
             <div
-                className="w-full max-w-md rounded-2xl overflow-hidden"
+                className="w-full max-w-md rounded-2xl overflow-hidden min-w-0"
                 style={{
                     background: 'linear-gradient(180deg, #1a1a1a 0%, var(--background, #222222) 100%)',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -59,7 +59,7 @@ export const Login: React.FC<LoginProps> = ({
                     </p>
                 </div>
 
-                <form ref={formRef} onSubmit={handleSubmit} className="p-8 space-y-5">
+                <form ref={formRef} onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8 space-y-5">
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
                             Email

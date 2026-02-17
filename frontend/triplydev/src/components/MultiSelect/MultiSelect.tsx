@@ -91,7 +91,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                                             border: '1px solid rgba(0, 150, 199, 0.3)',
                                         }}
                                     >
-                                        <span className="truncate max-w-[120px]">{option}</span>
+                                        <span className="truncate max-w-[80px] sm:max-w-[120px]">{option}</span>
                                         <span
                                             onClick={(e) => removeOption(option, e)}
                                             className="hover:bg-white/20 rounded-full p-0.5 transition-colors cursor-pointer"

@@ -100,7 +100,7 @@ export default function VoyageDetailPage() {
 
     if (!trip) {
         return (
-            <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+            <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
                 <Sidebar
                     isCollapsed={isSidebarCollapsed}
                     onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -123,7 +123,7 @@ export default function VoyageDetailPage() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -133,7 +133,7 @@ export default function VoyageDetailPage() {
             />
 
             <main className="flex-1 overflow-y-auto min-w-0">
-                <div className="max-w-2xl mx-auto p-8 md:p-12">
+                <div className="max-w-2xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12">
                     <div className="flex items-center gap-4 mb-8">
                         <Link
                             href="/voyages"
@@ -144,7 +144,7 @@ export default function VoyageDetailPage() {
                         </Link>
                     </div>
 
-                    <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
                         Récapitulatif de votre voyage
                     </h1>
                     <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
@@ -299,7 +299,7 @@ export default function VoyageDetailPage() {
                         </div>
                     </section>
 
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
                         <Link href="/">
                             <Button label="Modifier le voyage" variant="dark" tone="tone2" />
                         </Link>
