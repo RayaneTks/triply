@@ -64,7 +64,7 @@ interface Location {
     id: string;
     title: string;
     coordinates: Coordinates;
-    type?: string;E
+    type?: string;
     zoom?: number;
 }
 
@@ -106,7 +106,7 @@ export interface MapProps {
     /** Callback appelé quand la souris quitte un POI */
     onPoiLeave?: () => void;
     /** Callback appelé quand on clique sur un aéroport */
-    onAirportSelect?: (iataCode: string, name: string) => void;
+    onAirportSelect?: (iataCode: string, name: string, lat: number, lng: number) => void;
     /** Afficher les contrôles de navigation */
     showNavigationControls?: boolean;
     /** Afficher le contrôle de géolocalisation */
@@ -382,9 +382,16 @@ export const WorldMap: React.FC<MapProps> = ({
             if (airportFeature && onAirportSelect) {
                 const iata = airportFeature.properties?.iata_code;
                 const name = airportFeature.properties?.name;
+
+                // AJOUT : Récupération des coordonnées géographiques
+                // Dans un GeoJSON Point, coordinates est un tableau [lng, lat]
+                const geometry = airportFeature.geometry as any; // Cast rapide car on sait que c'est un Point
+                const [lng, lat] = geometry.coordinates;
+
                 if (iata) {
-                    onAirportSelect(iata, name || 'Aéroport');
-                    return; // On arrête ici, on ne sélectionne pas de POI en dessous
+                    // On passe lat/lng au parent
+                    onAirportSelect(iata, name || 'Aéroport', lat, lng);
+                    return;
                 }
             }
 
