@@ -42,46 +42,29 @@ FORMAT
 export const REFUSAL_TEXT =
   "✈️ Je suis Triply, un assistant dédié à l'organisation de voyages. Je ne peux pas aider sur cette demande. Pose-moi plutôt une question liée à ton voyage.";
 
+/** Patterns de jailbreak / injection explicites uniquement (éviter faux positifs) */
 const suspiciousPatterns = [
-  /ignore (all|previous|above) instructions/i,
-  /system prompt/i,
-  /reveal.*prompt/i,
+  /ignore (all|previous|above) (instructions?|prompt)/i,
+  /(system|reveal|show|display|print)\s*(prompt|instructions?)/i,
   /jailbreak/i,
-  /dan\b/i,
-  /developer message/i,
-  /bypass/i,
-  /prompt injection/i,
-  /roleplay as/i,
-  /act as/i,
-  /hack/i,
-  /exploit/i,
-];
-
-const travelKeywords = [
-  "voyage", "itinéraire", "itinerary", "roadtrip", "vol", "train", "bus", "hôtel", "auberge",
-  "airbnb", "visa", "passeport", "météo", "budget", "quartier", "sécurité", "activité",
-  "restaurant", "transfert", "aéroport", "gare", "location de voiture", "trajet",
-  "planning", "jour 1", "jour 2", "city pass", "musée", "plage", "randonnée",
-  "paris", "tokyo", "france", "japon", "italie", "espagne", "hotel", "vols", "avion",
+  /\bdan\s+mode\b/i,
+  /developer\s*(mode|message)/i,
+  /bypass\s*(safety|restrictions)/i,
+  /prompt\s*injection/i,
+  /(forget|ignore)\s*(your|these)\s*(rules|instructions)/i,
 ];
 
 export function quickGate(userText: string): { allow: boolean; reason?: string; response: string } {
   const t = userText.trim();
+  if (!t) return { allow: false, reason: "empty", response: REFUSAL_TEXT };
 
-  // hard block suspicious / jailbreak
+  // Blocage uniquement pour jailbreak / injection explicite
   if (suspiciousPatterns.some((re) => re.test(t))) {
     return { allow: false, reason: "prompt_injection", response: REFUSAL_TEXT };
   }
 
-  // quick travel signal
-  const lower = t.toLowerCase();
-  const hits = travelKeywords.filter((k) => lower.includes(k)).length;
-
-  // If no travel signals and it's short/generic, we can refuse early
-  if (hits === 0 && lower.length < 80) {
-    return { allow: false, reason: "no_travel_signal", response: REFUSAL_TEXT };
-  }
-
+  // Ne plus bloquer sur "pas de mot-clé voyage" : on laisse le LLM décider via le system prompt.
+  // Le LLM gère mieux les cas ambigus (ex: "Lyon" sans autre mot, questions courtes).
   return { allow: true, response: "" };
 }
 

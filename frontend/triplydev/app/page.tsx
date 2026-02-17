@@ -241,6 +241,7 @@ export default function Home() {
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+    const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
@@ -522,7 +523,7 @@ export default function Home() {
                                 height="100%"
                                 width="100%"
                                 className="h-full"
-                                padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
+                                padding={{ left: isConfigPanelOpen ? 400 : 0, top: 0, bottom: 0, right: 0 }}
                                 onPoiClick={handlePoiClick}
                                 locations={mapLocations}
                                 onAirportSelect={handleAirportSelect}
@@ -590,6 +591,28 @@ export default function Home() {
                                 onClose={() => setIsHotelDetailModalOpen(false)}
                                 offer={selectedHotelOffer}
                             />
+
+                            {/* Bouton Configurer votre voyage - bas gauche (visible uniquement quand le panneau est fermé) */}
+                            {!isConfigPanelOpen && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsConfigPanelOpen(true)}
+                                    className="absolute bottom-4 left-4 z-20 flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all hover:scale-105 shadow-lg"
+                                    style={{
+                                        backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                                        color: 'var(--foreground, #ededed)',
+                                    }}
+                                    title="Configurer votre voyage"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="3" />
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                    </svg>
+                                    <span className="text-sm font-medium">Configurer votre voyage</span>
+                                </button>
+                            )}
 
                             {/* Bouton Assistant Triply - bas droite */}
                             <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
@@ -758,22 +781,44 @@ export default function Home() {
                             </AnimatePresence>
                         </div>
 
-                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden p-4 z-10">
-                            <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                                <AnimatePresence mode="wait" custom={slideDirection}>
-                                    <Slide
-                                        key={currentSlideIndex}
-                                        direction={slideDirection}
-                                        onNext={handleNext}
-                                        onPrev={handlePrev}
-                                        canNext={currentSlideIndex < slides.length - 1}
-                                        canPrev={currentSlideIndex > 0}
-                                    >
-                                        {slides[currentSlideIndex]?.content}
-                                    </Slide>
-                                </AnimatePresence>
-                            </div>
-                        </div>
+                        <AnimatePresence>
+                            {isConfigPanelOpen && (
+                                <motion.div
+                                    initial={{ width: 0, opacity: 0 }}
+                                    animate={{ width: '33.333%', opacity: 1 }}
+                                    exit={{ width: 0, opacity: 0 }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                    className="absolute left-0 top-0 bottom-0 flex flex-col overflow-hidden p-4 z-10 min-w-0 shrink-0"
+                                >
+                                    <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
+                                        <div className="absolute top-3 left-3 z-10">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsConfigPanelOpen(false)}
+                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                aria-label="Fermer"
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--foreground)' }}>
+                                                    <path d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <AnimatePresence mode="wait" custom={slideDirection}>
+                                            <Slide
+                                                key={currentSlideIndex}
+                                                direction={slideDirection}
+                                                onNext={handleNext}
+                                                onPrev={handlePrev}
+                                                canNext={currentSlideIndex < slides.length - 1}
+                                                canPrev={currentSlideIndex > 0}
+                                            >
+                                                {slides[currentSlideIndex]?.content}
+                                            </Slide>
+                                        </AnimatePresence>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </>
                 )}
             </div>
