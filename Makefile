@@ -1,4 +1,6 @@
 .PHONY: help \
+	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
+	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
@@ -10,13 +12,109 @@ COMPOSE := docker compose
 help: ## Afficher toutes les commandes disponibles
 	@echo Usage: make ^<commande^>
 	@echo.
-	@findstr /R "^[a-zA-Z0-9_.-][a-zA-Z0-9_.-]*:.*## " Makefile
+	@echo Docker workflow:
+	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
+	@echo   make install           - alias of make init
+	@echo   make migrate           - run safe DB migrations in backend container
+	@echo   make up                - daily startup
+	@echo   make reload            - backend sync after changes
+	@echo   make down              - stop containers
+	@echo   make clean             - remove containers and volumes
+	@echo.
+	@echo Tools:
+	@echo   make status            - docker service status
+	@echo   make logs              - all logs
+	@echo   make logs-back         - backend logs
+	@echo   make shell             - backend shell
+	@echo   make routes            - list API routes
+	@echo   make swagger           - regenerate swagger
+	@echo   make test              - backend tests
 
 # -----------------------------------------
 # Local (sans Docker)
 # -----------------------------------------
 
-local-install: ## Installer les dependances backend (composer)
+init:
+	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) up -d --build db backend pgadmin
+	$(MAKE) db-ensure
+	$(MAKE) env-sync
+	$(COMPOSE) exec -T backend php artisan optimize:clear
+	$(COMPOSE) exec -T backend php artisan migrate --force
+	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+
+install: init
+
+migrate:
+	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+
+up:
+	$(COMPOSE) up -d --remove-orphans db backend pgadmin
+
+run: up
+
+reload:
+	$(MAKE) env-sync
+	$(COMPOSE) exec -T backend php artisan optimize:clear
+	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+
+down:
+	$(COMPOSE) down --remove-orphans
+
+rebuild:
+	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) up -d --build db backend pgadmin
+
+restart:
+	$(COMPOSE) restart db backend pgadmin
+
+status:
+	$(COMPOSE) ps
+
+logs:
+	$(COMPOSE) logs -f
+
+logs-back:
+	$(COMPOSE) logs -f backend
+
+shell:
+	$(COMPOSE) exec backend bash
+
+routes:
+	$(COMPOSE) exec -T backend php artisan route:list --path=api
+
+swagger:
+	$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+
+test:
+	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+	$(COMPOSE) exec -T backend php artisan test
+
+composer-install:
+	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
+
+composer-install-dev:
+	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+
+env-sync:
+	$(COMPOSE) up -d db backend
+	$(COMPOSE) exec -T backend sh /app/scripts/ensure-env.sh
+
+db-ensure:
+	$(COMPOSE) up -d db
+	$(COMPOSE) exec -T db sh -lc 'set -eu; ADMIN_USER=""; for u in backend postgres; do if psql -U "$$u" -d postgres -tAc "select 1" >/dev/null 2>&1; then ADMIN_USER="$$u"; break; fi; done; if [ -z "$$ADMIN_USER" ]; then echo "No PostgreSQL admin user found (backend/postgres)."; exit 1; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='\''backend'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE ROLE backend WITH LOGIN PASSWORD '\''backend'\''"; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='\''TriplyDB'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE DATABASE \"TriplyDB\" OWNER backend"; fi; psql -U "$$ADMIN_USER" -d postgres -c "ALTER DATABASE \"TriplyDB\" OWNER TO backend"; psql -U "$$ADMIN_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"TriplyDB\" TO backend";'
+
+clean:
+	$(COMPOSE) down -v --remove-orphans
+
+clear: clean
+
+# -----------------------------------------
+# Local (without Docker)
+# -----------------------------------------
+
+local-install:
 	composer install --working-dir $(BACKEND_DIR)
 
 local-env: ## Creer backend/.env depuis .env.example (si absent)

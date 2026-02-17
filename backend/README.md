@@ -12,9 +12,13 @@ Backend API de Triply, documente avec Swagger pour developper et tester sans fro
 - Composer
 - Extensions PHP actives : `fileinfo`, `zip`
 
-Verification rapide :
-```powershell
-php -m | findstr /i "fileinfo zip"
+## Workflow recommande (Docker-first)
+
+Depuis la racine du repo (`triply/`) :
+
+1. Setup initial (une seule fois, one-shot)
+```bash
+make install
 ```
 
 ## Installation
@@ -83,18 +87,26 @@ Ouvrir Swagger UI :
 
 ## Commandes utiles
 
-- `make help` : voir toutes les commandes
-- `make local-install` : installer les dependances backend
-- `make local-env` : creer `backend/.env` si absent
-- `make local-key` : generer `APP_KEY`
-- `make local-cache-clear` : vider les caches Laravel
-- `make local-swagger` : regenerer Swagger
-- `make local-routes` : lister les routes API
-- `make local-test` : lancer les tests
-- `make local-tinker` : ouvrir Tinker
-- `make docker-up` : demarrer Docker
-- `make docker-swagger` : regenerer Swagger dans Docker
-- `make docker-routes` : lister les routes API dans Docker
+- `make init` : setup complet (build, db-ensure, env-sync, cache clear, migrate, swagger)
+- `make install` : alias de `make init`
+- `make migrate` : applique les migrations en mode safe
+- `make db-ensure` : cree le role `backend` et la base `TriplyDB` si absents
+- `make up` / `make run` : demarrage quotidien rapide
+- `make reload` : clear cache + migrate graceful + swagger
+- `make env-sync` : cree/met a jour `backend/.env` avec la config Docker standard (APP + DB)
+- `make down` : arret conteneurs
+- `make rebuild` : rebuild complet Docker
+- `make composer-install` : a lancer si `composer.json`/`composer.lock` changent
+- `make composer-install-dev` : installer aussi les dependances dev
+- `make restart` : redemarrage backend + db
+- `make status` : etat des services
+- `make logs` : logs complets
+- `make logs-back` : logs backend uniquement
+- `make shell` : shell backend
+- `make routes` : liste routes API
+- `make swagger` : regen Swagger
+- `make test` : tests backend
+- `make clean` : suppression volumes (destructif)
 
 ## Perimetre
 

@@ -1,46 +1,140 @@
 # Triply
 
-Plateforme de voyage avec un frontend et un backend Laravel documente avec Swagger.
+Plateforme de planification de voyage avec backend Laravel (`backend/`) et frontend Next.js (`frontend/triplydev/`).
 
-## Structure du repo
+## Prerequis
 
-- `frontend/` : application front
-- `backend/` : API Laravel
+### Option A (recommandee): Docker
+- Docker Desktop
+- Docker Compose v2
+- `make`
 
-## Demarrage rapide
+### Option B: Installation locale
+- PHP 8.2+
+- Composer 2+
+- Node.js 20+ et npm
+- PostgreSQL 16+ (configuration par defaut du projet)
+- Extensions PHP usuelles Laravel: `bcmath`, `ctype`, `fileinfo`, `json`, `mbstring`, `openssl`, `pdo`, `pdo_pgsql`, `tokenizer`, `xml`
 
-Utiliser le `Makefile` a la racine.
+## Installation (fresh clone)
 
-1. Afficher les commandes disponibles :
+### 1) Avec Docker + Makefile (recommande)
+Depuis la racine du repo:
+
 ```bash
-make help
+make install
 ```
-2. Initialiser le backend en local :
+
+`make install` est un alias de `make init` et execute build, bootstrap DB, sync `.env`, migrations, puis regeneration Swagger.
+
+Demarrage quotidien:
+
 ```bash
 make local-setup
 ```
-3. Lancer l'API :
+
+Verification API:
+
 ```bash
-make local-serve
+curl http://127.0.0.1:8000/api/v1/health
+```
+
+### 2) Sans Docker (local)
+
+#### Backend Laravel
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Configurer la DB dans `backend/.env`:
+- `DB_CONNECTION=pgsql`
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=5432`
+- `DB_DATABASE=TriplyDB`
+- `DB_USERNAME=backend`
+- `DB_PASSWORD=backend`
+
+Puis:
+
+```bash
+php artisan migrate
+php artisan serve
+```
+
+Sanctum est deja installe. Aucune publication supplementaire n'est necessaire pour lancer le projet dans son etat actuel.
+
+#### Frontend Next.js (optionnel pour l'API, requis pour l'app web)
+```bash
+cd frontend/triplydev
+npm install
+npm run dev
+```
+
+## Mise a jour de la DB (base deja existante)
+
+### Docker
+```bash
+make migrate
+```
+
+ou:
+
+```bash
+docker compose exec -T backend php artisan migrate --force
+```
+
+### Local
+```bash
+cd backend
+php artisan migrate
+```
+
+Rollback d'une migration:
+
+```bash
+php artisan migrate:rollback --step=1
+```
+
+## Docker Compose direct (sans Makefile)
+
+```bash
+docker compose up -d --build db backend pgadmin
+docker compose exec -T backend php artisan migrate --force
 ```
 
 ## URLs utiles
 
-- API locale : `http://127.0.0.1:8000`
-- Swagger UI : `http://127.0.0.1:8000/api/documentation`
-- Healthcheck : `http://127.0.0.1:8000/api/health`
+- API: `http://127.0.0.1:8000`
+- Healthcheck: `http://127.0.0.1:8000/api/v1/health`
+- Swagger UI: `http://127.0.0.1:8000/api/documentation`
+- PgAdmin: `http://127.0.0.1:8080`
 
-## Notes
+## Troubleshooting
 
-- Le frontend est gere separement.
-- Les details backend (variables d'environnement, endpoints V1, workflow Swagger) sont dans `backend/README.md`.
-- La carte des fichiers backend a modifier selon la feature est dans `backend/docs/BACKEND_WORKING_MAP.md`.
+- Erreur de connexion DB:
+  - verifier `DB_*` dans `backend/.env`
+  - verifier que PostgreSQL est demarre et accessible
+- Migration en echec:
+  - relancer `php artisan migrate`
+  - si necessaire rollback cible: `php artisan migrate:rollback --step=1`
+- Cache Laravel incoherent:
+  - `php artisan optimize:clear`
+- Droits ecriture storage/bootstrap cache:
+  - verifier les permissions sur `backend/storage` et `backend/bootstrap/cache`
+- Container backend up mais API KO:
+  - `make logs-back` puis verifier la route health
+- Erreur Docker sur `pgadmin/pgpass`:
+  - verifier que `pgadmin/pgpass` et `pgadmin/servers.json` sont des fichiers, pas des dossiers
 
-## Commandes principales
+## Commandes utiles
 
-- `make local-setup` : setup backend local complet
-- `make local-swagger` : regenerer Swagger
-- `make local-routes` : lister les routes API
-- `make local-test` : lancer les tests
-- `make docker-up` : lancer l'environnement Docker
-- `make docker-swagger` : regenerer Swagger dans Docker
+- `make help`
+- `make install`
+- `make up`
+- `make migrate`
+- `make reload`
+- `make logs-back`
+- `make down`
