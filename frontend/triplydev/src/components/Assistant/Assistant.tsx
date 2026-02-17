@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuid } from 'uuid';
 import MessageList from "@/src/components/Messages/MessageList";
 import { SearchBar } from "@/src/components/Searchbar/Searchbar";
@@ -40,9 +40,20 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const placeholderText = destination
-        ? `Rechercher des activités à ${destination}...`
-        : "Où souhaitez-vous aller ? (ex: Tokyo...)";
+    const [isNarrow, setIsNarrow] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 480px)');
+        setIsNarrow(mq.matches);
+        const h = () => setIsNarrow(mq.matches);
+        mq.addEventListener('change', h);
+        return () => mq.removeEventListener('change', h);
+    }, []);
+
+    const placeholderText = isNarrow
+        ? (destination ? `Activités à ${destination}` : 'Où aller ? (ex: Tokyo)')
+        : (destination
+            ? `Rechercher des activités à ${destination}...`
+            : "Où souhaitez-vous aller ? (ex: Tokyo...)");
 
     const sendMessage = async () => {
         if ((!message.trim() && !destination) || loading) return;
@@ -113,25 +124,25 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
 
     return (
         <div
-            className="p-6 rounded-lg flex flex-col min-h-[300px]"
+            className="p-4 sm:p-6 rounded-lg flex flex-col min-h-[200px] sm:min-h-[300px] overflow-hidden"
             style={{
                 backgroundColor: 'var(--background, #222)',
                 boxShadow: '0 2px 8px rgba(0,0,0,.3)',
             }}
         >
-            <h2 className="text-lg font-semibold mb-4 text-white">
+            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white truncate">
                 Triply Assistant
             </h2>
 
             <MessageList messages={messages} loading={loading} />
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4 w-full min-w-0">
                 <SearchBar
                     placeholder={placeholderText}
                     value={message}
                     onChange={e => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="flex-1"
+                    className="flex-1 w-full min-w-0"
                 />
 
                 <Button
@@ -141,7 +152,7 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
                     tone="tone1"
                     disabled={loading}
                     loading={loading}
-                    className="h-full"
+                    className="w-full sm:w-auto sm:flex-shrink-0"
                 />
             </div>
         </div>

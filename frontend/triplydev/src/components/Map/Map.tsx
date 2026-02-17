@@ -210,6 +210,28 @@ export const WorldMap: React.FC<MapProps> = ({
         if (interactive) setViewState((prev) => ({ ...prev, pitch }));
     }, [pitch, isMapLoaded, interactive]);
 
+    // Redimensionner la carte quand le conteneur change (ex: sidebar ouverte/fermée)
+    useEffect(() => {
+        const container = containerRef.current;
+        const map = mapRef.current?.getMap();
+        if (!container || !map || !isMapLoaded) return;
+
+        const resizeMap = () => {
+            requestAnimationFrame(() => {
+                try {
+                    map.resize();
+                } catch {
+                    // Ignorer si la carte n'est pas encore prête
+                }
+            });
+        };
+
+        const ro = new ResizeObserver(resizeMap);
+        ro.observe(container);
+
+        return () => ro.disconnect();
+    }, [isMapLoaded]);
+
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current || !mapConfig) return;
         const map = mapRef.current.getMap();

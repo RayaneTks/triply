@@ -97,10 +97,17 @@
   font-display: swap;
 }
 
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-text);
+  overflow-x: hidden;
+  min-height: 100dvh;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -162,5 +169,14 @@ h1, h2, h3, h4, h5, h6 {
   }
   .input-assistant input::placeholder {
     color: rgba(255, 255, 255, 0.5) !important;
+  }
+}
+
+/* Utilitaires responsive - éviter débordement */
+@layer utilities {
+  .overflow-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

@@ -80,16 +80,16 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
                                                                             }) => {
     return (
         <div
-            className="flex flex-col h-full p-8 overflow-y-auto slide-content-scroll"
+            className="flex flex-col h-full p-4 sm:p-6 md:p-8 overflow-y-auto slide-content-scroll min-h-0"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
             <style>{`.slide-content-scroll::-webkit-scrollbar { display: none !important; }`}</style>
 
-            <h1 className="text-3xl font-bold mb-6" style={{ color: 'var(--foreground, #ededed)' }}>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6" style={{ color: 'var(--foreground, #ededed)' }}>
                 Configurez votre voyage
             </h1>
 
-            <div className="space-y-4 max-w-2xl">
+            <div className="space-y-4 max-w-2xl w-full min-w-0">
                 <label className="flex items-center gap-3 cursor-pointer mb-2">
                     <input
                         type="checkbox"

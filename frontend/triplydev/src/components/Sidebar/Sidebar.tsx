@@ -1,10 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/Button/Button';
+
+function useMediaQuery(query: string): boolean {
+    const [matches, setMatches] = useState(false);
+    useEffect(() => {
+        const m = window.matchMedia(query);
+        setMatches(m.matches);
+        const h = () => setMatches(m.matches);
+        m.addEventListener('change', h);
+        return () => m.removeEventListener('change', h);
+    }, [query]);
+    return matches;
+}
 
 const iconSize = 20;
 
@@ -75,16 +87,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                     onLogoutClick,
                                                 }) => {
     const pathname = usePathname();
+    const isMobile = useMediaQuery('(max-width: 768px)');
+    const collapsedW = isMobile ? 56 : 80;
+    const expandedW = isMobile ? 280 : 280;
 
     return (
+        <>
+            {isMobile && !isCollapsed && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-20 md:hidden"
+                    onClick={onToggle}
+                    aria-hidden="true"
+                />
+            )}
         <motion.aside
-            className={`h-full relative flex-shrink-0 overflow-hidden flex flex-col ${className}`}
+            className={`h-full relative flex-shrink-0 overflow-hidden flex flex-col z-30 md:z-auto ${className}`}
             style={{
                 background: 'linear-gradient(180deg, #1a1a1a 0%, var(--background, #222222) 100%)',
                 borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-                boxShadow: '4px 0 24px rgba(0, 0, 0, 0.25)',
+                boxShadow: isMobile && !isCollapsed ? '8px 0 32px rgba(0, 0, 0, 0.4)' : '4px 0 24px rgba(0, 0, 0, 0.25)',
             }}
-            animate={{ width: isCollapsed ? '80px' : '280px' }}
+            animate={{ width: isCollapsed ? collapsedW : expandedW }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         >
             {/* Header avec logo + toggle */}
@@ -189,5 +212,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
             </motion.div>
         </motion.aside>
+        </>
     );
 };
