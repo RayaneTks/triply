@@ -1,5 +1,5 @@
 .PHONY: help \
-	init up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
+	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
 	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
@@ -18,6 +18,8 @@ help:
 	@echo.
 	@echo Docker workflow:
 	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
+	@echo   make install           - alias of make init
+	@echo   make migrate           - run safe DB migrations in backend container
 	@echo   make up                - daily startup
 	@echo   make reload            - backend sync after changes
 	@echo   make down              - stop containers
@@ -44,6 +46,11 @@ init:
 	$(COMPOSE) exec -T backend php artisan optimize:clear
 	$(COMPOSE) exec -T backend php artisan migrate --force
 	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+
+install: init
+
+migrate:
+	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 
 up:
 	$(COMPOSE) up -d --remove-orphans db backend pgadmin

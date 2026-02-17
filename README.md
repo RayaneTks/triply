@@ -1,91 +1,140 @@
 # Triply
 
-Plateforme de voyage avec un frontend et un backend Laravel documente avec Swagger.
+Plateforme de planification de voyage avec backend Laravel (`backend/`) et frontend Next.js (`frontend/triplydev/`).
 
-## Structure du repo
+## Prerequis
 
-- `frontend/` : application front
-- `backend/` : API Laravel
+### Option A (recommandee): Docker
+- Docker Desktop
+- Docker Compose v2
+- `make`
 
-## Workflow recommande (Docker-first)
+### Option B: Installation locale
+- PHP 8.2+
+- Composer 2+
+- Node.js 20+ et npm
+- PostgreSQL 16+ (configuration par defaut du projet)
+- Extensions PHP usuelles Laravel: `bcmath`, `ctype`, `fileinfo`, `json`, `mbstring`, `openssl`, `pdo`, `pdo_pgsql`, `tokenizer`, `xml`
 
-### 1) Setup initial (une seule fois)
+## Installation (fresh clone)
+
+### 1) Avec Docker + Makefile (recommande)
+Depuis la racine du repo:
+
 ```bash
-make init
+make install
 ```
-Utilise cette commande pour un environnement neuf.
-Elle est volontairement lourde:
-- build Docker
-- install dependencies backend
-- generation APP_KEY
-- clear cache
-- migrations
-- regeneration Swagger
 
-### 2) Demarrage quotidien (rapide)
+`make install` est un alias de `make init` et execute build, bootstrap DB, sync `.env`, migrations, puis regeneration Swagger.
+
+Demarrage quotidien:
+
 ```bash
 make up
 ```
-- lance les conteneurs sans rebuild
-- ne relance pas composer install
-- utilise un volume Docker dedie pour `vendor` (optimise perfs sur Windows)
 
-### 3) Apres des modifications backend
-```bash
-make reload
-```
-- clear cache
-- migrate (graceful)
-- regeneration Swagger
+Verification API:
 
-### 4) Arret
 ```bash
-make down
+curl http://127.0.0.1:8000/api/v1/health
 ```
 
-## Commandes utiles et cas d'usage
+### 2) Sans Docker (local)
 
-- `make init` : premier setup complet (one-shot)
-- `make up` / `make run` : demarrage rapide au quotidien
-- `make reload` : sync backend apres changement code/config/routes/swagger
-- `make rebuild` : rebuild complet quand Dockerfile/deps systeme changent
-- `make composer-install` : quand `composer.json`/`composer.lock` changent
-- `make restart` : redemarrer conteneurs
-- `make status` : etat des services docker
-- `make logs` : logs complets
-- `make logs-back` : logs backend uniquement
-- `make shell` : shell dans le conteneur backend
-- `make routes` : lister routes API
-- `make swagger` : regenerer Swagger
-- `make test` : lancer tests backend
-- `make clean` : stop + suppression volumes (destructif)
+#### Backend Laravel
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Configurer la DB dans `backend/.env`:
+- `DB_CONNECTION=pgsql`
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=5432`
+- `DB_DATABASE=TriplyDB`
+- `DB_USERNAME=backend`
+- `DB_PASSWORD=backend`
+
+Puis:
+
+```bash
+php artisan migrate
+php artisan serve
+```
+
+Sanctum est deja installe. Aucune publication supplementaire n'est necessaire pour lancer le projet dans son etat actuel.
+
+#### Frontend Next.js (optionnel pour l'API, requis pour l'app web)
+```bash
+cd frontend/triplydev
+npm install
+npm run dev
+```
+
+## Mise a jour de la DB (base deja existante)
+
+### Docker
+```bash
+make migrate
+```
+
+ou:
+
+```bash
+docker compose exec -T backend php artisan migrate --force
+```
+
+### Local
+```bash
+cd backend
+php artisan migrate
+```
+
+Rollback d'une migration:
+
+```bash
+php artisan migrate:rollback --step=1
+```
+
+## Docker Compose direct (sans Makefile)
+
+```bash
+docker compose up -d --build db backend pgadmin
+docker compose exec -T backend php artisan migrate --force
+```
 
 ## URLs utiles
 
-- API locale : `http://127.0.0.1:8000`
-- API v1 health : `http://127.0.0.1:8000/api/v1/health`
-- Swagger UI : `http://127.0.0.1:8000/api/documentation`
+- API: `http://127.0.0.1:8000`
+- Healthcheck: `http://127.0.0.1:8000/api/v1/health`
+- Swagger UI: `http://127.0.0.1:8000/api/documentation`
+- PgAdmin: `http://127.0.0.1:8080`
 
-## Perf API (important)
+## Troubleshooting
 
-- `vendor` est isole dans un volume Docker (`backend_vendor`) pour accelerer le bootstrap Laravel.
-- En usage normal, les endpoints stubs doivent repondre en dessous d'une seconde.
-- Si tu vois encore plusieurs secondes:
-1. verifier que Docker Desktop est bien actif,
-2. lancer `make reload`,
-3. verifier charge machine (CPU/RAM/disque),
-4. envisager execution depuis WSL2 pour meilleures performances I/O.
+- Erreur de connexion DB:
+  - verifier `DB_*` dans `backend/.env`
+  - verifier que PostgreSQL est demarre et accessible
+- Migration en echec:
+  - relancer `php artisan migrate`
+  - si necessaire rollback cible: `php artisan migrate:rollback --step=1`
+- Cache Laravel incoherent:
+  - `php artisan optimize:clear`
+- Droits ecriture storage/bootstrap cache:
+  - verifier les permissions sur `backend/storage` et `backend/bootstrap/cache`
+- Container backend up mais API KO:
+  - `make logs-back` puis verifier la route health
+- Erreur Docker sur `pgadmin/pgpass`:
+  - verifier que `pgadmin/pgpass` et `pgadmin/servers.json` sont des fichiers, pas des dossiers
 
-## Depannage Docker (Windows)
+## Commandes utiles
 
-Si `make up` retourne une erreur du type `dockerDesktopLinuxEngine` introuvable:
-
-1. Demarrer Docker Desktop.
-2. Attendre que Docker soit pret (`docker version`).
-3. Relancer `make up`.
-
-## Notes
-
-- Les commandes `local-*` existent encore pour urgence/legacy.
-- Le workflow recommande reste 100% Docker.
-- Les details backend sont dans `backend/README_DEV.md`.
+- `make help`
+- `make install`
+- `make up`
+- `make migrate`
+- `make reload`
+- `make logs-back`
+- `make down`
