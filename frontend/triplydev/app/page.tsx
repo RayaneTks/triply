@@ -8,6 +8,7 @@ import { WorldMap } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
+import { TuPreferes } from "@/src/components/TuPreferes/TuPreferes";
 import Assistant from "@/src/components/Assistant/Assistant";
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
@@ -33,7 +34,7 @@ function LoginWithMapBackground({
                                     onBack,
                                 }: {
     mapboxToken: string;
-    onLoginSuccess: (user: AuthUser) => void;
+    onLoginSuccess: (user: AuthUser, isNewUser?: boolean) => void;
     onBack: () => void;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,7 @@ export default function Home() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
+    const [showTuPreferes, setShowTuPreferes] = useState(false);
     const [mapLocations, setMapLocations] = useState<any[]>([]);
     const [isLoadingHotels, setIsLoadingHotels] = useState(false);
 
@@ -484,9 +486,10 @@ export default function Home() {
         setCurrentView('home');
     };
 
-    const handleLoginSuccess = (_user: AuthUser) => {
+    const handleLoginSuccess = (_user: AuthUser, isNewUser?: boolean) => {
         setIsConnected(true);
         setCurrentView('home');
+        if (isNewUser) setShowTuPreferes(true);
     };
     const handleBackToHome = () => setCurrentView('home');
 
@@ -822,6 +825,12 @@ export default function Home() {
                     </>
                 )}
             </div>
+
+            <TuPreferes
+                visible={showTuPreferes}
+                onComplete={() => setShowTuPreferes(false)}
+                onSkip={() => setShowTuPreferes(false)}
+            />
         </div>
     );
 }

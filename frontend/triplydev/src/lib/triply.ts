@@ -89,3 +89,27 @@ Si la demande est hors périmètre, réponds avec reply contenant EXACTEMENT ce 
 "${REFUSAL_TEXT}"
 `;
 }
+
+const PREF_LABELS: Record<string, string> = {
+    plage: 'plage / mer',
+    montagne: 'montagne',
+    ville: 'ville',
+    campagne: 'campagne',
+    aventure: 'aventure',
+    detente: 'détente',
+    budget: 'budget raisonnable',
+    luxe: 'luxe / confort',
+};
+
+/** Instructions pour les préférences utilisateur (utilisateur connecté uniquement) */
+export function getPreferencesInstructions(preferences: string[]): string {
+    if (!preferences || preferences.length === 0) return '';
+    const labels = preferences.map((p) => PREF_LABELS[p] || p).join(', ');
+    return `
+
+PRÉFÉRENCES UTILISATEUR (à prendre en compte dans tes recommandations) :
+${labels}
+- Adapte tes suggestions (destinations, activités, hébergements) en fonction de ces préférences.
+- Tu peux les mentionner naturellement si pertinent, sans les répéter systématiquement.
+`;
+}
