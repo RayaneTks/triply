@@ -8,7 +8,6 @@ const BACKEND_API_BASE_URL = (process.env.BACKEND_API_BASE_URL || process.env.NE
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Helper Auth
 async function getAmadeusToken() {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
@@ -32,7 +31,6 @@ export async function POST(req: Request) {
     }
 
     try {
-        // --- AUTHENTIFICATION ---
         const authHeader = req.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return NextResponse.json({ error: 'Authentification requise pour utiliser le LLM.' }, { status: 401 });
@@ -49,13 +47,11 @@ export async function POST(req: Request) {
         if (!authRes.ok) {
             return NextResponse.json({ error: 'Session invalide. Merci de vous reconnecter.' }, { status: 401 });
         }
-        // ------------------------
 
         const body = await req.json();
         const messages = body.messages || [];
         const destinationContext = body.destinationContext;
 
-        // 1. OPENAI : Extraction + Estimation GPS
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             response_format: { type: 'json_object' },
@@ -91,12 +87,9 @@ export async function POST(req: Request) {
         const aiCoordinates = parsedAI.coordinates;
         const aiZoom = parsedAI.suggestedZoom;
 
-        // Initialisation des variables finales
         let finalLat = aiCoordinates?.lat;
         let finalLng = aiCoordinates?.lng;
         let finalName = targetLocation;
-
-        // Gestion du Zoom : Si l'IA n'a pas donné de zoom, on met 10, sinon on respecte son choix.
         let finalZoom = aiZoom || 10;
 
         const finalLocations: Array<{
@@ -104,10 +97,9 @@ export async function POST(req: Request) {
             title: string;
             coordinates: { latitude: number; longitude: number };
             type: string;
-            zoom?: number; // Ajout du type zoom
+            zoom?: number;
         }> = [];
 
-        // 2. AMADEUS (Affinement)
         if (targetLocation) {
             try {
                 const token = await getAmadeusToken();
@@ -117,20 +109,15 @@ export async function POST(req: Request) {
                 const cityData = geoJson.data?.[0];
 
                 if (cityData) {
-                    // On met à jour les coordonnées pour être plus précis
                     finalLat = cityData.geoCode.latitude;
                     finalLng = cityData.geoCode.longitude;
                     finalName = cityData.name;
-
-                    console.log(`✅ Amadeus a affiné les coordonnées, mais on garde le zoom IA : ${finalZoom}`);
                 }
             } catch (err) {
                 console.error("Erreur Amadeus:", err);
-                // On ne throw pas ici, on continue avec les coordonnées OpenAI si Amadeus échoue
             }
         }
 
-        // 3. CONSTRUCTION DE LA RÉPONSE
         if (finalLat && finalLng) {
             finalLocations.push({
                 id: 'city-center',
@@ -146,7 +133,7 @@ export async function POST(req: Request) {
             locations: finalLocations
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Erreur Serveur Assistant:', error);
         const message = error instanceof Error ? error.message : 'Erreur serveur.';
         return NextResponse.json({ error: message }, { status: 500 });

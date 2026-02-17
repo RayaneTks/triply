@@ -149,20 +149,34 @@ export default function Home() {
     const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
 
     // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
-    const handleAirportSelect = (iata: string, name: string) => {
-        console.log(`Aéroport sélectionné: ${name} (${iata})`);
+    const handleAirportSelect = (iata: string, name: string, lat: number, lng: number) => {
+        console.log(`Aéroport sélectionné: ${name} (${iata}) @ ${lat}, ${lng}`);
 
-        // Logique intelligente pour remplir les champs
+        // 1. Si pas de départ, c'est le départ
         if (!departureCity) {
             setDepartureCity(iata);
-            // Pas de setDepartureCityName prévu dans ton state, mais pas grave pour l'assistant
         }
-        // 2. Sinon, on remplit l'Arrivée (C'est là que ça se joue)
+        // 2. Sinon, c'est l'arrivée
         else {
-            // Évite de mettre la même ville en départ et arrivée
             if (departureCity !== iata) {
-                setArrivalCity(iata);     // Met à jour le code (ex: FCO)
-                setArrivalCityName(name); // <--- AJOUTE CECI : Met à jour le nom (ex: Fiumicino)
+                setArrivalCity(iata);
+                setArrivalCityName(name);
+
+                // --- CORRECTION MAJEURE ---
+                // Au lieu d'attendre que l'utilisateur ouvre la modal,
+                // on lance directement la recherche d'hôtels autour de ces coordonnées (GPS).
+                // Cela contourne le problème du code IATA non reconnu par Amadeus.
+
+                const airportLocationObj = {
+                    id: `airport-${iata}`,
+                    title: name,
+                    coordinates: { latitude: lat, longitude: lng },
+                    type: 'city-center', // On le traite comme un centre pour l'affichage
+                    zoom: 12
+                };
+
+                // On lance la recherche (utilise /api/hotels/search?lat=...&lng=...)
+                searchHotelsAtLocation(lat, lng, airportLocationObj, hotelStarsFilter);
             }
         }
     };
