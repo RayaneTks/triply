@@ -24,6 +24,7 @@ export default function VoyageDetailPage() {
     const id = params?.id as string;
 
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trip, setTrip] = useState<TripSummary | null>(null);
@@ -34,11 +35,13 @@ export default function VoyageDetailPage() {
         const loadTrip = async () => {
             const session = getStoredSession();
             if (!session?.token) {
+                setIsConnected(false);
                 router.replace('/');
                 return;
             }
 
             try {
+                setIsConnected(true);
                 setLoading(true);
                 setError('');
                 const item = await getTrip(session.token, id);
@@ -70,7 +73,7 @@ export default function VoyageDetailPage() {
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                isConnected={true}
+                isConnected={isConnected}
                 onLoginClick={() => router.push('/')}
                 onLogoutClick={() => {
                     clearSession();

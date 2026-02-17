@@ -52,6 +52,7 @@ function statusStyle(status: string): { backgroundColor: string; color: string }
 export default function VoyagesPage() {
     const router = useRouter();
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trips, setTrips] = useState<TripSummary[]>([]);
@@ -62,11 +63,13 @@ export default function VoyagesPage() {
         const loadTrips = async () => {
             const session = getStoredSession();
             if (!session?.token) {
+                setIsConnected(false);
                 router.replace('/');
                 return;
             }
 
             try {
+                setIsConnected(true);
                 setLoading(true);
                 setError('');
                 const items = await listTrips(session.token);
@@ -97,7 +100,7 @@ export default function VoyagesPage() {
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                isConnected={true}
+                isConnected={isConnected}
                 onLoginClick={() => router.push('/')}
                 onLogoutClick={() => {
                     clearSession();
