@@ -1,5 +1,6 @@
 .PHONY: help \
 	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
+	pgadmin-reset \
 	verify test-auth test-feature test-unit \
 	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
@@ -31,6 +32,7 @@ help:
 	@echo   make status            - docker service status
 	@echo   make logs              - all logs
 	@echo   make logs-back         - backend logs
+	@echo   make pgadmin-reset     - reset pgadmin container data and reload preconfigured server
 	@echo   make shell             - backend shell
 	@echo   make routes            - list API routes
 	@echo   make swagger           - regenerate swagger
@@ -129,6 +131,10 @@ env-sync:
 db-ensure:
 	$(COMPOSE) up -d db
 	$(COMPOSE) exec -T db sh -lc 'set -eu; ADMIN_USER=""; for u in backend postgres; do if psql -U "$$u" -d postgres -tAc "select 1" >/dev/null 2>&1; then ADMIN_USER="$$u"; break; fi; done; if [ -z "$$ADMIN_USER" ]; then echo "No PostgreSQL admin user found (backend/postgres)."; exit 1; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='\''backend'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE ROLE backend WITH LOGIN PASSWORD '\''backend'\''"; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='\''TriplyDB'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE DATABASE \"TriplyDB\" OWNER backend"; fi; psql -U "$$ADMIN_USER" -d postgres -c "ALTER DATABASE \"TriplyDB\" OWNER TO backend"; psql -U "$$ADMIN_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"TriplyDB\" TO backend";'
+
+pgadmin-reset:
+	$(COMPOSE) rm -sfv pgadmin
+	$(COMPOSE) up -d db pgadmin
 
 clean:
 	$(COMPOSE) down -v --remove-orphans
