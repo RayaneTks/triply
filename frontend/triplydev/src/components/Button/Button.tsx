@@ -3,6 +3,7 @@ import React, { useId } from 'react';
 export interface ButtonProps {
     label: string;
     onClick?: () => void;
+    type?: 'button' | 'submit' | 'reset';
     variant?: 'dark' | 'light';
     tone?: 'tone1' | 'tone2';
     className?: string;
@@ -13,6 +14,7 @@ export interface ButtonProps {
 export const Button: React.FC<ButtonProps> = ({
                                                   label,
                                                   onClick,
+                                                  type = 'button',
                                                   variant = 'dark',
                                                   tone = 'tone2',
                                                   className = '',
@@ -61,7 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
         <>
             <div className={className}>
                 <button
-                    type="button"
+                    type={type}
                     onClick={onClick}
                     disabled={disabled || loading} // ✅ combine disabled et loading
                     className={buttonClass}
