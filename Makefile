@@ -3,14 +3,18 @@
 	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
-	docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
+	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
 	bootstrap
 
 BACKEND_DIR := backend
 COMPOSE := docker compose
 
-help: ## Afficher toutes les commandes disponibles
-	@echo Usage: make ^<commande^>
+# -----------------------------------------
+# Help
+# -----------------------------------------
+
+help:
+	@echo Usage: make target
 	@echo.
 	@echo Docker workflow:
 	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
@@ -31,7 +35,7 @@ help: ## Afficher toutes les commandes disponibles
 	@echo   make test              - backend tests
 
 # -----------------------------------------
-# Local (sans Docker)
+# Recommended workflow (Docker-first)
 # -----------------------------------------
 
 init:
@@ -117,89 +121,70 @@ clear: clean
 local-install:
 	composer install --working-dir $(BACKEND_DIR)
 
-local-env: ## Creer backend/.env depuis .env.example (si absent)
+local-env:
 	@if [ ! -f $(BACKEND_DIR)/.env ]; then cp $(BACKEND_DIR)/.env.example $(BACKEND_DIR)/.env; fi
 
-local-key: ## Generer APP_KEY
+local-key:
 	php $(BACKEND_DIR)/artisan key:generate
 
-local-cache-clear: ## Vider les caches Laravel
+local-cache-clear:
 	php $(BACKEND_DIR)/artisan optimize:clear
 
-local-swagger: ## Generer la documentation Swagger
+local-swagger:
 	php $(BACKEND_DIR)/artisan l5-swagger:generate
 
-local-routes: ## Lister les routes API
+local-routes:
 	php $(BACKEND_DIR)/artisan route:list --path=api
 
-local-serve: ## Lancer le serveur backend en local
+local-serve:
 	php $(BACKEND_DIR)/artisan serve
 
-local-test: ## Lancer les tests backend
+local-test:
 	php $(BACKEND_DIR)/artisan test
 
-local-tinker: ## Ouvrir Tinker
+local-tinker:
 	php $(BACKEND_DIR)/artisan tinker
 
-local-fresh: ## Reset base sqlite locale (migrate:fresh --seed)
+local-fresh:
 	php $(BACKEND_DIR)/artisan migrate:fresh --seed
 
-local-setup: local-env local-install local-key local-cache-clear local-swagger ## Setup local complet (sans DB externe)
+local-setup: local-env local-install local-key local-cache-clear local-swagger
 
-bootstrap: local-setup ## Alias de setup local
+bootstrap: local-setup
 
 # -----------------------------------------
-# Docker (compose)
+# Legacy docker-* aliases
 # -----------------------------------------
 
-docker-up: ## Build et lancer les conteneurs
-	$(COMPOSE) up -d --build
+docker-up: up
+docker-down: down
+docker-start: up
 
-docker-down: ## Arreter et supprimer les conteneurs
-	$(COMPOSE) down
-
-docker-start: ## Demarrer les conteneurs existants
-	$(COMPOSE) start
-
-docker-stop: ## Stopper les conteneurs
+docker-stop:
 	$(COMPOSE) stop
 
-docker-restart: ## Redemarrer les conteneurs
-	$(COMPOSE) restart
+docker-restart: restart
+docker-rebuild: rebuild
+docker-logs: logs
+docker-logs-back: logs-back
+docker-shell-back: shell
+docker-test: test
+docker-swagger: swagger
+docker-routes: routes
+docker-clean: clean
 
-docker-rebuild: ## Rebuild complet des conteneurs
-	$(COMPOSE) down
-	$(COMPOSE) up -d --build
+docker-setup:
+	$(COMPOSE) exec -T backend php artisan key:generate --force
+	$(COMPOSE) exec -T backend php artisan migrate --force
 
-docker-logs: ## Afficher tous les logs docker
-	$(COMPOSE) logs -f
+docker-migrate:
+	$(COMPOSE) exec -T backend php artisan migrate --force
 
-docker-logs-back: ## Afficher les logs backend docker
-	$(COMPOSE) logs -f backend
+docker-fresh:
+	$(COMPOSE) exec -T backend php artisan migrate:fresh --seed --force
 
-docker-shell-back: ## Ouvrir un shell dans le conteneur backend
-	$(COMPOSE) exec backend bash
+docker-seed:
+	$(COMPOSE) exec -T backend php artisan db:seed --force
 
-docker-migrate: ## Executer les migrations dans Docker
-	$(COMPOSE) exec backend php artisan migrate
-
-docker-fresh: ## Reset base dans Docker (migrate:fresh --seed)
-	$(COMPOSE) exec backend php artisan migrate:fresh --seed
-
-docker-seed: ## Lancer les seeders dans Docker
-	$(COMPOSE) exec backend php artisan db:seed
-
-docker-key: ## Generer APP_KEY dans Docker
-	$(COMPOSE) exec backend php artisan key:generate
-
-docker-test: ## Lancer les tests dans Docker
-	$(COMPOSE) exec backend php artisan test
-
-docker-swagger: ## Generer Swagger dans Docker
-	$(COMPOSE) exec backend php artisan l5-swagger:generate
-
-docker-routes: ## Lister les routes API dans Docker
-	$(COMPOSE) exec backend php artisan route:list --path=api
-
-docker-clean: ## Supprimer conteneurs + volumes (attention: DB perdue)
-	$(COMPOSE) down -v
+docker-key:
+	$(COMPOSE) exec -T backend php artisan key:generate --force

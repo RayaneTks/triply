@@ -1,6 +1,6 @@
 import React from 'react';
 import {Tree, TreeNode} from 'react-organizational-chart';
-import {TeamCharCard} from "./TeamCharCard.tsx";
+import {TeamCharCard} from "./TeamCharCard";
 
 
 /**

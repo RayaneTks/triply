@@ -49,5 +49,6 @@ export const Logo: React.FC<LogoProps> = ({
     const finalHeight = height ?? sizeConfig.height;
     const logoSrc = logoToneVariants[finalTone];
 
-    return <img src={logoSrc} width={finalWidth} height={finalHeight} alt={alt} />;
+    const src = typeof logoSrc === 'string' ? logoSrc : logoSrc.src;
+    return <img src={src} width={finalWidth} height={finalHeight} alt={alt} />;
 };

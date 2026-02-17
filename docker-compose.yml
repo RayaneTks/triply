@@ -3,44 +3,71 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dev
+      target: prod
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: TriplyDB
+      DB_USERNAME: backend
+      DB_PASSWORD: backend
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
     volumes:
-      - ./backend:/app
+      - ./backend:/app:delegated
+      - backend_vendor:/app/vendor
     ports:
       - "8000:80"
     depends_on:
-      - db
-
-#  frontend:
-#    build:
-#      context: ./frontend
-#      dockerfile: Dockerfile
-#    volumes:
-#      - ./frontend:/app
-#    ports:
-#      - "5173:5173"
-#    env_file:
-#      - ./frontend/.env.docker
-#    command: sh -c "npm install --save-dev @rollup/rollup-linux-x64-gnu && npm run dev -- --host 0.0.0.0"
+      db:
+        condition: service_healthy
+    command: sh -lc "export PATH=$$PATH:/usr/sbin:/usr/local/sbin; rm -f bootstrap/cache/*.php; php artisan package:discover --ansi || true; php artisan optimize || true; exec apache2-foreground"
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit((int) !@file_get_contents('http://127.0.0.1/api/v1/health'));\""]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
 
   db:
     image: postgres:16
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: backend
+      POSTGRES_DB: TriplyDB
       POSTGRES_USER: backend
       POSTGRES_PASSWORD: backend
+      POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
       - pg_data:/var/lib/postgresql/data
-      
-#  phpmyadmin:
-#    image: phpmyadmin/phpmyadmin
-#    ports:
-#      - "8080:80"
-#    environment:
-#      PMA_HOST: db
-#      MYSQL_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U backend -d TriplyDB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "contact@triply.ovh"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      PGPASS_FILE: "/pgpass"
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./pgadmin/pgpass:/pgpass:ro
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pg_data:
+  backend_vendor:
+    name: triply_backend_vendor_v2

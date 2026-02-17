@@ -9,7 +9,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
-import {WorkloadDataPoint} from "../../../types/workload.ts";
+import {WorkloadDataPoint} from "../../../types/workload";
 
 interface StackedWorkloadChartProps {
     data: WorkloadDataPoint[];

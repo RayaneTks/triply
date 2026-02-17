@@ -1,20 +1,24 @@
-import {ChatMessage} from "@/src/components/Assistant/Assistant";
+'use client';
 
+import { ChatMessage } from '@/src/components/Assistant/Assistant';
 
-export default function MessageBubble({ message }: { message: ChatMessage }) {
+interface MessageBubbleProps {
+    message: ChatMessage;
+}
+
+export default function MessageBubble({ message }: MessageBubbleProps) {
     const isUser = message.role === 'user';
 
     return (
-        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-            <div
-                className={`max-w-[75%] px-4 py-2 rounded-lg text-sm ${
-                    isUser
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-white'
-                }`}
-            >
-                {message.content}
-            </div>
+        <div
+            className={`max-w-[75%] px-4 py-2 rounded-lg text-sm ${
+                isUser
+                    ? 'ml-auto bg-[var(--primary)]/20 border border-[var(--primary)]/30'
+                    : 'mr-auto bg-white/10 border border-white/10'
+            }`}
+            style={{ color: 'var(--foreground, #ededed)' }}
+        >
+            {message.content}
         </div>
     );
 }

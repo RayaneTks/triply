@@ -61,9 +61,11 @@ export const Slide: React.FC<SlideProps> = ({
                                                 slideIndex = 0,
                                                 onJumpTo
                                             }) => {
-    // Détecter si c'est la dernière slide
+    // Détecter si c'est la dernière slide (slide 1 est toujours noir #222222)
     const isLastSlide: boolean = canNext === false || (slides !== undefined && slideIndex === slides.length - 1);
-    const bgColor = isLastSlide ? '#0096c7' : 'var(--background, #222222)';
+    const isFirstSlide = slideIndex === 0;
+    const bgColor = isFirstSlide ? '#222222' : (isLastSlide ? '#0096c7' : 'var(--background, #222222)');
+    const useLastSlideTextStyle = isLastSlide && !isFirstSlide;
     
     return (
         <motion.div
@@ -95,7 +97,7 @@ export const Slide: React.FC<SlideProps> = ({
 
             {/* 2. Contenu Central */}
             <SlideContext.Provider value={{ isLastSlide }}>
-                {isLastSlide && (
+                {useLastSlideTextStyle && (
                     <style>{`
                         [data-last-slide="true"],
                         [data-last-slide="true"] *,
@@ -117,7 +119,7 @@ export const Slide: React.FC<SlideProps> = ({
                 )}
                 <div 
                     className="flex-grow w-full h-full overflow-y-auto relative z-0 slide-scroll"
-                    data-last-slide={isLastSlide.toString()}
+                    data-last-slide={useLastSlideTextStyle.toString()}
                     style={{
                         scrollbarWidth: 'none',
                         msOverflowStyle: 'none',
@@ -138,18 +140,18 @@ export const Slide: React.FC<SlideProps> = ({
                     <motion.button
                         whileHover={{ scale: 1.1, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={isLastSlide && onPrev ? onPrev : onNext}
-                        disabled={isLastSlide ? !canPrev : !canNext}
+                        onClick={useLastSlideTextStyle && onPrev ? onPrev : onNext}
+                        disabled={useLastSlideTextStyle ? !canPrev : !canNext}
                         className={`
                             p-2 rounded-full flex items-center justify-center transition-colors
                             disabled:opacity-30 disabled:cursor-not-allowed
-                            ${isLastSlide ? 'text-slate-800' : 'text-white'}
+                            ${useLastSlideTextStyle ? 'text-slate-800' : 'text-white'}
                             hover:bg-white/10
                         `}
                         style={{
-                            backgroundColor: isLastSlide ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                            backgroundColor: useLastSlideTextStyle ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
                         }}
-                        aria-label={isLastSlide ? "Précédent" : "Suivant"}
+                        aria-label={useLastSlideTextStyle ? "Précédent" : "Suivant"}
                     >
                         <svg
                             width="18"
@@ -160,7 +162,7 @@ export const Slide: React.FC<SlideProps> = ({
                             strokeWidth="2.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className={isLastSlide ? "transform rotate-180" : ""}
+                            className={useLastSlideTextStyle ? "transform rotate-180" : ""}
                         >
                             <path d="M9 18l6-6-6-6" />
                         </svg>

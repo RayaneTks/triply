@@ -30,7 +30,7 @@ make install
 Demarrage quotidien:
 
 ```bash
-make local-setup
+make up
 ```
 
 Verification API:

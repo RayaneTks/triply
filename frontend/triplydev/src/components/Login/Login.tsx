@@ -64,34 +64,28 @@ export const Login: React.FC<LoginProps> = ({
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
                             Email
                         </label>
-                        <input
-                            type="email"
-                            required
-                            placeholder="vous@exemple.com"
-                            className="w-full px-4 py-3 rounded-xl border outline-none transition-colors focus:border-[var(--primary)] placeholder:opacity-50"
-                            style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                borderColor: 'rgba(255, 255, 255, 0.15)',
-                                color: 'var(--foreground, #ededed)',
-                            }}
-                        />
+                        <div className="input-assistant">
+                            <input
+                                type="email"
+                                required
+                                placeholder="vous@exemple.com"
+                                className="w-full flex-grow"
+                            />
+                        </div>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
                             Mot de passe
                         </label>
-                        <input
-                            type="password"
-                            required
-                            placeholder="••••••••"
-                            className="w-full px-4 py-3 rounded-xl border outline-none transition-colors focus:border-[var(--primary)] placeholder:opacity-50"
-                            style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                borderColor: 'rgba(255, 255, 255, 0.15)',
-                                color: 'var(--foreground, #ededed)',
-                            }}
-                        />
+                        <div className="input-assistant">
+                            <input
+                                type="password"
+                                required
+                                placeholder="••••••••"
+                                className="w-full flex-grow"
+                            />
+                        </div>
                         <button
                             type="button"
                             className="text-xs mt-2 hover:underline"

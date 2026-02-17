@@ -1,11 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Map } from 'react-map-gl/mapbox';
+// AJOUT : Import de Source et Layer
+import { Map, Source, Layer } from 'react-map-gl/mapbox';
 import type { ViewState, MapRef } from 'react-map-gl/mapbox';
 import type { Map as MapboxMap, MapMouseEvent } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 /** Id de la couche fill-extrusion pour les bâtiments 3D (uniquement pour styles classiques) */
 const LAYER_3D_BUILDINGS_ID = 'add-3d-buildings';
+
+const AIRPORTS_DATA_SOURCE = 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_airports.geojson';
 
 /** Styles classiques pour lesquels on ajoute la couche bâtiments 3D. Mapbox Standard a des bâtiments 3D intégrés. */
 const STYLES_WITH_3D_BUILDINGS = [
@@ -32,8 +35,10 @@ const POI_LAYER_IDS_CLASSIC = [
     'poi-scalerank4',
 ];
 
+type PoiFeatureInput = { id?: string | number; layer?: { id?: string }; source?: string; sourceLayer?: string; properties?: Record<string, unknown> | null; geometry?: GeoJSON.Geometry };
+
 /** Retourne la feature POI la plus pertinente (classic ou Standard) */
-function pickPoiFeature(features: Array<{ layer?: { id?: string }; properties?: Record<string, unknown> }>): typeof features[0] | undefined {
+function pickPoiFeature<T extends PoiFeatureInput>(features: T[]): T | undefined {
     if (!features.length) return undefined;
     const byLayer = features.find((f) => f.layer?.id && POI_LAYER_IDS_CLASSIC.includes(f.layer.id));
     if (byLayer) return byLayer;
@@ -59,6 +64,7 @@ interface Location {
     id: string;
     title: string;
     coordinates: Coordinates;
+    type?: string; // <--- AJOUTE CETTE LIGNE
 }
 
 export interface MapProps {
@@ -98,6 +104,8 @@ export interface MapProps {
     onPoiHover?: (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => void;
     /** Callback appelé quand la souris quitte un POI */
     onPoiLeave?: () => void;
+    /** Callback appelé quand on clique sur un aéroport */
+    onAirportSelect?: (iataCode: string, name: string) => void;
     /** Afficher les contrôles de navigation */
     showNavigationControls?: boolean;
     /** Afficher le contrôle de géolocalisation */
@@ -131,6 +139,7 @@ export const WorldMap: React.FC<MapProps> = ({
                                                  onPoiClick,
                                                  onPoiHover,
                                                  onPoiLeave,
+                                                 onAirportSelect,
                                                  showNavigationControls: _showNavigationControls = true,
                                                  showGeolocateControl: _showGeolocateControl = false,
                                                  showFullscreenControl: _showFullscreenControl = false,
@@ -218,10 +227,13 @@ export const WorldMap: React.FC<MapProps> = ({
         }
     }, [mapConfig, mapStyle, isMapLoaded]);
 
+    const prevLocationsRef = useRef<typeof locations>([]);
+
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current) return;
 
         if (locations.length === 0) {
+            prevLocationsRef.current = locations;
             mapRef.current.flyTo({
                 center: [0, 0],
                 zoom: 1,
@@ -238,6 +250,10 @@ export const WorldMap: React.FC<MapProps> = ({
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
 
+        // Durée plus courte lors du rafraîchissement (hôtels ajoutés) pour un affichage plus réactif
+        const isRefresh = prevLocationsRef.current.length > 0 && locations.length > prevLocationsRef.current.length;
+        prevLocationsRef.current = locations;
+
         mapRef.current.fitBounds(
             [
                 [minLng, minLat],
@@ -245,7 +261,7 @@ export const WorldMap: React.FC<MapProps> = ({
             ],
             {
                 padding: { top: 100, bottom: 100, left: 100, right: 100 },
-                duration: 3500,
+                duration: isRefresh ? 800 : 2000,
                 essential: true,
                 maxZoom: 11
             }
@@ -253,7 +269,7 @@ export const WorldMap: React.FC<MapProps> = ({
     }, [locations, isMapLoaded]);
 
     const add3DBuildingsLayer = useCallback((map: MapboxMap, currentMapStyle: string) => {
-        if (IS_MAPBOX_STANDARD(currentMapStyle)) return; // Standard a des bâtiments 3D intégrés
+        if (IS_MAPBOX_STANDARD(currentMapStyle)) return;
         if (!STYLES_WITH_3D_BUILDINGS.some((s) => currentMapStyle.includes(s))) return;
         try {
             if (map.getLayer(LAYER_3D_BUILDINGS_ID)) return;
@@ -311,32 +327,64 @@ export const WorldMap: React.FC<MapProps> = ({
     };
 
     const handleClick = useCallback((e: MapMouseEvent) => {
-        if (!onPoiClick || !mapRef.current) return;
+        if (!mapRef.current) return;
+
         try {
             const features = mapRef.current.queryRenderedFeatures(e.point);
-            const poiFeature = pickPoiFeature(features);
-            if (!poiFeature) return;
-            onPoiClick(
-                {
-                    id: poiFeature.id,
-                    layer: poiFeature.layer as { id: string },
-                    source: poiFeature.source,
-                    sourceLayer: poiFeature.sourceLayer,
-                    properties: poiFeature.properties as Record<string, unknown>,
-                    geometry: poiFeature.geometry,
-                },
-                { lng: e.lngLat.lng, lat: e.lngLat.lat }
-            );
+
+            // 1. GESTION CLIC AÉROPORT (Prioritaire)
+            const airportFeature = features.find(f => f.layer?.id === 'airports-layer');
+            if (airportFeature && onAirportSelect) {
+                const iata = airportFeature.properties?.iata_code;
+                const name = airportFeature.properties?.name;
+                if (iata) {
+                    onAirportSelect(iata, name || 'Aéroport');
+                    return; // On arrête ici, on ne sélectionne pas de POI en dessous
+                }
+            }
+
+            // 2. GESTION CLIC POI (Classique)
+            if (onPoiClick) {
+                const poiFeature = pickPoiFeature(features);
+                if (!poiFeature) return;
+
+                // On s'assure que ce n'est pas l'aéroport qu'on a cliqué par erreur comme POI
+                if (poiFeature.layer?.id === 'airports-layer') return;
+
+                onPoiClick(
+                    {
+                        id: poiFeature.id,
+                        layer: poiFeature.layer as { id: string },
+                        source: poiFeature.source,
+                        sourceLayer: poiFeature.sourceLayer,
+                        properties: poiFeature.properties as Record<string, unknown>,
+                        geometry: poiFeature.geometry,
+                    },
+                    { lng: e.lngLat.lng, lat: e.lngLat.lat }
+                );
+            }
         } catch {}
-    }, [onPoiClick]);
+    }, [onPoiClick, onAirportSelect]);
 
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
         try {
             const features = mapRef.current.queryRenderedFeatures(e.point);
+
+            // Check si survol aéroport
+            const isOverAirport = features.some(f => f.layer?.id === 'airports-layer');
+
             const poiFeature = pickPoiFeature(features);
             const isOverPoi = !!poiFeature;
-            setCursor(isOverPoi ? 'pointer' : '');
+
+            // Priorité curseur : Aéroport > POI
+            setCursor(isOverAirport || isOverPoi ? 'pointer' : '');
+
+            // Si on survole un aéroport, on n'affiche pas la popup du POI pour éviter la confusion
+            if (isOverAirport) {
+                onPoiLeave?.();
+                return;
+            }
 
             if (isOverPoi && onPoiHover) {
                 const rect = containerRef.current?.getBoundingClientRect();
@@ -363,6 +411,25 @@ export const WorldMap: React.FC<MapProps> = ({
         }
     }, [onPoiHover, onPoiLeave]);
 
+    const locationsGeoJson = React.useMemo(() => {
+        if (!locations || locations.length === 0) return null;
+        return {
+            type: 'FeatureCollection',
+            features: locations.map(loc => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [loc.coordinates.longitude, loc.coordinates.latitude]
+                },
+                properties: {
+                    id: loc.id,
+                    title: loc.title,
+                    type: loc.type || 'hotel'
+                }
+            }))
+        };
+    }, [locations]);
+
     return (
         <div
             ref={containerRef}
@@ -377,7 +444,7 @@ export const WorldMap: React.FC<MapProps> = ({
                 {...(typeof pitch === 'number' ? { pitch } : {})}
                 onMove={handleMove}
                 onMouseMove={handleMouseMove}
-                onClick={onPoiClick ? handleClick : undefined}
+                onClick={handleClick} // Utilise handleClick qui gère Aéroports + POI
                 onLoad={() => {
                     setIsMapLoaded(true);
                     const map = mapRef.current?.getMap();
@@ -392,6 +459,7 @@ export const WorldMap: React.FC<MapProps> = ({
                 mapStyle={mapStyle}
                 mapboxAccessToken={accessToken}
                 attributionControl={showAttribution}
+                interactiveLayerIds={onPoiClick ? undefined : ['airports-layer']} // Optimisation
                 {...(mapConfig && IS_MAPBOX_STANDARD(mapStyle) && {
                     config: {
                         basemap: Object.fromEntries(
@@ -399,7 +467,80 @@ export const WorldMap: React.FC<MapProps> = ({
                         ) as { lightPreset?: string; theme?: string },
                     },
                 })}
-            />
+            >
+                {isMapLoaded && (
+                    <Source id="airports-source" type="geojson" data={AIRPORTS_DATA_SOURCE}>
+                        <Layer
+                            id="airports-layer"
+                            type="circle"
+                            paint={{
+                                'circle-radius': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    2, 2,
+                                    6, 6
+                                ],
+                                'circle-color': '#ff4d4d',
+                                'circle-stroke-width': 1,
+                                'circle-stroke-color': '#ffffff',
+                                'circle-opacity': 0.8
+                            }}
+                        />
+                        <Layer
+                            id="airports-labels"
+                            type="symbol"
+                            layout={{
+                                'text-field': ['get', 'iata_code'],
+                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                                'text-size': 10,
+                                'text-offset': [0, 1.2],
+                                'text-anchor': 'top',
+                                'visibility': 'visible'
+                            }}
+                            paint={{
+                                'text-color': '#ffffff'
+                            }}
+                            minzoom={4}
+                        />
+                    </Source>
+                )}
+                {isMapLoaded && locationsGeoJson && (
+                    <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
+                        <Layer
+                            id="locations-layer-circle"
+                            type="circle"
+                            paint={{
+                                'circle-radius': 7,
+                                'circle-color': [
+                                    'match', ['get', 'type'],
+                                    'city-center', 'transparent', // Point centre ville invisible
+                                    '#3b82f6' // Bleu pour les hôtels
+                                ],
+                                'circle-stroke-width': 2,
+                                'circle-stroke-color': '#ffffff',
+                                'circle-opacity': 1
+                            }}
+                        />
+                        <Layer
+                            id="locations-layer-labels"
+                            type="symbol"
+                            layout={{
+                                'text-field': ['get', 'title'],
+                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                                'text-size': 11,
+                                'text-offset': [0, 1.3],
+                                'text-anchor': 'top',
+                            }}
+                            paint={{
+                                'text-color': '#3b82f6',
+                                'text-halo-color': '#ffffff',
+                                'text-halo-width': 2
+                            }}
+                            minzoom={11}
+                        />
+                    </Source>
+                )}
+            </Map>
+
             {(!showLogo || !showAttribution) && (
                 <style>{`
                     .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-attrib-inner, 

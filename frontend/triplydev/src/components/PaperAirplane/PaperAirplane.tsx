@@ -1,5 +1,9 @@
 import React from 'react';
-import {PaperAirplaneProps} from "../../types/paperAirplane.ts";
+
+interface PaperAirplaneProps {
+    size?: number;
+    color?: string;
+}
 
 export const PaperAirplane: React.FC<PaperAirplaneProps> = ({
                                                                 size = 48,

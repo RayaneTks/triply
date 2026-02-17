@@ -9,7 +9,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
-import {VelocityDataPoint} from "../../../types/velocity.ts";
+import {VelocityDataPoint} from "../../../types/velocity";
 
 interface VelocityChartProps {
     data: VelocityDataPoint[];

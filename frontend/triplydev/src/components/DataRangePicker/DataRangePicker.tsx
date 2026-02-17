@@ -372,7 +372,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
 
     return (
         <div
-            className={`flex items-center bg-white border border-gray-300 rounded-lg py-2.5 px-3 md:px-4 shadow-sm w-full overflow-hidden ${className}`}
+            className={`input-assistant w-full overflow-hidden ${className}`}
             style={containerStyle}
         >
             <div className="flex-shrink-0 mr-2 md:mr-3" style={{ color: containerStyle?.color || 'rgba(255, 255, 255, 0.5)' }}>
