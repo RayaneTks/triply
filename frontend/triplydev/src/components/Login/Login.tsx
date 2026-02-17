@@ -172,9 +172,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                     <div className="pt-2">
                         <Button
                             label={mode === 'login' ? 'Se connecter' : "S'inscrire"}
-                            onClick={() => {
-                                void executeAuth();
-                            }}
+                            type="submit"
                             variant="dark"
                             tone="tone1"
                             className="w-full"
