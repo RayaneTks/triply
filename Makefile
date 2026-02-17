@@ -1,6 +1,6 @@
 .PHONY: help \
 	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
-	test-auth test-feature test-unit \
+	verify test-auth test-feature test-unit \
 	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
@@ -9,6 +9,7 @@
 
 BACKEND_DIR := backend
 COMPOSE := docker compose
+DOCKER_SERVICES := db backend pgadmin
 
 # -----------------------------------------
 # Help
@@ -33,10 +34,11 @@ help:
 	@echo   make shell             - backend shell
 	@echo   make routes            - list API routes
 	@echo   make swagger           - regenerate swagger
+	@echo   make verify            - full backend checks (composer dev deps + tests)
 	@echo   make test              - backend tests (all)
-	@echo   make test-auth         - auth API tests only
-	@echo   make test-feature      - all feature tests
-	@echo   make test-unit         - all unit tests
+	@echo   make test-auth         - auth tests only
+	@echo   make test-feature      - feature tests only
+	@echo   make test-unit         - unit tests only
 
 # -----------------------------------------
 # Recommended workflow (Docker-first)
@@ -44,20 +46,22 @@ help:
 
 init:
 	$(COMPOSE) down --remove-orphans
-	$(COMPOSE) up -d --build db backend pgadmin
+	$(COMPOSE) up -d --build $(DOCKER_SERVICES)
 	$(MAKE) db-ensure
 	$(MAKE) env-sync
 	$(COMPOSE) exec -T backend php artisan optimize:clear
 	$(COMPOSE) exec -T backend php artisan migrate --force
 	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+	$(MAKE) verify
 
 install: init
 
 migrate:
 	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	$(MAKE) verify
 
 up:
-	$(COMPOSE) up -d --remove-orphans db backend pgadmin
+	$(COMPOSE) up -d --remove-orphans $(DOCKER_SERVICES)
 
 run: up
 
@@ -66,16 +70,17 @@ reload:
 	$(COMPOSE) exec -T backend php artisan optimize:clear
 	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+	$(MAKE) verify
 
 down:
 	$(COMPOSE) down --remove-orphans
 
 rebuild:
 	$(COMPOSE) down --remove-orphans
-	$(COMPOSE) up -d --build db backend pgadmin
+	$(COMPOSE) up -d --build $(DOCKER_SERVICES)
 
 restart:
-	$(COMPOSE) restart db backend pgadmin
+	$(COMPOSE) restart $(DOCKER_SERVICES)
 
 status:
 	$(COMPOSE) ps
@@ -95,8 +100,11 @@ routes:
 swagger:
 	$(COMPOSE) exec -T backend php artisan l5-swagger:generate
 
-test:
+verify:
 	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+	$(MAKE) test
+
+test:
 	$(COMPOSE) exec -T backend php artisan test
 
 test-auth:

@@ -44,11 +44,6 @@ services:
       POSTGRES_HOST_AUTH_METHOD: md5
     volumes:
       - pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U backend -d TriplyDB"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
 
   pgadmin:
     image: dpage/pgadmin4
@@ -58,14 +53,16 @@ services:
       PGADMIN_DEFAULT_EMAIL: "contact@triply.ovh"
       PGADMIN_DEFAULT_PASSWORD: "admin"
       PGADMIN_CONFIG_SERVER_MODE: "False"
-      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
-      PGPASS_FILE: "/pgpass"
-    volumes:
-      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
-      - ./pgadmin/pgpass:/pgpass:ro
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+      
+#  phpmyadmin:
+#    image: phpmyadmin/phpmyadmin
+#    ports:
+#      - "8080:80"
+#    environment:
+#      PMA_HOST: db
+#      MYSQL_ROOT_PASSWORD: root
 
 volumes:
   pg_data:
