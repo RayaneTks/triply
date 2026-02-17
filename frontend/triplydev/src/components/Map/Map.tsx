@@ -64,7 +64,8 @@ interface Location {
     id: string;
     title: string;
     coordinates: Coordinates;
-    type?: string; // <--- AJOUTE CETTE LIGNE
+    type?: string;
+    zoom?: number;
 }
 
 export interface MapProps {
@@ -105,7 +106,7 @@ export interface MapProps {
     /** Callback appelé quand la souris quitte un POI */
     onPoiLeave?: () => void;
     /** Callback appelé quand on clique sur un aéroport */
-    onAirportSelect?: (iataCode: string, name: string) => void;
+    onAirportSelect?: (iataCode: string, name: string, lat: number, lng: number) => void;
     /** Afficher les contrôles de navigation */
     showNavigationControls?: boolean;
     /** Afficher le contrôle de géolocalisation */
@@ -251,6 +252,8 @@ export const WorldMap: React.FC<MapProps> = ({
 
     const prevLocationsRef = useRef<typeof locations>([]);
 
+    // Dans src/components/Map/Map.tsx
+
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current) return;
 
@@ -265,6 +268,27 @@ export const WorldMap: React.FC<MapProps> = ({
             return;
         }
 
+        // --- AJUSTEMENT FONCTIONNEL ICI ---
+
+        // Cas 1 : Une seule destination (ex: réponse Assistant "France" ou "Paris")
+        // On respecte strictement le zoom défini par l'IA/Backend
+        if (locations.length === 1) {
+            const loc = locations[0];
+
+            // On utilise flyTo au lieu de fitBounds pour contrôler le niveau de zoom précis
+            mapRef.current.flyTo({
+                center: [loc.coordinates.longitude, loc.coordinates.latitude],
+                zoom: loc.zoom ?? 11, // Utilise le zoom du backend (5 ou 12), sinon 11 par défaut
+                duration: 2000,
+                essential: true
+            });
+
+            prevLocationsRef.current = locations;
+            return;
+        }
+
+        // Cas 2 : Plusieurs points (ex: Hôtels chargés)
+        // On garde la logique fitBounds pour englober tous les points
         const lngs = locations.map(l => l.coordinates.longitude);
         const lats = locations.map(l => l.coordinates.latitude);
         const minLng = Math.min(...lngs);
@@ -272,7 +296,6 @@ export const WorldMap: React.FC<MapProps> = ({
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
 
-        // Durée plus courte lors du rafraîchissement (hôtels ajoutés) pour un affichage plus réactif
         const isRefresh = prevLocationsRef.current.length > 0 && locations.length > prevLocationsRef.current.length;
         prevLocationsRef.current = locations;
 
@@ -285,7 +308,7 @@ export const WorldMap: React.FC<MapProps> = ({
                 padding: { top: 100, bottom: 100, left: 100, right: 100 },
                 duration: isRefresh ? 800 : 2000,
                 essential: true,
-                maxZoom: 11
+                maxZoom: 13 // On peut augmenter un peu le maxZoom autorisé quand on affiche des hôtels
             }
         );
     }, [locations, isMapLoaded]);
@@ -359,9 +382,16 @@ export const WorldMap: React.FC<MapProps> = ({
             if (airportFeature && onAirportSelect) {
                 const iata = airportFeature.properties?.iata_code;
                 const name = airportFeature.properties?.name;
+
+                // AJOUT : Récupération des coordonnées géographiques
+                // Dans un GeoJSON Point, coordinates est un tableau [lng, lat]
+                const geometry = airportFeature.geometry as any; // Cast rapide car on sait que c'est un Point
+                const [lng, lat] = geometry.coordinates;
+
                 if (iata) {
-                    onAirportSelect(iata, name || 'Aéroport');
-                    return; // On arrête ici, on ne sélectionne pas de POI en dessous
+                    // On passe lat/lng au parent
+                    onAirportSelect(iata, name || 'Aéroport', lat, lng);
+                    return;
                 }
             }
 
@@ -527,21 +557,6 @@ export const WorldMap: React.FC<MapProps> = ({
                 )}
                 {isMapLoaded && locationsGeoJson && (
                     <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
-                        <Layer
-                            id="locations-layer-circle"
-                            type="circle"
-                            paint={{
-                                'circle-radius': 7,
-                                'circle-color': [
-                                    'match', ['get', 'type'],
-                                    'city-center', 'transparent', // Point centre ville invisible
-                                    '#3b82f6' // Bleu pour les hôtels
-                                ],
-                                'circle-stroke-width': 2,
-                                'circle-stroke-color': '#ffffff',
-                                'circle-opacity': 1
-                            }}
-                        />
                         <Layer
                             id="locations-layer-labels"
                             type="symbol"

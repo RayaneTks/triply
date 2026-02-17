@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
-import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
 import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import Assistant from "@/src/components/Assistant/Assistant";
@@ -149,20 +148,34 @@ export default function Home() {
     const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
 
     // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
-    const handleAirportSelect = (iata: string, name: string) => {
-        console.log(`Aéroport sélectionné: ${name} (${iata})`);
+    const handleAirportSelect = (iata: string, name: string, lat: number, lng: number) => {
+        console.log(`Aéroport sélectionné: ${name} (${iata}) @ ${lat}, ${lng}`);
 
-        // Logique intelligente pour remplir les champs
+        // 1. Si pas de départ, c'est le départ
         if (!departureCity) {
             setDepartureCity(iata);
-            // Pas de setDepartureCityName prévu dans ton state, mais pas grave pour l'assistant
         }
-        // 2. Sinon, on remplit l'Arrivée (C'est là que ça se joue)
+        // 2. Sinon, c'est l'arrivée
         else {
-            // Évite de mettre la même ville en départ et arrivée
             if (departureCity !== iata) {
-                setArrivalCity(iata);     // Met à jour le code (ex: FCO)
-                setArrivalCityName(name); // <--- AJOUTE CECI : Met à jour le nom (ex: Fiumicino)
+                setArrivalCity(iata);
+                setArrivalCityName(name);
+
+                // --- CORRECTION MAJEURE ---
+                // Au lieu d'attendre que l'utilisateur ouvre la modal,
+                // on lance directement la recherche d'hôtels autour de ces coordonnées (GPS).
+                // Cela contourne le problème du code IATA non reconnu par Amadeus.
+
+                const airportLocationObj = {
+                    id: `airport-${iata}`,
+                    title: name,
+                    coordinates: { latitude: lat, longitude: lng },
+                    type: 'city-center', // On le traite comme un centre pour l'affichage
+                    zoom: 12
+                };
+
+                // On lance la recherche (utilise /api/hotels/search?lat=...&lng=...)
+                searchHotelsAtLocation(lat, lng, airportLocationObj, hotelStarsFilter);
             }
         }
     };
@@ -227,6 +240,8 @@ export default function Home() {
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
+    const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+    const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
@@ -433,91 +448,6 @@ export default function Home() {
         }
     }, [mapViewMenuOpen, hotelFilterMenuOpen]);
 
-    const [displayPoi, setDisplayPoi] = useState<{
-        feature: MapboxPoiFeature;
-        lngLat: { lng: number; lat: number };
-        point: { x: number; y: number };
-    } | null>(null);
-    const [poiReviews, setPoiReviews] = useState<{
-        name: string; rating: number | null; reviews: any[]; url: string | null;
-    } | null>(null);
-    const [poiReviewsLoading, setPoiReviewsLoading] = useState(false);
-    const [isPointerInModal, setIsPointerInModal] = useState(false);
-    const isPointerInModalRef = useRef(false);
-    const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const hideDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastFetchIdRef = useRef(0);
-
-    isPointerInModalRef.current = isPointerInModal;
-
-    const scheduleHide = useCallback(() => {
-        if (hideDebounceRef.current) clearTimeout(hideDebounceRef.current);
-        hideDebounceRef.current = setTimeout(() => {
-            hideDebounceRef.current = null;
-            if (!isPointerInModalRef.current) {
-                setDisplayPoi(null);
-                setPoiReviews(null);
-                setPoiReviewsLoading(false);
-            }
-        }, 300);
-    }, []);
-
-    const cancelHide = useCallback(() => {
-        if (hideDebounceRef.current) {
-            clearTimeout(hideDebounceRef.current);
-            hideDebounceRef.current = null;
-        }
-    }, []);
-
-    const handlePoiHover = useCallback(
-        (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => {
-            cancelHide();
-            const poi = { feature, lngLat, point };
-            setDisplayPoi(poi);
-
-            if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-            const name = String(
-                feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu'
-            ).trim();
-            if (!name) return;
-
-            fetchDebounceRef.current = setTimeout(() => {
-                fetchDebounceRef.current = null;
-                const fetchId = ++lastFetchIdRef.current;
-                setPoiReviewsLoading(true);
-                setPoiReviews(null);
-                fetch(`/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lngLat.lat}&lng=${lngLat.lng}`)
-                    .then((res) => res.json())
-                    .then((data) => {
-                        if (fetchId !== lastFetchIdRef.current) return;
-                        setPoiReviews({
-                            name: data.name ?? name,
-                            rating: data.rating ?? null,
-                            reviews: data.reviews ?? [],
-                            url: data.url ?? null,
-                        });
-                    })
-                    .catch(() => {
-                        if (fetchId !== lastFetchIdRef.current) return;
-                        setPoiReviews({ name, rating: null, reviews: [], url: null });
-                    })
-                    .finally(() => {
-                        if (fetchId !== lastFetchIdRef.current) return;
-                        setPoiReviewsLoading(false);
-                    });
-            }, 400);
-        },
-        [cancelHide]
-    );
-
-    const handlePoiLeave = useCallback(() => {
-        if (fetchDebounceRef.current) {
-            clearTimeout(fetchDebounceRef.current);
-            fetchDebounceRef.current = null;
-        }
-        scheduleHide();
-    }, [scheduleHide]);
-
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
         const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
@@ -593,32 +523,11 @@ export default function Home() {
                                 height="100%"
                                 width="100%"
                                 className="h-full"
-                                padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
+                                padding={{ left: isConfigPanelOpen ? 400 : 0, top: 0, bottom: 0, right: 0 }}
                                 onPoiClick={handlePoiClick}
-                                onPoiHover={handlePoiHover}
-                                onPoiLeave={handlePoiLeave}
                                 locations={mapLocations}
                                 onAirportSelect={handleAirportSelect}
                             />
-                            <PoiReviewsModal
-                                visible={!!displayPoi && (!!poiReviews || poiReviewsLoading)}
-                                name={poiReviews?.name ?? (displayPoi ? String(displayPoi.feature.properties?.name ?? displayPoi.feature.properties?.name_en ?? displayPoi.feature.layer?.id ?? 'Lieu') : '')}
-                                rating={poiReviews?.rating ?? null}
-                                reviews={poiReviews?.reviews ?? []}
-                                url={poiReviews?.url ?? null}
-                                position={displayPoi?.point ?? { x: 0, y: 0 }}
-                                loading={poiReviewsLoading}
-                                leftPanelWidth={400}
-                                onMouseEnter={() => {
-                                    setIsPointerInModal(true);
-                                    cancelHide();
-                                }}
-                                onMouseLeave={() => {
-                                    setIsPointerInModal(false);
-                                    scheduleHide();
-                                }}
-                            />
-
                             <FlightSearchModal
                                 visible={isFlightModalOpen}
                                 onClose={() => {
@@ -683,7 +592,46 @@ export default function Home() {
                                 offer={selectedHotelOffer}
                             />
 
+                            {/* Bouton Configurer votre voyage - bas gauche (visible uniquement quand le panneau est fermé) */}
+                            {!isConfigPanelOpen && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsConfigPanelOpen(true)}
+                                    className="absolute bottom-4 left-4 z-20 flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all hover:scale-105 shadow-lg"
+                                    style={{
+                                        backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                                        color: 'var(--foreground, #ededed)',
+                                    }}
+                                    title="Configurer votre voyage"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="3" />
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                    </svg>
+                                    <span className="text-sm font-medium">Configurer votre voyage</span>
+                                </button>
+                            )}
+
+                            {/* Bouton Assistant Triply - bas droite */}
                             <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAssistantOpen((o) => !o)}
+                                    className="flex items-center justify-center w-12 h-12 rounded-full transition-all hover:scale-105 shadow-lg"
+                                    style={{
+                                        backgroundColor: 'var(--primary, #0096c7)',
+                                        color: '#fff',
+                                        boxShadow: '0 4px 12px rgba(0, 150, 199, 0.4)',
+                                    }}
+                                    title="Triply Assistant"
+                                    aria-label="Ouvrir l'assistant"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </button>
                                 <div className="relative" ref={hotelFilterMenuRef}>
                                     <button
                                         type="button"
@@ -783,50 +731,94 @@ export default function Home() {
                                     )}
                                 </AnimatePresence>
                             </div>
+
+                            {/* Panneau Assistant (slide-up depuis bas droite) */}
+                            <AnimatePresence>
+                                {isAssistantOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 100, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 100, scale: 0.95 }}
+                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                        className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-[9999] rounded-t-2xl overflow-hidden shadow-2xl flex flex-col"
+                                        style={{
+                                            height: 'min(70vh, 500px)',
+                                            backgroundColor: 'var(--background, #222222)',
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.5)',
+                                        }}
+                                    >
+                                        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                            <h3 className="font-semibold" style={{ color: 'var(--foreground)' }}>Triply Assistant</h3>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAssistantOpen(false)}
+                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                aria-label="Fermer"
+                                            >
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--foreground)' }}>
+                                                    <path d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                                            {isConnected ? (
+                                                <Assistant
+                                                    onUpdateLocations={handleAssistantUpdate}
+                                                    destination={arrivalCityName || arrivalCity}
+                                                />
+                                            ) : (
+                                                <div className="p-6 overflow-y-auto">
+                                                    <p className="text-sm mb-4" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                                        Connecte-toi pour utiliser la discussion avec le LLM.
+                                                    </p>
+                                                    <Button label="Se connecter" onClick={handleLoginClick} variant="dark" tone="tone1" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
-                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                            {isConnected ? (
-                                <Assistant
-                                    onUpdateLocations={handleAssistantUpdate}
-                                    destination={arrivalCityName || arrivalCity}
-                                />
-                            ) : (
-                                <div
-                                    className="p-6 rounded-lg"
-                                    style={{
-                                        backgroundColor: 'var(--background, #222)',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,.3)',
-                                    }}
+                        <AnimatePresence>
+                            {isConfigPanelOpen && (
+                                <motion.div
+                                    initial={{ width: 0, opacity: 0 }}
+                                    animate={{ width: '33.333%', opacity: 1 }}
+                                    exit={{ width: 0, opacity: 0 }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                    className="absolute left-0 top-0 bottom-0 flex flex-col overflow-hidden p-4 z-10 min-w-0 shrink-0"
                                 >
-                                    <h2 className="text-lg font-semibold mb-3 text-white">Triply Assistant</h2>
-                                    <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                        Connecte-toi pour utiliser la discussion avec le LLM.
-                                    </p>
-                                    <Button
-                                        label="Se connecter"
-                                        onClick={handleLoginClick}
-                                        variant="dark"
-                                        tone="tone1"
-                                        className="mt-4"
-                                    />
-                                </div>
+                                    <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
+                                        <div className="absolute top-3 left-3 z-10">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsConfigPanelOpen(false)}
+                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                aria-label="Fermer"
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--foreground)' }}>
+                                                    <path d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <AnimatePresence mode="wait" custom={slideDirection}>
+                                            <Slide
+                                                key={currentSlideIndex}
+                                                direction={slideDirection}
+                                                onNext={handleNext}
+                                                onPrev={handlePrev}
+                                                canNext={currentSlideIndex < slides.length - 1}
+                                                canPrev={currentSlideIndex > 0}
+                                            >
+                                                {slides[currentSlideIndex]?.content}
+                                            </Slide>
+                                        </AnimatePresence>
+                                    </div>
+                                </motion.div>
                             )}
-                            <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                                <AnimatePresence mode="wait" custom={slideDirection}>
-                                    <Slide
-                                        key={currentSlideIndex}
-                                        direction={slideDirection}
-                                        onNext={handleNext}
-                                        onPrev={handlePrev}
-                                        canNext={currentSlideIndex < slides.length - 1}
-                                        canPrev={currentSlideIndex > 0}
-                                    >
-                                        {slides[currentSlideIndex]?.content}
-                                    </Slide>
-                                </AnimatePresence>
-                            </div>
-                        </div>
+                        </AnimatePresence>
                     </>
                 )}
             </div>
