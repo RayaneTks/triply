@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { TRIPLY_SYSTEM_PROMPT, quickGate, getGeoInstructions } from '@/src/lib/triply';
+import { TRIPLY_SYSTEM_PROMPT, quickGate, getGeoInstructions, getPreferencesInstructions } from '@/src/lib/triply';
 
 const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
@@ -52,6 +52,7 @@ export async function POST(req: Request) {
         const body = await req.json();
         const messages = body.messages || [];
         const destinationContext = body.destinationContext || '';
+        const userPreferences: string[] = body.userPreferences || [];
 
         const lastUserMessage = messages.filter((m: { role: string }) => m.role === 'user').pop();
         const userText = lastUserMessage?.content ?? '';
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ reply: gate.response, locations: [] });
         }
 
-        const systemContent = TRIPLY_SYSTEM_PROMPT + getGeoInstructions(destinationContext);
+        const systemContent = TRIPLY_SYSTEM_PROMPT + getGeoInstructions(destinationContext) + getPreferencesInstructions(userPreferences);
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',

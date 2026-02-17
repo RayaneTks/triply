@@ -6,6 +6,7 @@ import MessageList from '@/src/components/Messages/MessageList';
 import { SearchBar } from '@/src/components/Searchbar/Searchbar';
 import { Button } from '@/src/components/Button/Button';
 import { getStoredSession } from '@/src/lib/auth-client';
+import { PREFERENCES_STORAGE_KEY } from '@/src/components/TuPreferes/TuPreferes';
 
 const CHAT_STORAGE_KEY = 'triply-assistant-chat';
 
@@ -125,6 +126,17 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
         try {
             const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
 
+            const prefs: string[] = (() => {
+                try {
+                    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFERENCES_STORAGE_KEY) : null;
+                    if (!raw) return [];
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            })();
+
             const res = await fetch('/api/assistant', {
                 method: 'POST',
                 headers: {
@@ -134,6 +146,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
                 body: JSON.stringify({
                     messages: apiMessages,
                     destinationContext: destination,
+                    userPreferences: prefs,
                 }),
             });
 
