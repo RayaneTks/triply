@@ -15,7 +15,7 @@ Depuis la racine du repo (`triply/`) :
 
 1. Setup initial (une seule fois, one-shot)
 ```bash
-make init
+make install
 ```
 
 2. Demarrage quotidien (rapide, sans rebuild)
@@ -56,6 +56,8 @@ Un exemple est fourni dans `backend/.env.docker.example`.
 ## Commandes utiles
 
 - `make init` : setup complet (build, db-ensure, env-sync, cache clear, migrate, swagger)
+- `make install` : alias de `make init`
+- `make migrate` : applique les migrations en mode safe
 - `make db-ensure` : cree le role `backend` et la base `TriplyDB` si absents
 - `make up` / `make run` : demarrage quotidien rapide
 - `make reload` : clear cache + migrate graceful + swagger
