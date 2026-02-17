@@ -1,9 +1,10 @@
 .PHONY: help \
 	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
+	test-auth test-feature test-unit \
 	clear \
-	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-tinker local-fresh \
+	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
-	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-swagger docker-routes docker-clean \
+	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-test-auth docker-test-feature docker-test-unit docker-swagger docker-routes docker-clean \
 	bootstrap
 
 BACKEND_DIR := backend
@@ -32,7 +33,10 @@ help:
 	@echo   make shell             - backend shell
 	@echo   make routes            - list API routes
 	@echo   make swagger           - regenerate swagger
-	@echo   make test              - backend tests
+	@echo   make test              - backend tests (all)
+	@echo   make test-auth         - auth API tests only
+	@echo   make test-feature      - all feature tests
+	@echo   make test-unit         - all unit tests
 
 # -----------------------------------------
 # Recommended workflow (Docker-first)
@@ -95,6 +99,15 @@ test:
 	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
 	$(COMPOSE) exec -T backend php artisan test
 
+test-auth:
+	$(COMPOSE) exec -T backend php artisan test tests/Feature/AuthEndpointsTest.php
+
+test-feature:
+	$(COMPOSE) exec -T backend php artisan test tests/Feature
+
+test-unit:
+	$(COMPOSE) exec -T backend php artisan test tests/Unit
+
 composer-install:
 	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
 
@@ -142,6 +155,15 @@ local-serve:
 local-test:
 	php $(BACKEND_DIR)/artisan test
 
+local-test-auth:
+	php $(BACKEND_DIR)/artisan test tests/Feature/AuthEndpointsTest.php
+
+local-test-feature:
+	php $(BACKEND_DIR)/artisan test tests/Feature
+
+local-test-unit:
+	php $(BACKEND_DIR)/artisan test tests/Unit
+
 local-tinker:
 	php $(BACKEND_DIR)/artisan tinker
 
@@ -169,6 +191,9 @@ docker-logs: logs
 docker-logs-back: logs-back
 docker-shell-back: shell
 docker-test: test
+docker-test-auth: test-auth
+docker-test-feature: test-feature
+docker-test-unit: test-unit
 docker-swagger: swagger
 docker-routes: routes
 docker-clean: clean

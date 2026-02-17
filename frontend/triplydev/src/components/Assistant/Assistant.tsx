@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
-import MessageList from "@/src/components/Messages/MessageList";
-import { SearchBar } from "@/src/components/Searchbar/Searchbar";
-import { Button } from "@/src/components/Button/Button";
+import MessageList from '@/src/components/Messages/MessageList';
+import { SearchBar } from '@/src/components/Searchbar/Searchbar';
+import { Button } from '@/src/components/Button/Button';
+import { getStoredSession } from '@/src/lib/auth-client';
 
 interface Coordinates {
     latitude: number;
@@ -32,7 +33,7 @@ export interface ChatMessage {
 
 interface AssistantProps {
     onUpdateLocations?: (locations: Location[]) => void;
-    destination?: string; // <--- NOUVELLE PROP : La ville venant du formulaire
+    destination?: string;
 }
 
 export default function Assistant({ onUpdateLocations, destination }: AssistantProps) {
@@ -40,25 +41,25 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const [isNarrow, setIsNarrow] = useState(false);
-    useEffect(() => {
-        const mq = window.matchMedia('(max-width: 480px)');
-        setIsNarrow(mq.matches);
-        const h = () => setIsNarrow(mq.matches);
-        mq.addEventListener('change', h);
-        return () => mq.removeEventListener('change', h);
-    }, []);
-
-    const placeholderText = isNarrow
-        ? (destination ? `Activités à ${destination}` : 'Où aller ? (ex: Tokyo)')
-        : (destination
-            ? `Rechercher des activités à ${destination}...`
-            : "Où souhaitez-vous aller ? (ex: Tokyo...)");
+    const placeholderText = destination
+        ? `Rechercher des activites a ${destination}...`
+        : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
 
     const sendMessage = async () => {
         if ((!message.trim() && !destination) || loading) return;
 
-        const currentMessageText = message.trim() || `Montre-moi les hôtels et activités à ${destination}`;
+        const session = getStoredSession();
+        if (!session?.token) {
+            const authRequired: ChatMessage = {
+                id: uuid(),
+                role: 'assistant',
+                content: "Connexion requise pour utiliser l'assistant.",
+            };
+            setMessages((prev) => [...prev, authRequired]);
+            return;
+        }
+
+        const currentMessageText = message.trim() || `Montre-moi les hotels et activites a ${destination}`;
 
         const userMessage: ChatMessage = {
             id: uuid(),
@@ -72,21 +73,24 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
         setLoading(true);
 
         try {
-            const apiMessages = newHistory.map(({ role, content }) => ({
-                role,
-                content
-            }));
+            const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
 
             const res = await fetch('/api/assistant', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.token}`,
+                },
                 body: JSON.stringify({
                     messages: apiMessages,
-                    destinationContext: destination
+                    destinationContext: destination,
                 }),
             });
 
-            if (!res.ok) throw new Error(res.statusText);
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                throw new Error(payload?.error || res.statusText || 'Erreur API');
+            }
 
             const data: AssistantResponse = await res.json();
 
@@ -96,20 +100,19 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
                 content: data.reply,
             };
 
-            setMessages(prev => [...prev, assistantMessage]);
+            setMessages((prev) => [...prev, assistantMessage]);
 
             if (data.locations && data.locations.length > 0 && onUpdateLocations) {
                 onUpdateLocations(data.locations);
             }
-
         } catch (error) {
-            console.error("Erreur API", error);
+            console.error('Erreur API', error);
             const errorMessage: ChatMessage = {
                 id: uuid(),
                 role: 'assistant',
-                content: "Désolé, une erreur est survenue."
+                content: error instanceof Error ? error.message : 'Desole, une erreur est survenue.',
             };
-            setMessages(prev => [...prev, errorMessage]);
+            setMessages((prev) => [...prev, errorMessage]);
         } finally {
             setLoading(false);
         }
@@ -118,41 +121,41 @@ export default function Assistant({ onUpdateLocations, destination }: AssistantP
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendMessage();
+            void sendMessage();
         }
     };
 
     return (
         <div
-            className="p-4 sm:p-6 rounded-lg flex flex-col min-h-[200px] sm:min-h-[300px] overflow-hidden"
+            className="p-6 rounded-lg flex flex-col min-h-[300px]"
             style={{
                 backgroundColor: 'var(--background, #222)',
                 boxShadow: '0 2px 8px rgba(0,0,0,.3)',
             }}
         >
-            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white truncate">
-                Triply Assistant
-            </h2>
+            <h2 className="text-lg font-semibold mb-4 text-white">Triply Assistant</h2>
 
             <MessageList messages={messages} loading={loading} />
 
-            <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4 w-full min-w-0">
+            <div className="flex gap-2 mt-4">
                 <SearchBar
                     placeholder={placeholderText}
                     value={message}
-                    onChange={e => setMessage(e.target.value)}
+                    onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="flex-1 w-full min-w-0"
+                    className="flex-1"
                 />
 
                 <Button
                     label="Envoyer"
-                    onClick={sendMessage}
+                    onClick={() => {
+                        void sendMessage();
+                    }}
                     variant="dark"
                     tone="tone1"
                     disabled={loading}
                     loading={loading}
-                    className="w-full sm:w-auto sm:flex-shrink-0"
+                    className="h-full"
                 />
             </div>
         </div>

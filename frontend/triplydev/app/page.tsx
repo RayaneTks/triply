@@ -19,6 +19,7 @@ import { generateFlightRequest } from '@/utils/amadeus';
 import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
+import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
 
 // Interface pour la définition des slides
 interface SlideDefinition {
@@ -33,7 +34,7 @@ function LoginWithMapBackground({
                                     onBack,
                                 }: {
     mapboxToken: string;
-    onLoginSuccess: () => void;
+    onLoginSuccess: (user: AuthUser) => void;
     onBack: () => void;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -53,7 +54,7 @@ function LoginWithMapBackground({
     }, []);
 
     return (
-        <div ref={containerRef} className="absolute inset-0 overflow-hidden min-h-0">
+        <div ref={containerRef} className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 z-0" style={{ backgroundColor: 'var(--background, #222222)' }}>
                 <WorldMap
                     accessToken={mapboxToken}
@@ -96,6 +97,27 @@ export default function Home() {
             setIsSidebarCollapsed(true);
         }
     }, [isConnected]);
+
+    useEffect(() => {
+        const syncAuth = async () => {
+            const session = getStoredSession();
+            if (!session?.token) {
+                setIsConnected(false);
+                return;
+            }
+
+            try {
+                const user = await me(session.token);
+                saveSession({ token: session.token, user });
+                setIsConnected(true);
+            } catch {
+                clearSession();
+                setIsConnected(false);
+            }
+        };
+
+        void syncAuth();
+    }, []);
 
     // Etats Formulaire Voyage
     const [travelerCount, setTravelerCount] = useState(1);
@@ -517,26 +539,29 @@ export default function Home() {
     };
 
     const handleLoginClick = () => setCurrentView('login');
-    const handleLogoutClick = () => { setIsConnected(false); setCurrentView('home'); };
-    const handleLoginSuccess = () => { setIsConnected(true); setCurrentView('home'); };
+    const handleLogoutClick = async () => {
+        const session = getStoredSession();
+        if (session?.token) {
+            try {
+                await logout(session.token);
+            } catch {
+                // no-op
+            }
+        }
+
+        clearSession();
+        setIsConnected(false);
+        setCurrentView('home');
+    };
+
+    const handleLoginSuccess = (_user: AuthUser) => {
+        setIsConnected(true);
+        setCurrentView('home');
+    };
     const handleBackToHome = () => setCurrentView('home');
 
-    // Padding map responsive (évite chevauchement panneau gauche)
-    const [mapPaddingLeft, setMapPaddingLeft] = useState(400);
-    const [isNarrowView, setIsNarrowView] = useState(false);
-    useEffect(() => {
-        const update = () => {
-            const w = window.innerWidth;
-            setMapPaddingLeft(w < 640 ? 0 : w < 1024 ? Math.min(400, w * 0.42) : 440);
-            setIsNarrowView(w < 400);
-        };
-        update();
-        window.addEventListener('resize', update);
-        return () => window.removeEventListener('resize', update);
-    }, []);
-
     return (
-        <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full max-w-[100vw]" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -545,7 +570,7 @@ export default function Home() {
                 onLogoutClick={handleLogoutClick}
             />
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-w-0 relative min-h-0">
+            <div className="flex-1 flex overflow-hidden min-w-0 relative">
                 {currentView === 'login' && (
                     <LoginWithMapBackground
                         mapboxToken={MAPBOX_TOKEN}
@@ -568,7 +593,7 @@ export default function Home() {
                                 height="100%"
                                 width="100%"
                                 className="h-full"
-                                padding={{ left: mapPaddingLeft, top: 0, bottom: 0, right: 0 }}
+                                padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
                                 onPoiClick={handlePoiClick}
                                 onPoiHover={handlePoiHover}
                                 onPoiLeave={handlePoiLeave}
@@ -658,7 +683,7 @@ export default function Home() {
                                 offer={selectedHotelOffer}
                             />
 
-                            <div className="absolute bottom-4 right-4 z-20 flex flex-wrap items-center gap-2 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]" ref={mapViewMenuRef}>
+                            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
                                 <div className="relative" ref={hotelFilterMenuRef}>
                                     <button
                                         type="button"
@@ -719,11 +744,10 @@ export default function Home() {
                                     </AnimatePresence>
                                 </div>
                                 <Button
-                                    label={isNarrowView ? 'Vue' : 'Changer de vue'}
+                                    label="Changer de vue"
                                     onClick={() => setMapViewMenuOpen((o) => !o)}
                                     variant="dark"
                                     tone="tone1"
-                                    className="shrink-0"
                                 />
                                 <AnimatePresence>
                                     {mapViewMenuOpen && (
@@ -761,14 +785,34 @@ export default function Home() {
                             </div>
                         </div>
 
-                        <div className="absolute left-0 top-0 bottom-0 w-full sm:max-w-[400px] md:w-[38%] lg:max-w-[420px] flex flex-col overflow-hidden gap-2 sm:gap-4 p-3 sm:p-4 z-10 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)]">
-                            <div className="flex-shrink-0 min-h-0">
+                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
+                            {isConnected ? (
                                 <Assistant
                                     onUpdateLocations={handleAssistantUpdate}
                                     destination={arrivalCityName || arrivalCity}
                                 />
-                            </div>
-                            <div className="flex-1 min-h-0 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
+                            ) : (
+                                <div
+                                    className="p-6 rounded-lg"
+                                    style={{
+                                        backgroundColor: 'var(--background, #222)',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,.3)',
+                                    }}
+                                >
+                                    <h2 className="text-lg font-semibold mb-3 text-white">Triply Assistant</h2>
+                                    <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                        Connecte-toi pour utiliser la discussion avec le LLM.
+                                    </p>
+                                    <Button
+                                        label="Se connecter"
+                                        onClick={handleLoginClick}
+                                        variant="dark"
+                                        tone="tone1"
+                                        className="mt-4"
+                                    />
+                                </div>
+                            )}
+                            <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
                                 <AnimatePresence mode="wait" custom={slideDirection}>
                                     <Slide
                                         key={currentSlideIndex}

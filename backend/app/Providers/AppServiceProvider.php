@@ -15,9 +15,10 @@ use App\Services\Contracts\ProfileServiceInterface;
 use App\Services\Contracts\SharingServiceInterface;
 use App\Services\Contracts\TravelServiceInterface;
 use App\Services\Contracts\TripServiceInterface;
+use App\Services\AuthService;
+use App\Services\TripService;
 use App\Services\Stubs\ActivityServiceStub;
 use App\Services\Stubs\AiServiceStub;
-use App\Services\Stubs\AuthServiceStub;
 use App\Services\Stubs\BookingServiceStub;
 use App\Services\Stubs\ConsentServiceStub;
 use App\Services\Stubs\ExportServiceStub;
@@ -26,7 +27,6 @@ use App\Services\Stubs\PlacesServiceStub;
 use App\Services\Stubs\ProfileServiceStub;
 use App\Services\Stubs\SharingServiceStub;
 use App\Services\Stubs\TravelServiceStub;
-use App\Services\Stubs\TripServiceStub;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -36,9 +36,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(AuthServiceInterface::class, AuthServiceStub::class);
+        $this->app->bind(AuthServiceInterface::class, AuthService::class);
         $this->app->bind(ProfileServiceInterface::class, ProfileServiceStub::class);
-        $this->app->bind(TripServiceInterface::class, TripServiceStub::class);
+        $this->app->bind(TripServiceInterface::class, TripService::class);
         $this->app->bind(ActivityServiceInterface::class, ActivityServiceStub::class);
         $this->app->bind(PlacesServiceInterface::class, PlacesServiceStub::class);
         $this->app->bind(AiServiceInterface::class, AiServiceStub::class);

@@ -59,7 +59,113 @@ use OpenApi\Attributes as OA;
     ],
     type: 'object'
 )]
+#[OA\Response(
+    response: 'ErrorBadRequest',
+    description: 'Requete invalide',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'BAD_REQUEST',
+                'message' => 'Requete invalide.',
+                'details' => (object) [],
+            ],
+        ]
+    )
+)]
+#[OA\Response(
+    response: 'ErrorUnauthorized',
+    description: 'Authentification requise',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'UNAUTHORIZED',
+                'message' => 'Authentification requise.',
+                'details' => (object) [],
+            ],
+        ]
+    )
+)]
+#[OA\Response(
+    response: 'ErrorForbidden',
+    description: 'Acces refuse',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'FORBIDDEN',
+                'message' => 'Acces refuse.',
+                'details' => (object) [],
+            ],
+        ]
+    )
+)]
+#[OA\Response(
+    response: 'ErrorNotFound',
+    description: 'Ressource introuvable',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'NOT_FOUND',
+                'message' => 'Ressource introuvable.',
+                'details' => (object) [],
+            ],
+        ]
+    )
+)]
+#[OA\Response(
+    response: 'ErrorValidation',
+    description: 'Erreurs de validation',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'VALIDATION_ERROR',
+                'message' => 'Requete invalide',
+                'details' => [
+                    'email' => ['Ce champ est obligatoire.'],
+                ],
+            ],
+        ]
+    )
+)]
+#[OA\Response(
+    response: 'ErrorRateLimited',
+    description: 'Trop de requetes',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'TOO_MANY_REQUESTS',
+                'message' => 'Trop de requetes. Reessayez plus tard.',
+                'details' => (object) [],
+            ],
+        ]
+    )
+)]
+#[OA\Response(
+    response: 'ErrorInternal',
+    description: 'Erreur interne serveur',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/ApiError',
+        example: [
+            'success' => false,
+            'error' => [
+                'code' => 'INTERNAL_SERVER_ERROR',
+                'message' => 'Une erreur interne est survenue.',
+                'details' => (object) [],
+            ],
+        ]
+    )
+)]
 final class OpenApiSpec
 {
 }
-

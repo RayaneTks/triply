@@ -21,6 +21,14 @@ final class V1TravelEndpoints
         tags: ['Transports'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Lister les vols',
@@ -61,6 +69,14 @@ final class V1TravelEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Ajouter un vol',
@@ -98,6 +114,14 @@ final class V1TravelEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour le vol',
@@ -127,6 +151,14 @@ final class V1TravelEndpoints
         tags: ['Transports'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Supprimer le vol',
@@ -156,6 +188,14 @@ final class V1TravelEndpoints
         tags: ['Transports'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Lister les hebergements',
@@ -196,6 +236,14 @@ final class V1TravelEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Ajouter un hebergement',
@@ -233,6 +281,14 @@ final class V1TravelEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour l\'hebergement',
@@ -262,6 +318,14 @@ final class V1TravelEndpoints
         tags: ['Transports'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Supprimer l\'hebergement',
@@ -291,6 +355,14 @@ final class V1TravelEndpoints
         tags: ['Transports'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Lister les transports locaux',
@@ -332,6 +404,14 @@ final class V1TravelEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Ajouter un transport local',
@@ -369,6 +449,14 @@ final class V1TravelEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour le transport local',
@@ -398,6 +486,14 @@ final class V1TravelEndpoints
         tags: ['Transports'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Supprimer le transport local',
