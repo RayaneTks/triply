@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { TRIPLY_SYSTEM_PROMPT, quickGate, getGeoInstructions } from '@/src/lib/triply';
 
 const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
@@ -50,32 +51,23 @@ export async function POST(req: Request) {
 
         const body = await req.json();
         const messages = body.messages || [];
-        const destinationContext = body.destinationContext;
+        const destinationContext = body.destinationContext || '';
+
+        const lastUserMessage = messages.filter((m: { role: string }) => m.role === 'user').pop();
+        const userText = lastUserMessage?.content ?? '';
+
+        const gate = quickGate(userText);
+        if (!gate.allow) {
+            return NextResponse.json({ reply: gate.response, locations: [] });
+        }
+
+        const systemContent = TRIPLY_SYSTEM_PROMPT + getGeoInstructions(destinationContext);
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             response_format: { type: 'json_object' },
             messages: [
-                {
-                    role: "system",
-                    content: `Tu es un assistant voyage expert en géographie. 
-                    Contexte actuel: "${destinationContext}".
-                    
-                    Ta mission :
-                    1. Identifier le lieu mentionné (Ville, Pays, Région).
-                    2. Fournir les coordonnées GPS.
-                    3. Définir un niveau de zoom adapté ("suggestedZoom") :
-                       - Pour un PAYS (ex: Niger, France) -> entre 4 et 6.
-                       - Pour une VILLE (ex: Niamey, Paris) -> entre 11 et 13.
-
-                    Format JSON STRICT attendu :
-                    { 
-                        "reply": "Ta réponse conversationnelle...", 
-                        "targetLocation": "Nom du lieu ou null",
-                        "coordinates": { "lat": number, "lng": number } or null,
-                        "suggestedZoom": number (ex: 5 ou 12)
-                    }`
-                },
+                { role: 'system', content: systemContent },
                 ...messages,
             ],
         });

@@ -558,21 +558,6 @@ export const WorldMap: React.FC<MapProps> = ({
                 {isMapLoaded && locationsGeoJson && (
                     <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
                         <Layer
-                            id="locations-layer-circle"
-                            type="circle"
-                            paint={{
-                                'circle-radius': 7,
-                                'circle-color': [
-                                    'match', ['get', 'type'],
-                                    'city-center', 'transparent', // Point centre ville invisible
-                                    '#3b82f6' // Bleu pour les hôtels
-                                ],
-                                'circle-stroke-width': 2,
-                                'circle-stroke-color': '#ffffff',
-                                'circle-opacity': 1
-                            }}
-                        />
-                        <Layer
                             id="locations-layer-labels"
                             type="symbol"
                             layout={{

@@ -6,7 +6,6 @@ import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
-import { PoiReviewsModal } from '@/src/components/PoiReviewsModal/PoiReviewsModal';
 import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import Assistant from "@/src/components/Assistant/Assistant";
@@ -448,91 +447,6 @@ export default function Home() {
         }
     }, [mapViewMenuOpen, hotelFilterMenuOpen]);
 
-    const [displayPoi, setDisplayPoi] = useState<{
-        feature: MapboxPoiFeature;
-        lngLat: { lng: number; lat: number };
-        point: { x: number; y: number };
-    } | null>(null);
-    const [poiReviews, setPoiReviews] = useState<{
-        name: string; rating: number | null; reviews: any[]; url: string | null;
-    } | null>(null);
-    const [poiReviewsLoading, setPoiReviewsLoading] = useState(false);
-    const [isPointerInModal, setIsPointerInModal] = useState(false);
-    const isPointerInModalRef = useRef(false);
-    const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const hideDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastFetchIdRef = useRef(0);
-
-    isPointerInModalRef.current = isPointerInModal;
-
-    const scheduleHide = useCallback(() => {
-        if (hideDebounceRef.current) clearTimeout(hideDebounceRef.current);
-        hideDebounceRef.current = setTimeout(() => {
-            hideDebounceRef.current = null;
-            if (!isPointerInModalRef.current) {
-                setDisplayPoi(null);
-                setPoiReviews(null);
-                setPoiReviewsLoading(false);
-            }
-        }, 300);
-    }, []);
-
-    const cancelHide = useCallback(() => {
-        if (hideDebounceRef.current) {
-            clearTimeout(hideDebounceRef.current);
-            hideDebounceRef.current = null;
-        }
-    }, []);
-
-    const handlePoiHover = useCallback(
-        (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => {
-            cancelHide();
-            const poi = { feature, lngLat, point };
-            setDisplayPoi(poi);
-
-            if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-            const name = String(
-                feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu'
-            ).trim();
-            if (!name) return;
-
-            fetchDebounceRef.current = setTimeout(() => {
-                fetchDebounceRef.current = null;
-                const fetchId = ++lastFetchIdRef.current;
-                setPoiReviewsLoading(true);
-                setPoiReviews(null);
-                fetch(`/api/place-reviews?name=${encodeURIComponent(name)}&lat=${lngLat.lat}&lng=${lngLat.lng}`)
-                    .then((res) => res.json())
-                    .then((data) => {
-                        if (fetchId !== lastFetchIdRef.current) return;
-                        setPoiReviews({
-                            name: data.name ?? name,
-                            rating: data.rating ?? null,
-                            reviews: data.reviews ?? [],
-                            url: data.url ?? null,
-                        });
-                    })
-                    .catch(() => {
-                        if (fetchId !== lastFetchIdRef.current) return;
-                        setPoiReviews({ name, rating: null, reviews: [], url: null });
-                    })
-                    .finally(() => {
-                        if (fetchId !== lastFetchIdRef.current) return;
-                        setPoiReviewsLoading(false);
-                    });
-            }, 400);
-        },
-        [cancelHide]
-    );
-
-    const handlePoiLeave = useCallback(() => {
-        if (fetchDebounceRef.current) {
-            clearTimeout(fetchDebounceRef.current);
-            fetchDebounceRef.current = null;
-        }
-        scheduleHide();
-    }, [scheduleHide]);
-
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
         const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
@@ -610,30 +524,9 @@ export default function Home() {
                                 className="h-full"
                                 padding={{ left: 400, top: 0, bottom: 0, right: 0 }}
                                 onPoiClick={handlePoiClick}
-                                onPoiHover={handlePoiHover}
-                                onPoiLeave={handlePoiLeave}
                                 locations={mapLocations}
                                 onAirportSelect={handleAirportSelect}
                             />
-                            <PoiReviewsModal
-                                visible={!!displayPoi && (!!poiReviews || poiReviewsLoading)}
-                                name={poiReviews?.name ?? (displayPoi ? String(displayPoi.feature.properties?.name ?? displayPoi.feature.properties?.name_en ?? displayPoi.feature.layer?.id ?? 'Lieu') : '')}
-                                rating={poiReviews?.rating ?? null}
-                                reviews={poiReviews?.reviews ?? []}
-                                url={poiReviews?.url ?? null}
-                                position={displayPoi?.point ?? { x: 0, y: 0 }}
-                                loading={poiReviewsLoading}
-                                leftPanelWidth={400}
-                                onMouseEnter={() => {
-                                    setIsPointerInModal(true);
-                                    cancelHide();
-                                }}
-                                onMouseLeave={() => {
-                                    setIsPointerInModal(false);
-                                    scheduleHide();
-                                }}
-                            />
-
                             <FlightSearchModal
                                 visible={isFlightModalOpen}
                                 onClose={() => {
@@ -824,15 +717,15 @@ export default function Home() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 100, scale: 0.95 }}
                                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                        className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-[9999] rounded-t-2xl overflow-hidden shadow-2xl"
+                                        className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-[9999] rounded-t-2xl overflow-hidden shadow-2xl flex flex-col"
                                         style={{
-                                            maxHeight: 'min(70vh, 500px)',
+                                            height: 'min(70vh, 500px)',
                                             backgroundColor: 'var(--background, #222222)',
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.5)',
                                         }}
                                     >
-                                        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                                             <h3 className="font-semibold" style={{ color: 'var(--foreground)' }}>Triply Assistant</h3>
                                             <button
                                                 type="button"
@@ -845,14 +738,14 @@ export default function Home() {
                                                 </svg>
                                             </button>
                                         </div>
-                                        <div className="overflow-y-auto" style={{ maxHeight: 'calc(min(70vh, 500px) - 52px)' }}>
+                                        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                                             {isConnected ? (
                                                 <Assistant
                                                     onUpdateLocations={handleAssistantUpdate}
                                                     destination={arrivalCityName || arrivalCity}
                                                 />
                                             ) : (
-                                                <div className="p-6">
+                                                <div className="p-6 overflow-y-auto">
                                                     <p className="text-sm mb-4" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                                                         Connecte-toi pour utiliser la discussion avec le LLM.
                                                     </p>
