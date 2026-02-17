@@ -90,6 +90,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const isMobile = useMediaQuery('(max-width: 768px)');
     const collapsedW = isMobile ? 56 : 80;
     const expandedW = isMobile ? 280 : 280;
+    const navItems = isConnected
+        ? NAV_ITEMS
+        : NAV_ITEMS.filter((item) => item.path !== '/voyages');
 
     return (
         <>
@@ -156,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <>
                         <nav className="flex-1 py-6 px-4">
                             <ul className="space-y-1">
-                                {NAV_ITEMS.map((item) => {
+                                {navItems.map((item) => {
                                     const isActive = item.path ? pathname === item.path : false;
                                     const Icon = item.Icon;
                                     const content = (
