@@ -32,17 +32,22 @@ export interface ChatMessage {
 
 interface AssistantProps {
     onUpdateLocations?: (locations: Location[]) => void;
+    destination?: string; // <--- NOUVELLE PROP : La ville venant du formulaire
 }
 
-export default function Assistant({ onUpdateLocations }: AssistantProps) {
+export default function Assistant({ onUpdateLocations, destination }: AssistantProps) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const sendMessage = async () => {
-        if (!message.trim() || loading) return;
+    const placeholderText = destination
+        ? `Rechercher des activités à ${destination}...`
+        : "Où souhaitez-vous aller ? (ex: Tokyo...)";
 
-        const currentMessageText = message;
+    const sendMessage = async () => {
+        if ((!message.trim() && !destination) || loading) return;
+
+        const currentMessageText = message.trim() || `Montre-moi les hôtels et activités à ${destination}`;
 
         const userMessage: ChatMessage = {
             id: uuid(),
@@ -66,6 +71,7 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: apiMessages,
+                    destinationContext: destination
                 }),
             });
 
@@ -90,7 +96,7 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
             const errorMessage: ChatMessage = {
                 id: uuid(),
                 role: 'assistant',
-                content: "Désolé, une erreur est survenue lors de la recherche des destinations."
+                content: "Désolé, une erreur est survenue."
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
@@ -121,7 +127,7 @@ export default function Assistant({ onUpdateLocations }: AssistantProps) {
 
             <div className="flex gap-2 mt-4">
                 <SearchBar
-                    placeholder="Où souhaitez-vous aller ? (ex: Tokyo, Bali...)"
+                    placeholder={placeholderText}
                     value={message}
                     onChange={e => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}

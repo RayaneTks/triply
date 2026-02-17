@@ -16,6 +16,7 @@ import { FlightDetailModal } from '@/src/components/FlightDetailModal/FlightDeta
 import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
 import { HotelDetailModal } from '@/src/components/HotelDetailModal/HotelDetailModal';
 import { generateFlightRequest } from '@/utils/amadeus';
+import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
@@ -87,6 +88,7 @@ export default function Home() {
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [mapLocations, setMapLocations] = useState<any[]>([]);
+    const [isLoadingHotels, setIsLoadingHotels] = useState(false);
 
     // AUTO-COLLAPSE SIDEBAR IF CONNECTED
     useEffect(() => {
@@ -106,6 +108,7 @@ export default function Home() {
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
     const [departureCity, setDepartureCity] = useState('');
     const [arrivalCity, setArrivalCity] = useState('');
+    const [arrivalCityName, setArrivalCityName] = useState('');
     const [travelDays, setTravelDays] = useState<number>(3);
     const [isLoading, setIsLoading] = useState(false);
     const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
@@ -118,6 +121,10 @@ export default function Home() {
     const [mapPitch, setMapPitch] = useState<number>(0);
     const [mapViewMenuOpen, setMapViewMenuOpen] = useState(false);
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
+    const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
+    const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
+    const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
+    const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
 
     // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
     const handleAirportSelect = (iata: string, name: string) => {
@@ -126,18 +133,73 @@ export default function Home() {
         // Logique intelligente pour remplir les champs
         if (!departureCity) {
             setDepartureCity(iata);
-        } else if (!arrivalCity) {
+            // Pas de setDepartureCityName prévu dans ton state, mais pas grave pour l'assistant
+        }
+        // 2. Sinon, on remplit l'Arrivée (C'est là que ça se joue)
+        else {
             // Évite de mettre la même ville en départ et arrivée
             if (departureCity !== iata) {
-                setArrivalCity(iata);
-            }
-        } else {
-            // Si les deux sont pleins, on remplace l'arrivée (comportement standard)
-            if (departureCity !== iata) {
-                setArrivalCity(iata);
+                setArrivalCity(iata);     // Met à jour le code (ex: FCO)
+                setArrivalCityName(name); // <--- AJOUTE CECI : Met à jour le nom (ex: Fiumicino)
             }
         }
     };
+
+    const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: any, ratingsFilter?: number[] | null) => {
+        lastSearchRef.current = { lat, lng, cityCenter };
+        const ratingsParam = ratingsFilter && ratingsFilter.length > 0 ? ratingsFilter.join(',') : undefined;
+        console.log("🏨 Recherche d'hôtels demandée pour :", lat, lng, ratingsParam || 'tous');
+        setIsLoadingHotels(true);
+
+        try {
+            const url = new URL('/api/hotels/search', window.location.origin);
+            url.searchParams.set('lat', String(lat));
+            url.searchParams.set('lng', String(lng));
+            if (ratingsParam) url.searchParams.set('ratings', ratingsParam);
+
+            const res = await fetch(url.toString());
+            const data = await res.json();
+
+            if (data.locations && data.locations.length > 0) {
+                const merged = mergeCityCenterWithHotels(cityCenter, data.locations);
+                const spread = spreadOverlappingPoints(merged);
+                setMapLocations(spread);
+            } else if (cityCenter) {
+                setMapLocations([cityCenter]);
+            }
+        } catch (error) {
+            console.error("Erreur chargement hôtels:", error);
+            if (cityCenter) setMapLocations([cityCenter]);
+        } finally {
+            setIsLoadingHotels(false);
+        }
+    }, []);
+
+    const handleAssistantUpdate = useCallback((locations: any[]) => {
+        const cityCenter = locations.find((l) => l.type === 'city-center') ?? locations[0] ?? null;
+
+        // Affichage immédiat du centre ville (rafraîchissement fluide)
+        if (cityCenter) {
+            setMapLocations([cityCenter]);
+        } else {
+            setMapLocations(locations);
+        }
+
+        if (locations.length > 0 && locations[0]?.coordinates) {
+            const { latitude, longitude } = locations[0].coordinates;
+            searchHotelsAtLocation(latitude, longitude, cityCenter, hotelStarsFilter);
+        }
+    }, [searchHotelsAtLocation, hotelStarsFilter]);
+
+    const applyHotelFilter = useCallback((stars: number[] | null) => {
+        setHotelStarsFilter(stars);
+        setHotelFilterMenuOpen(false);
+        const last = lastSearchRef.current;
+        if (last) {
+            searchHotelsAtLocation(last.lat, last.lng, last.cityCenter, stars);
+        }
+    }, [searchHotelsAtLocation]);
+
     const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
     const [selectedFlightOffer, setSelectedFlightOffer] = useState<FlightOffer | null>(null);
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
@@ -285,6 +347,7 @@ export default function Home() {
                 <TripConfigurationForm
                     departureCity={departureCity} setDepartureCity={setDepartureCity}
                     arrivalCity={arrivalCity} setArrivalCity={setArrivalCity}
+                    setArrivalCityName={setArrivalCityName}
                     travelDays={travelDays} setTravelDays={setTravelDays}
                     travelerCount={travelerCount} setTravelerCount={setTravelerCount}
                     budget={budget} setBudget={setBudget}
@@ -334,15 +397,19 @@ export default function Home() {
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (mapViewMenuRef.current && !mapViewMenuRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (mapViewMenuOpen && mapViewMenuRef.current && !mapViewMenuRef.current.contains(target)) {
                 setMapViewMenuOpen(false);
             }
+            if (hotelFilterMenuOpen && hotelFilterMenuRef.current && !hotelFilterMenuRef.current.contains(target)) {
+                setHotelFilterMenuOpen(false);
+            }
         };
-        if (mapViewMenuOpen) {
+        if (mapViewMenuOpen || hotelFilterMenuOpen) {
             document.addEventListener('mousedown', handleClickOutside);
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }
-    }, [mapViewMenuOpen]);
+    }, [mapViewMenuOpen, hotelFilterMenuOpen]);
 
     const [displayPoi, setDisplayPoi] = useState<{
         feature: MapboxPoiFeature;
@@ -492,7 +559,6 @@ export default function Home() {
                                 onPoiHover={handlePoiHover}
                                 onPoiLeave={handlePoiLeave}
                                 locations={mapLocations}
-                                // AJOUT DU PROP
                                 onAirportSelect={handleAirportSelect}
                             />
                             <PoiReviewsModal
@@ -578,7 +644,66 @@ export default function Home() {
                                 offer={selectedHotelOffer}
                             />
 
-                            <div className="absolute bottom-4 right-4 z-20" ref={mapViewMenuRef}>
+                            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
+                                <div className="relative" ref={hotelFilterMenuRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setHotelFilterMenuOpen((o) => !o)}
+                                        className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:bg-white/10 ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
+                                        style={{
+                                            backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                                        }}
+                                        title="Filtrer les hôtels"
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--foreground, #ededed)' }}>
+                                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                                        </svg>
+                                    </button>
+                                    <AnimatePresence>
+                                        {hotelFilterMenuOpen && (
+                                            <div
+                                                className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[200px]"
+                                                style={{
+                                                    backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+                                                }}
+                                            >
+                                                <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Étoiles</span>
+                                                </div>
+                                                <div className="py-2">
+                                                    {[
+                                                        { label: 'Tous', value: null },
+                                                        { label: '2, 3, 4 étoiles', value: [2, 3, 4] },
+                                                        { label: '4 et 5 étoiles', value: [4, 5] },
+                                                        { label: '5 étoiles uniquement', value: [5] },
+                                                    ].map(({ label, value }) => {
+                                                        const isActive = value === null
+                                                            ? !hotelStarsFilter || hotelStarsFilter.length === 0
+                                                            : hotelStarsFilter?.length === value.length && value.every((s) => hotelStarsFilter?.includes(s));
+                                                        return (
+                                                            <button
+                                                                key={label}
+                                                                type="button"
+                                                                onClick={() => applyHotelFilter(value)}
+                                                                className="w-full text-left py-2.5 px-4 text-sm font-medium hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                                style={{
+                                                                    color: isActive ? '#0096c7' : 'var(--foreground, #ededed)',
+                                                                }}
+                                                            >
+                                                                {isActive && <span className="text-cyan-400">●</span>}
+                                                                {label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                                 <Button
                                     label="Changer de vue"
                                     onClick={() => setMapViewMenuOpen((o) => !o)}
@@ -622,8 +747,10 @@ export default function Home() {
                         </div>
 
                         <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                            <Assistant onUpdateLocations={setMapLocations} />
-
+                            <Assistant
+                                onUpdateLocations={handleAssistantUpdate} // On utilise la nouvelle fonction
+                                destination={arrivalCityName || arrivalCity}
+                            />
                             <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
                                 <AnimatePresence mode="wait" custom={slideDirection}>
                                     <Slide

@@ -64,6 +64,7 @@ interface Location {
     id: string;
     title: string;
     coordinates: Coordinates;
+    type?: string; // <--- AJOUTE CETTE LIGNE
 }
 
 export interface MapProps {
@@ -226,10 +227,13 @@ export const WorldMap: React.FC<MapProps> = ({
         }
     }, [mapConfig, mapStyle, isMapLoaded]);
 
+    const prevLocationsRef = useRef<typeof locations>([]);
+
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current) return;
 
         if (locations.length === 0) {
+            prevLocationsRef.current = locations;
             mapRef.current.flyTo({
                 center: [0, 0],
                 zoom: 1,
@@ -246,6 +250,10 @@ export const WorldMap: React.FC<MapProps> = ({
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
 
+        // Durée plus courte lors du rafraîchissement (hôtels ajoutés) pour un affichage plus réactif
+        const isRefresh = prevLocationsRef.current.length > 0 && locations.length > prevLocationsRef.current.length;
+        prevLocationsRef.current = locations;
+
         mapRef.current.fitBounds(
             [
                 [minLng, minLat],
@@ -253,7 +261,7 @@ export const WorldMap: React.FC<MapProps> = ({
             ],
             {
                 padding: { top: 100, bottom: 100, left: 100, right: 100 },
-                duration: 3500,
+                duration: isRefresh ? 800 : 2000,
                 essential: true,
                 maxZoom: 11
             }
@@ -403,6 +411,25 @@ export const WorldMap: React.FC<MapProps> = ({
         }
     }, [onPoiHover, onPoiLeave]);
 
+    const locationsGeoJson = React.useMemo(() => {
+        if (!locations || locations.length === 0) return null;
+        return {
+            type: 'FeatureCollection',
+            features: locations.map(loc => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [loc.coordinates.longitude, loc.coordinates.latitude]
+                },
+                properties: {
+                    id: loc.id,
+                    title: loc.title,
+                    type: loc.type || 'hotel'
+                }
+            }))
+        };
+    }, [locations]);
+
     return (
         <div
             ref={containerRef}
@@ -473,6 +500,42 @@ export const WorldMap: React.FC<MapProps> = ({
                                 'text-color': '#ffffff'
                             }}
                             minzoom={4}
+                        />
+                    </Source>
+                )}
+                {isMapLoaded && locationsGeoJson && (
+                    <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
+                        <Layer
+                            id="locations-layer-circle"
+                            type="circle"
+                            paint={{
+                                'circle-radius': 7,
+                                'circle-color': [
+                                    'match', ['get', 'type'],
+                                    'city-center', 'transparent', // Point centre ville invisible
+                                    '#3b82f6' // Bleu pour les hôtels
+                                ],
+                                'circle-stroke-width': 2,
+                                'circle-stroke-color': '#ffffff',
+                                'circle-opacity': 1
+                            }}
+                        />
+                        <Layer
+                            id="locations-layer-labels"
+                            type="symbol"
+                            layout={{
+                                'text-field': ['get', 'title'],
+                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                                'text-size': 11,
+                                'text-offset': [0, 1.3],
+                                'text-anchor': 'top',
+                            }}
+                            paint={{
+                                'text-color': '#3b82f6',
+                                'text-halo-color': '#ffffff',
+                                'text-halo-width': 2
+                            }}
+                            minzoom={11}
                         />
                     </Source>
                 )}
