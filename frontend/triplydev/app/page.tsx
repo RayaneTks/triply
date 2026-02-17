@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
@@ -227,6 +227,7 @@ export default function Home() {
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
+    const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
@@ -683,7 +684,24 @@ export default function Home() {
                                 offer={selectedHotelOffer}
                             />
 
+                            {/* Bouton Assistant Triply - bas droite */}
                             <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAssistantOpen((o) => !o)}
+                                    className="flex items-center justify-center w-12 h-12 rounded-full transition-all hover:scale-105 shadow-lg"
+                                    style={{
+                                        backgroundColor: 'var(--primary, #0096c7)',
+                                        color: '#fff',
+                                        boxShadow: '0 4px 12px rgba(0, 150, 199, 0.4)',
+                                    }}
+                                    title="Triply Assistant"
+                                    aria-label="Ouvrir l'assistant"
+                                >
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </button>
                                 <div className="relative" ref={hotelFilterMenuRef}>
                                     <button
                                         type="button"
@@ -783,35 +801,57 @@ export default function Home() {
                                     )}
                                 </AnimatePresence>
                             </div>
+
+                            {/* Panneau Assistant (slide-up depuis bas droite) */}
+                            <AnimatePresence>
+                                {isAssistantOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 100, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 100, scale: 0.95 }}
+                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                        className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-[9999] rounded-t-2xl overflow-hidden shadow-2xl"
+                                        style={{
+                                            maxHeight: 'min(70vh, 500px)',
+                                            backgroundColor: 'var(--background, #222222)',
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.5)',
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                            <h3 className="font-semibold" style={{ color: 'var(--foreground)' }}>Triply Assistant</h3>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAssistantOpen(false)}
+                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                aria-label="Fermer"
+                                            >
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--foreground)' }}>
+                                                    <path d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className="overflow-y-auto" style={{ maxHeight: 'calc(min(70vh, 500px) - 52px)' }}>
+                                            {isConnected ? (
+                                                <Assistant
+                                                    onUpdateLocations={handleAssistantUpdate}
+                                                    destination={arrivalCityName || arrivalCity}
+                                                />
+                                            ) : (
+                                                <div className="p-6">
+                                                    <p className="text-sm mb-4" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                                        Connecte-toi pour utiliser la discussion avec le LLM.
+                                                    </p>
+                                                    <Button label="Se connecter" onClick={handleLoginClick} variant="dark" tone="tone1" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
-                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                            {isConnected ? (
-                                <Assistant
-                                    onUpdateLocations={handleAssistantUpdate}
-                                    destination={arrivalCityName || arrivalCity}
-                                />
-                            ) : (
-                                <div
-                                    className="p-6 rounded-lg"
-                                    style={{
-                                        backgroundColor: 'var(--background, #222)',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,.3)',
-                                    }}
-                                >
-                                    <h2 className="text-lg font-semibold mb-3 text-white">Triply Assistant</h2>
-                                    <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                        Connecte-toi pour utiliser la discussion avec le LLM.
-                                    </p>
-                                    <Button
-                                        label="Se connecter"
-                                        onClick={handleLoginClick}
-                                        variant="dark"
-                                        tone="tone1"
-                                        className="mt-4"
-                                    />
-                                </div>
-                            )}
+                        <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden p-4 z-10">
                             <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
                                 <AnimatePresence mode="wait" custom={slideDirection}>
                                     <Slide
