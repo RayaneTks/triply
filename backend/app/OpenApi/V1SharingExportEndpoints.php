@@ -21,6 +21,14 @@ final class V1SharingExportEndpoints
         tags: ['Partage'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Recapitulatif du voyage',
@@ -59,6 +67,14 @@ final class V1SharingExportEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Creer un lien de partage',
@@ -87,6 +103,14 @@ final class V1SharingExportEndpoints
         path: '/share/{token}',
         tags: ['Partage'],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Recapitulatif public',
@@ -125,6 +149,14 @@ final class V1SharingExportEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 202,
                 description: 'Exporter en PDF',
@@ -163,6 +195,14 @@ final class V1SharingExportEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 202,
                 description: 'Exporter en ICS',

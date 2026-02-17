@@ -37,6 +37,14 @@ final class V1ActivityEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 201,
                 description: 'Ajouter une etape',
@@ -73,6 +81,14 @@ final class V1ActivityEndpoints
         tags: ['Activites'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Lister les activites',
@@ -102,6 +118,14 @@ final class V1ActivityEndpoints
         tags: ['Activites'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Activites groupees par jour',
@@ -131,6 +155,14 @@ final class V1ActivityEndpoints
         tags: ['Activites'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Detail activite',
@@ -171,6 +203,14 @@ final class V1ActivityEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour l\'activite',
@@ -208,6 +248,14 @@ final class V1ActivityEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 202,
                 description: 'Regenerer l\'activite',
@@ -246,6 +294,14 @@ final class V1ActivityEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Reordonner les activites',
@@ -275,6 +331,14 @@ final class V1ActivityEndpoints
         tags: ['Activites'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Supprimer l\'activite',
@@ -315,6 +379,14 @@ final class V1ActivityEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Restaurer l\'activite',

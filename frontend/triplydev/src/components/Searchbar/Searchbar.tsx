@@ -14,7 +14,7 @@ export const SearchBar: FC<SearchBarProps> = ({
                                               }) => {
     return (
         <div
-            className={`input-assistant w-full max-w-md ${className}`}
+            className={`input-assistant w-full min-w-0 flex-1 ${className}`}
             style={containerStyle}
         >
             <svg
@@ -33,7 +33,7 @@ export const SearchBar: FC<SearchBarProps> = ({
             <input
                 type="text"
                 placeholder={placeholder}
-                className="flex-grow bg-transparent focus:outline-none placeholder-white/50"
+                className="flex-grow min-w-0 bg-transparent focus:outline-none placeholder-white/50 w-full"
                 style={{ color: rest.style?.color || 'var(--foreground, #ededed)' }}
                 {...rest}
             />

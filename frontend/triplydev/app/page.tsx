@@ -13,9 +13,13 @@ import Assistant from "@/src/components/Assistant/Assistant";
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
 import { FlightDetailModal } from '@/src/components/FlightDetailModal/FlightDetailModal';
+import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
+import { HotelDetailModal } from '@/src/components/HotelDetailModal/HotelDetailModal';
 import { generateFlightRequest } from '@/utils/amadeus';
 import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
+import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
 
 // Interface pour la définition des slides
 interface SlideDefinition {
@@ -30,7 +34,7 @@ function LoginWithMapBackground({
                                     onBack,
                                 }: {
     mapboxToken: string;
-    onLoginSuccess: () => void;
+    onLoginSuccess: (user: AuthUser) => void;
     onBack: () => void;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +97,27 @@ export default function Home() {
             setIsSidebarCollapsed(true);
         }
     }, [isConnected]);
+
+    useEffect(() => {
+        const syncAuth = async () => {
+            const session = getStoredSession();
+            if (!session?.token) {
+                setIsConnected(false);
+                return;
+            }
+
+            try {
+                const user = await me(session.token);
+                saveSession({ token: session.token, user });
+                setIsConnected(true);
+            } catch {
+                clearSession();
+                setIsConnected(false);
+            }
+        };
+
+        void syncAuth();
+    }, []);
 
     // Etats Formulaire Voyage
     const [travelerCount, setTravelerCount] = useState(1);
@@ -202,6 +227,13 @@ export default function Home() {
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
+    const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
+    const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
+    const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
+    const [hotelApiResponse, setHotelApiResponse] = useState<any>(null);
+    const [isLoadingHotel, setIsLoadingHotel] = useState(false);
+    const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
+
     const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
         setSelectedFlightOffer(offer);
         setSelectedFlightCarrierName(carrierName);
@@ -239,6 +271,16 @@ export default function Home() {
         }
     };
 
+    const handleHotelSelect = (offer: HotelOffer) => {
+        setSelectedHotelOffer(offer);
+        setIsHotelModalOpen(false);
+        setArrivalCity(offer.cityCode);
+        setOutboundDate(offer.checkInDate);
+        setReturnDate(offer.checkOutDate);
+        if (offer.price?.total) setBudget(offer.price.total);
+        if (offer.guests?.adults) setTravelerCount(offer.guests.adults);
+    };
+
     // Gestion de la recherche de vol
     const handleFlightSearch = async () => {
         setIsLoading(true);
@@ -274,6 +316,42 @@ export default function Home() {
             setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleHotelSearch = async () => {
+        const city = arrivalCity || departureCity;
+        if (!city) {
+            setHotelApiResponse({ error: 'Veuillez sélectionner une ville de destination.' });
+            return;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+        const checkIn = outboundDate || today;
+        const checkOut = returnDate || tomorrow;
+
+        setIsLoadingHotel(true);
+        try {
+            const res = await fetch('/api/hotels/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cityCode: city,
+                    checkInDate: checkIn,
+                    checkOutDate: checkOut,
+                    adults: travelerCount,
+                    roomQuantity: 1,
+                    maxPrice: budget ? parseInt(budget, 10) : undefined,
+                    preferences: hotelSelectedOptions,
+                }),
+            });
+            const data = await res.json();
+            setHotelApiResponse(data);
+        } catch (error) {
+            console.error('Erreur recherche hôtels:', error);
+            setHotelApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
+        } finally {
+            setIsLoadingHotel(false);
         }
     };
 
@@ -315,6 +393,15 @@ export default function Home() {
                         setSelectedFlightCarrierName('');
                         setIsFlightDetailModalOpen(false);
                     }}
+                    onOpenHotelSearch={() => setIsHotelModalOpen(true)}
+                    onCloseHotelSearch={() => setIsHotelModalOpen(false)}
+                    hotelSearchChecked={isHotelModalOpen}
+                    selectedHotel={selectedHotelOffer}
+                    onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
+                    onRemoveHotel={() => {
+                        setSelectedHotelOffer(null);
+                        setIsHotelDetailModalOpen(false);
+                    }}
                 />
             )
         },
@@ -323,7 +410,9 @@ export default function Home() {
         outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
         isFlightModalOpen,
         selectedFlightOffer,
-        selectedFlightCarrierName
+        selectedFlightCarrierName,
+        isHotelModalOpen,
+        selectedHotelOffer,
     ]);
 
     // --- Logique Map (POI, Hover, Click) ---
@@ -450,8 +539,25 @@ export default function Home() {
     };
 
     const handleLoginClick = () => setCurrentView('login');
-    const handleLogoutClick = () => { setIsConnected(false); setCurrentView('home'); };
-    const handleLoginSuccess = () => { setIsConnected(true); setCurrentView('home'); };
+    const handleLogoutClick = async () => {
+        const session = getStoredSession();
+        if (session?.token) {
+            try {
+                await logout(session.token);
+            } catch {
+                // no-op
+            }
+        }
+
+        clearSession();
+        setIsConnected(false);
+        setCurrentView('home');
+    };
+
+    const handleLoginSuccess = (_user: AuthUser) => {
+        setIsConnected(true);
+        setCurrentView('home');
+    };
     const handleBackToHome = () => setCurrentView('home');
 
     return (
@@ -546,6 +652,35 @@ export default function Home() {
                                 onClose={() => setIsFlightDetailModalOpen(false)}
                                 offer={selectedFlightOffer}
                                 carrierName={selectedFlightCarrierName}
+                            />
+
+                            <HotelSearchModal
+                                visible={isHotelModalOpen}
+                                onClose={() => setIsHotelModalOpen(false)}
+                                cityCode={arrivalCity}
+                                setCityCode={setArrivalCity}
+                                arrivalDate={outboundDate}
+                                setArrivalDate={setOutboundDate}
+                                departureDate={returnDate}
+                                setDepartureDate={setReturnDate}
+                                travelerCount={travelerCount}
+                                setTravelerCount={setTravelerCount}
+                                budget={budget}
+                                setBudget={setBudget}
+                                selectedOptions={hotelSelectedOptions}
+                                setSelectedOptions={setHotelSelectedOptions}
+                                multiSelectOptions={multiSelectOptions}
+                                onSearch={handleHotelSearch}
+                                onNewSearch={() => setHotelApiResponse(null)}
+                                onSelectOffer={handleHotelSelect}
+                                isLoading={isLoadingHotel}
+                                apiResponse={hotelApiResponse}
+                            />
+
+                            <HotelDetailModal
+                                visible={isHotelDetailModalOpen}
+                                onClose={() => setIsHotelDetailModalOpen(false)}
+                                offer={selectedHotelOffer}
                             />
 
                             <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
@@ -651,10 +786,32 @@ export default function Home() {
                         </div>
 
                         <div className="absolute left-0 top-0 bottom-0 w-1/3 flex flex-col overflow-hidden gap-4 p-4 z-10">
-                            <Assistant
-                                onUpdateLocations={handleAssistantUpdate} // On utilise la nouvelle fonction
-                                destination={arrivalCityName || arrivalCity}
-                            />
+                            {isConnected ? (
+                                <Assistant
+                                    onUpdateLocations={handleAssistantUpdate}
+                                    destination={arrivalCityName || arrivalCity}
+                                />
+                            ) : (
+                                <div
+                                    className="p-6 rounded-lg"
+                                    style={{
+                                        backgroundColor: 'var(--background, #222)',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,.3)',
+                                    }}
+                                >
+                                    <h2 className="text-lg font-semibold mb-3 text-white">Triply Assistant</h2>
+                                    <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                        Connecte-toi pour utiliser la discussion avec le LLM.
+                                    </p>
+                                    <Button
+                                        label="Se connecter"
+                                        onClick={handleLoginClick}
+                                        variant="dark"
+                                        tone="tone1"
+                                        className="mt-4"
+                                    />
+                                </div>
+                            )}
                             <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
                                 <AnimatePresence mode="wait" custom={slideDirection}>
                                     <Slide

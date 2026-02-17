@@ -22,6 +22,14 @@ final class V1ProfileEndpoints
         tags: ['Profil'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Profil',
@@ -61,6 +69,14 @@ final class V1ProfileEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour le profil',
@@ -103,6 +119,14 @@ final class V1ProfileEndpoints
             )
         ),
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Mettre a jour les preferences',
@@ -132,6 +156,14 @@ final class V1ProfileEndpoints
         tags: ['Profil'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 202,
                 description: 'Exporter les donnees utilisateur',
@@ -161,6 +193,14 @@ final class V1ProfileEndpoints
         tags: ['Profil'],
         security: [['bearerAuth' => []]],
         responses: [
+            new OA\Response(response: 400, ref: '#/components/responses/ErrorBadRequest'),
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 422, ref: '#/components/responses/ErrorValidation'),
+            new OA\Response(response: 429, ref: '#/components/responses/ErrorRateLimited'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
             new OA\Response(
                 response: 200,
                 description: 'Supprimer le compte utilisateur',

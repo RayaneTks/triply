@@ -3,34 +3,31 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FlightOfferCard } from '@/src/components/FlightResults/FlightOfferCard';
-import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import { HotelOfferCard } from '@/src/components/HotelResults/HotelOfferCard';
+import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
-const buildBookingUrl = (offer: FlightOffer): string => {
-    const outbound = offer.itineraries?.[0];
-    const firstSeg = outbound?.segments?.[0];
-    const lastSeg = outbound?.segments?.[outbound?.segments?.length ? outbound.segments.length - 1 : 0];
-    const from = firstSeg?.departure?.iataCode || 'PAR';
-    const to = lastSeg?.arrival?.iataCode || 'MRS';
-    const date = firstSeg?.departure?.at
-        ? new Date(firstSeg.departure.at).toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
-    const q = `Flights from ${from} to ${to} on ${date}`;
-    return `https://www.google.com/travel/flights?q=${encodeURIComponent(q)}`;
+const buildBookingUrl = (offer: HotelOffer): string => {
+    const city = offer.cityCode || 'Paris';
+    const checkIn = offer.checkInDate || new Date().toISOString().slice(0, 10);
+    const checkOut = offer.checkOutDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const params = new URLSearchParams({
+        q: city,
+        checkin: checkIn,
+        checkout: checkOut,
+    });
+    return `https://www.google.com/travel/hotels?${params.toString()}`;
 };
 
-export interface FlightDetailModalProps {
+export interface HotelDetailModalProps {
     visible: boolean;
     onClose: () => void;
-    offer: FlightOffer | null;
-    carrierName: string;
+    offer: HotelOffer | null;
 }
 
-export const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
+export const HotelDetailModal: React.FC<HotelDetailModalProps> = ({
     visible,
     onClose,
     offer,
-    carrierName,
 }) => {
     const modalContent = (
         <AnimatePresence>
@@ -58,14 +55,14 @@ export const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
-                        aria-labelledby="flight-detail-title"
+                        aria-labelledby="hotel-detail-title"
                     >
                         <div
                             className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0"
                             style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
                         >
-                            <h2 id="flight-detail-title" className="text-xl font-semibold" style={{ color: '#ededed' }}>
-                                Détail du billet
+                            <h2 id="hotel-detail-title" className="text-xl font-semibold" style={{ color: '#ededed' }}>
+                                Détail de l'hôtel
                             </h2>
                             <button
                                 onClick={onClose}
@@ -79,25 +76,18 @@ export const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                             <div className="max-w-2xl mx-auto space-y-4">
-                                <FlightOfferCard
-                                    offer={offer}
-                                    carrierName={carrierName}
-                                    className="w-full"
-                                />
+                                <HotelOfferCard offer={offer} className="w-full" />
 
                                 <a
                                     href={buildBookingUrl(offer)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="block w-full py-4 px-6 rounded-xl font-bold text-center transition-all hover:opacity-90"
-                                    style={{
-                                        backgroundColor: '#0096c7',
-                                        color: '#fff',
-                                    }}
+                                    style={{ backgroundColor: '#0096c7', color: '#fff' }}
                                 >
-                                    Acheter ce billet →
+                                    Réserver cet hôtel →
                                 </a>
                             </div>
                         </div>

@@ -136,7 +136,7 @@ export const Slide: React.FC<SlideProps> = ({
 
             {/* 3. Bouton de Navigation - En haut à droite */}
             {(onNext || onPrev) && (
-                <div className="absolute top-4 right-4 z-50">
+                <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50">
                     <motion.button
                         whileHover={{ scale: 1.1, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
                         whileTap={{ scale: 0.95 }}

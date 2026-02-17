@@ -26,6 +26,7 @@ export interface PoiReviewsModalProps {
 }
 
 const MODAL_WIDTH = 360;
+const MODAL_WIDTH_MOBILE = 320;
 const MAX_HEIGHT = 420;
 const OFFSET = 12;
 const EDGE_PADDING = 12;
@@ -33,18 +34,20 @@ const EDGE_PADDING = 12;
 function computeModalPosition(
     anchor: { x: number; y: number },
     leftPanelWidth = 0
-): { left: number; top: number } {
-    if (typeof window === 'undefined') return { left: anchor.x + OFFSET, top: anchor.y + OFFSET };
+): { left: number; top: number; width: number } {
+    if (typeof window === 'undefined') return { left: anchor.x + OFFSET, top: anchor.y + OFFSET, width: MODAL_WIDTH };
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const isMobile = vw < 640;
+    const width = isMobile ? Math.min(MODAL_WIDTH_MOBILE, vw - EDGE_PADDING * 2) : MODAL_WIDTH;
 
     const spaceRight = vw - anchor.x - OFFSET;
     const spaceLeft = anchor.x - leftPanelWidth - OFFSET;
     const spaceBottom = vh - anchor.y - OFFSET;
     const spaceTop = anchor.y - OFFSET;
 
-    const preferRight = spaceRight >= MODAL_WIDTH || spaceRight >= spaceLeft;
+    const preferRight = spaceRight >= width || spaceRight >= spaceLeft;
     const preferBottom = spaceBottom >= spaceTop;
 
     let left: number;
@@ -57,24 +60,24 @@ function computeModalPosition(
         left = anchor.x + OFFSET;
         top = anchor.y - MAX_HEIGHT - OFFSET;
     } else if (!preferRight && preferBottom) {
-        left = anchor.x - MODAL_WIDTH - OFFSET;
+        left = anchor.x - width - OFFSET;
         top = anchor.y + OFFSET;
     } else {
-        left = anchor.x - MODAL_WIDTH - OFFSET;
+        left = anchor.x - width - OFFSET;
         top = anchor.y - MAX_HEIGHT - OFFSET;
     }
 
-    left = Math.max(EDGE_PADDING, Math.min(vw - MODAL_WIDTH - EDGE_PADDING, left));
+    left = Math.max(EDGE_PADDING, Math.min(vw - width - EDGE_PADDING, left));
 
     const topMin = EDGE_PADDING;
     const topMax = vh - MAX_HEIGHT - EDGE_PADDING;
     let topClamped = Math.max(topMin, Math.min(topMax, top));
 
     if (topClamped === topMin && top < topMin && spaceBottom > 0) {
-        topClamped = Math.min(topMax, anchor.y + OFFSET);
+        return { left, top: Math.min(topMax, anchor.y + OFFSET), width };
     }
 
-    return { left, top: topClamped };
+    return { left, top: topClamped, width };
 }
 
 export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
@@ -89,7 +92,7 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
     onMouseLeave,
     leftPanelWidth = 0,
 }) => {
-    const { left, top } = useMemo(
+    const { left, top, width } = useMemo(
         () => computeModalPosition(position, leftPanelWidth),
         [position.x, position.y, leftPanelWidth]
     );
@@ -108,7 +111,7 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
                     style={{
                         left: `${left}px`,
                         top: `${top}px`,
-                        width: `${MODAL_WIDTH}px`,
+                        width: `${width}px`,
                         maxHeight: `${MAX_HEIGHT}px`,
                         backgroundColor: 'rgba(34, 34, 34, 0.98)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
