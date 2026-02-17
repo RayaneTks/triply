@@ -5,7 +5,7 @@ import { Button } from '@/src/components/Button/Button';
 import { login, register, saveSession, type AuthUser } from '@/src/lib/auth-client';
 
 export interface LoginProps {
-    onLoginSuccess: (user: AuthUser) => void;
+    onLoginSuccess: (user: AuthUser, isNewUser?: boolean) => void;
     onBack: () => void;
 }
 
@@ -43,7 +43,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                 : await register({ name: normalizedName, email: normalizedEmail, password });
 
             saveSession(session);
-            onLoginSuccess(session.user ?? { id: 0, name: normalizedName, email: normalizedEmail });
+            onLoginSuccess(session.user ?? { id: 0, name: normalizedName, email: normalizedEmail }, mode === 'register');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur inconnue.');
         } finally {
