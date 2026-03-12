@@ -65,6 +65,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [pendingAssistantMessage, setPendingAssistantMessage] = useState<string | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -90,7 +91,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
             top: scrollContainerRef.current.scrollHeight,
             behavior: 'smooth',
         });
-    }, [messages, loading]);
+    }, [messages, loading, pendingAssistantMessage]);
 
     const placeholderText = destination
         ? `Rechercher des activites a ${destination}...`
@@ -122,6 +123,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
         setMessages(newHistory);
         setMessage('');
         setLoading(true);
+        setPendingAssistantMessage("Triply réfléchit à la meilleure façon d'organiser votre voyage...");
 
         try {
             const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
@@ -150,12 +152,17 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
                 }),
             });
 
+            const payload = await res.json().catch(() => null);
+
             if (!res.ok) {
-                const payload = await res.json().catch(() => null);
-                throw new Error(payload?.error || res.statusText || 'Erreur API');
+                const errorText =
+                    payload?.error ||
+                    payload?.message ||
+                    'Désolé, une erreur est survenue. Réessaie dans un instant.';
+                throw new Error(errorText);
             }
 
-            const data: AssistantResponse = await res.json();
+            const data: AssistantResponse = payload;
 
             const assistantMessage: ChatMessage = {
                 id: uuid(),
@@ -173,11 +180,15 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
             const errorMessage: ChatMessage = {
                 id: uuid(),
                 role: 'assistant',
-                content: error instanceof Error ? error.message : 'Desole, une erreur est survenue.',
+                content:
+                    error instanceof Error
+                        ? error.message
+                        : 'Désolé, une erreur est survenue. Réessaie dans un instant.',
             };
             setMessages((prev) => [...prev, errorMessage]);
         } finally {
             setLoading(false);
+            setPendingAssistantMessage(null);
         }
     };
 
@@ -189,23 +200,40 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
     };
 
     return (
-        <div className="flex flex-col h-full min-h-0">
-            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+        <div className="flex h-full min-h-0 flex-col bg-slate-950/90">
+            <div
+                ref={scrollContainerRef}
+                className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
+                aria-label="Historique de la conversation avec Triply Assistant"
+            >
                 <MessageList messages={messages} loading={loading} />
+                {pendingAssistantMessage && (
+                    <div className="mt-1">
+                        <MessageList
+                            messages={[
+                                {
+                                    id: 'pending-assistant',
+                                    role: 'assistant',
+                                    content: pendingAssistantMessage,
+                                },
+                            ]}
+                            loading={false}
+                        />
+                    </div>
+                )}
             </div>
-            <div className="flex-shrink-0 p-4 pt-2 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                <div className="flex gap-2">
+            <div className="flex-shrink-0 border-t border-white/10 bg-slate-950/95 px-4 pb-4 pt-2 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
                     <button
                         type="button"
                         onClick={clearChat}
-                        className="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
-                        style={{ color: 'rgba(255, 255, 255, 0.6)' }}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                         title="Effacer l'historique de la conversation"
                     >
                         Nettoyer le chat
                     </button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-end">
                 <SearchBar
                     placeholder={placeholderText}
                     value={message}
@@ -222,7 +250,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
                     tone="tone1"
                     disabled={loading}
                     loading={loading}
-                    className="h-full"
+                    className="h-11 px-4"
                 />
                 </div>
             </div>

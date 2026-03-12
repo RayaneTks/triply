@@ -123,13 +123,13 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     };
 
     return (
-        <div className={`flex flex-col ${className}`} ref={containerRef}>
+        <div className={`flex min-w-0 w-full flex-col ${className}`} ref={containerRef}>
             {label && (
                 <label className="block text-sm font-medium mb-2" style={{ color: containerStyle?.color ?? 'var(--foreground, #ededed)' }}>
                     {label}
                 </label>
             )}
-            <div className="relative input-assistant w-full">
+            <div className="relative input-assistant w-full min-w-0">
                 <input
                     type="text"
                     value={displayValue}

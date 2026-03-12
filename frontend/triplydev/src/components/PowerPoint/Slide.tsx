@@ -79,7 +79,7 @@ export const Slide: React.FC<SlideProps> = ({
                 opacity: { duration: 0.2 },
                 scale: { duration: 0.4 }
             }}
-            className={`absolute top-0 left-0 w-full h-full shadow-xl overflow-hidden flex flex-col ${className}`}
+            className={`absolute top-0 left-0 w-full h-full shadow-xl overflow-x-hidden overflow-y-hidden flex flex-col min-w-0 ${className}`}
             style={{ backgroundColor: bgColor }}
         >
             {/* 1. Menu Burger - En haut à gauche */}
@@ -118,7 +118,7 @@ export const Slide: React.FC<SlideProps> = ({
                     `}</style>
                 )}
                 <div 
-                    className="flex-grow w-full h-full overflow-y-auto relative z-0 slide-scroll"
+                    className="flex-grow w-full h-full min-w-0 overflow-x-hidden overflow-y-auto relative z-0 slide-scroll"
                     data-last-slide={useLastSlideTextStyle.toString()}
                     style={{
                         scrollbarWidth: 'none',

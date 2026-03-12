@@ -324,6 +324,7 @@ export const TimePicker: FC<TimePickerProps> = ({
             <div className="input-assistant w-full">
                 <input
                     type="time"
+                    aria-label={label || "Heure"}
                     value={value}
                     onChange={handleInputChange}
                     className="flex-1 text-sm sm:text-base [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none [&::-webkit-calendar-picker-indicator]:appearance-none"
@@ -335,6 +336,7 @@ export const TimePicker: FC<TimePickerProps> = ({
                 <button
                     ref={buttonRef}
                     type="button"
+                    aria-label="Sélectionner l'heure"
                     onClick={() => {
                         if (!isOpen) {
                             const pos = calculatePosition(buttonRef);

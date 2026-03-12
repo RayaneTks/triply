@@ -1,32 +1,38 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
-import { Slide } from '@/src/components/PowerPoint/Slide';
 import { WorldMap } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import { TuPreferes } from "@/src/components/TuPreferes/TuPreferes";
 import Assistant from "@/src/components/Assistant/Assistant";
-import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
-import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
-import { FlightDetailModal } from '@/src/components/FlightDetailModal/FlightDetailModal';
-import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
-import { HotelDetailModal } from '@/src/components/HotelDetailModal/HotelDetailModal';
+import { TripCreationWizard } from '@/src/features/trip-creation/TripCreationWizard';
+import { useTripConfiguration } from '@/src/features/trip-creation/useTripConfiguration';
 import { generateFlightRequest } from '@/utils/amadeus';
+const FlightSearchModal = dynamic(
+    () => import('@/src/components/FlightSearchModal/FlightSearchModal').then((m) => m.FlightSearchModal),
+    { ssr: false }
+);
+const FlightDetailModal = dynamic(
+    () => import('@/src/components/FlightDetailModal/FlightDetailModal').then((m) => m.FlightDetailModal),
+    { ssr: false }
+);
+const HotelSearchModal = dynamic(
+    () => import('@/src/components/HotelSearchModal/HotelSearchModal').then((m) => m.HotelSearchModal),
+    { ssr: false }
+);
+const HotelDetailModal = dynamic(
+    () => import('@/src/components/HotelDetailModal/HotelDetailModal').then((m) => m.HotelDetailModal),
+    { ssr: false }
+);
 import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
-
-// Interface pour la définition des slides
-interface SlideDefinition {
-    id: string;
-    title: string;
-    content: React.ReactNode;
-}
 
 function LoginWithMapBackground({
                                     mapboxToken,
@@ -83,8 +89,7 @@ export default function Home() {
     const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
 
     // Etats Globaux
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
+    // (slides system removed - single panel now)
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
@@ -120,19 +125,8 @@ export default function Home() {
         void syncAuth();
     }, []);
 
-    // Etats Formulaire Voyage
-    const [travelerCount, setTravelerCount] = useState(1);
-    const [budget, setBudget] = useState('');
-    const [activityTime, setActivityTime] = useState('');
-    const [outboundDate, setOutboundDate] = useState('');
-    const [returnDate, setReturnDate] = useState('');
-    const [arrivalTime, setArrivalTime] = useState('');
-    const [departureTime, setDepartureTime] = useState('');
-    const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-    const [departureCity, setDepartureCity] = useState('');
-    const [arrivalCity, setArrivalCity] = useState('');
-    const [arrivalCityName, setArrivalCityName] = useState('');
-    const [travelDays, setTravelDays] = useState<number>(3);
+    // Etats Formulaire Voyage (centralisés dans un hook dédié)
+    const tripConfig = useTripConfiguration();
     const [isLoading, setIsLoading] = useState(false);
     const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
     const [apiResponse, setApiResponse] = useState<any>(null);
@@ -154,14 +148,14 @@ export default function Home() {
         console.log(`Aéroport sélectionné: ${name} (${iata}) @ ${lat}, ${lng}`);
 
         // 1. Si pas de départ, c'est le départ
-        if (!departureCity) {
-            setDepartureCity(iata);
+        if (!tripConfig.departureCity) {
+            tripConfig.setDepartureCity(iata);
         }
         // 2. Sinon, c'est l'arrivée
         else {
-            if (departureCity !== iata) {
-                setArrivalCity(iata);
-                setArrivalCityName(name);
+            if (tripConfig.departureCity !== iata) {
+                tripConfig.setArrivalCity(iata);
+                tripConfig.setArrivalCityName(name);
 
                 // --- CORRECTION MAJEURE ---
                 // Au lieu d'attendre que l'utilisateur ouvre la modal,
@@ -264,38 +258,38 @@ export default function Home() {
         const lastReturnSeg = returnItin?.segments?.[returnItin?.segments?.length ? returnItin.segments.length - 1 : 0];
 
         if (firstSeg?.departure) {
-            setDepartureCity(firstSeg.departure.iataCode || '');
+            tripConfig.setDepartureCity(firstSeg.departure.iataCode || '');
             const dt = firstSeg.departure.at;
             if (dt) {
-                setOutboundDate(dt.slice(0, 10));
-                setArrivalTime(dt.slice(11, 16));
+                tripConfig.setOutboundDate(dt.slice(0, 10));
+                tripConfig.setArrivalTime(dt.slice(11, 16));
             }
         }
         if (lastOutboundSeg?.arrival) {
-            setArrivalCity(lastOutboundSeg.arrival.iataCode || '');
+            tripConfig.setArrivalCity(lastOutboundSeg.arrival.iataCode || '');
             if (returnItin && firstReturnSeg?.departure?.at) {
-                setReturnDate(firstReturnSeg.departure.at.slice(0, 10));
-                setDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
+                tripConfig.setReturnDate(firstReturnSeg.departure.at.slice(0, 10));
+                tripConfig.setDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
             } else if (lastOutboundSeg.arrival.at) {
-                setDepartureTime(lastOutboundSeg.arrival.at.slice(11, 16));
+                tripConfig.setDepartureTime(lastOutboundSeg.arrival.at.slice(11, 16));
             }
         }
         if (offer.price?.grandTotal) {
-            setBudget(offer.price.grandTotal);
+            tripConfig.setBudget(offer.price.grandTotal);
         }
         if (offer.travelerPricings?.length) {
-            setTravelerCount(offer.travelerPricings.length);
+            tripConfig.setTravelerCount(offer.travelerPricings.length);
         }
     };
 
     const handleHotelSelect = (offer: HotelOffer) => {
         setSelectedHotelOffer(offer);
         setIsHotelModalOpen(false);
-        setArrivalCity(offer.cityCode);
-        setOutboundDate(offer.checkInDate);
-        setReturnDate(offer.checkOutDate);
-        if (offer.price?.total) setBudget(offer.price.total);
-        if (offer.guests?.adults) setTravelerCount(offer.guests.adults);
+        tripConfig.setArrivalCity(offer.cityCode);
+        tripConfig.setOutboundDate(offer.checkInDate);
+        tripConfig.setReturnDate(offer.checkOutDate);
+        if (offer.price?.total) tripConfig.setBudget(offer.price.total);
+        if (offer.guests?.adults) tripConfig.setTravelerCount(offer.guests.adults);
     };
 
     // Gestion de la recherche de vol
@@ -303,14 +297,14 @@ export default function Home() {
         setIsLoading(true);
 
         const payload = generateFlightRequest(
-            departureCity,
-            arrivalCity,
-            outboundDate,
-            returnDate,
-            travelerCount,
-            budget,
-            arrivalTime,
-            departureTime
+            tripConfig.departureCity,
+            tripConfig.arrivalCity,
+            tripConfig.outboundDate,
+            tripConfig.returnDate,
+            tripConfig.travelerCount,
+            tripConfig.budget,
+            tripConfig.arrivalTime,
+            tripConfig.departureTime
         );
 
         setLastRequestPayload(payload);
@@ -337,15 +331,15 @@ export default function Home() {
     };
 
     const handleHotelSearch = async () => {
-        const city = arrivalCity || departureCity;
+        const city = tripConfig.arrivalCity || tripConfig.departureCity;
         if (!city) {
             setHotelApiResponse({ error: 'Veuillez sélectionner une ville de destination.' });
             return;
         }
         const today = new Date().toISOString().slice(0, 10);
         const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-        const checkIn = outboundDate || today;
-        const checkOut = returnDate || tomorrow;
+        const checkIn = tripConfig.outboundDate || today;
+        const checkOut = tripConfig.returnDate || tomorrow;
 
         setIsLoadingHotel(true);
         try {
@@ -356,9 +350,9 @@ export default function Home() {
                     cityCode: city,
                     checkInDate: checkIn,
                     checkOutDate: checkOut,
-                    adults: travelerCount,
+                    adults: tripConfig.travelerCount,
                     roomQuantity: 1,
-                    maxPrice: budget ? parseInt(budget, 10) : undefined,
+                    maxPrice: tripConfig.budget ? parseInt(tripConfig.budget, 10) : undefined,
                     preferences: hotelSelectedOptions,
                 }),
             });
@@ -378,59 +372,20 @@ export default function Home() {
         'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly'
     ];
 
-    const slides: SlideDefinition[] = useMemo(() => [
-        {
-            id: 'trip-config',
-            title: 'Paramètres de voyage',
-            content: (
-                <TripConfigurationForm
-                    departureCity={departureCity} setDepartureCity={setDepartureCity}
-                    arrivalCity={arrivalCity} setArrivalCity={setArrivalCity}
-                    setArrivalCityName={setArrivalCityName}
-                    travelDays={travelDays} setTravelDays={setTravelDays}
-                    travelerCount={travelerCount} setTravelerCount={setTravelerCount}
-                    budget={budget} setBudget={setBudget}
-                    activityTime={activityTime} setActivityTime={setActivityTime}
-                    arrivalDate={outboundDate}
-                    setArrivalDate={setOutboundDate}
-                    departureDate={returnDate}
-                    setDepartureDate={setReturnDate}
-                    arrivalTime={arrivalTime} setArrivalTime={setArrivalTime}
-                    departureTime={departureTime} setDepartureTime={setDepartureTime}
-                    selectedOptions={selectedOptions} setSelectedOptions={setSelectedOptions}
-                    multiSelectOptions={multiSelectOptions}
-                    onOpenFlightSearch={() => setIsFlightModalOpen(true)}
-                    onCloseFlightSearch={() => setIsFlightModalOpen(false)}
-                    flightSearchChecked={isFlightModalOpen}
-                    selectedFlight={selectedFlightOffer}
-                    selectedFlightCarrierName={selectedFlightCarrierName}
-                    onFlightCardClick={() => setIsFlightDetailModalOpen(true)}
-                    onRemoveFlight={() => {
-                        setSelectedFlightOffer(null);
-                        setSelectedFlightCarrierName('');
-                        setIsFlightDetailModalOpen(false);
-                    }}
-                    onOpenHotelSearch={() => setIsHotelModalOpen(true)}
-                    onCloseHotelSearch={() => setIsHotelModalOpen(false)}
-                    hotelSearchChecked={isHotelModalOpen}
-                    selectedHotel={selectedHotelOffer}
-                    onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
-                    onRemoveHotel={() => {
-                        setSelectedHotelOffer(null);
-                        setIsHotelDetailModalOpen(false);
-                    }}
-                />
-            )
-        },
-    ], [
-        departureCity, arrivalCity, travelDays, travelerCount, budget, activityTime,
-        outboundDate, returnDate, arrivalTime, departureTime, selectedOptions,
-        isFlightModalOpen,
-        selectedFlightOffer,
-        selectedFlightCarrierName,
-        isHotelModalOpen,
-        selectedHotelOffer,
-    ]);
+    const handleGenerateTrip = useCallback(() => {
+        const destination = tripConfig.arrivalCityName || tripConfig.arrivalCity;
+        if (!destination) return;
+        setIsAssistantOpen(true);
+        console.log('[Triply] Generate trip:', {
+            from: tripConfig.departureCity,
+            to: destination,
+            dates: `${tripConfig.outboundDate} - ${tripConfig.returnDate}`,
+            travelers: tripConfig.travelerCount,
+            budget: tripConfig.budget,
+            flight: selectedFlightOffer ? 'selected' : 'none',
+            hotel: selectedHotelOffer ? 'selected' : 'none',
+        });
+    }, [tripConfig, selectedFlightOffer, selectedHotelOffer]);
 
     // --- Logique Map (POI, Hover, Click) ---
 
@@ -454,20 +409,6 @@ export default function Home() {
         setSelectedPoi(feature);
         const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
         console.log('POI cliqué:', { name, feature, lngLat });
-    };
-
-    const handleNext = () => {
-        if (currentSlideIndex < slides.length - 1) {
-            setSlideDirection(1);
-            setCurrentSlideIndex(currentSlideIndex + 1);
-        }
-    };
-
-    const handlePrev = () => {
-        if (currentSlideIndex > 0) {
-            setSlideDirection(-1);
-            setCurrentSlideIndex(currentSlideIndex - 1);
-        }
     };
 
     const handleLoginClick = () => setCurrentView('login');
@@ -494,7 +435,7 @@ export default function Home() {
     const handleBackToHome = () => setCurrentView('home');
 
     return (
-        <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-dvh overflow-hidden bg-slate-950 text-slate-100">
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -503,7 +444,7 @@ export default function Home() {
                 onLogoutClick={handleLogoutClick}
             />
 
-            <div className="flex-1 flex overflow-hidden min-w-0 relative">
+            <div className="relative flex min-w-0 flex-1 overflow-hidden">
                 {currentView === 'login' && (
                     <LoginWithMapBackground
                         mapboxToken={MAPBOX_TOKEN}
@@ -514,7 +455,7 @@ export default function Home() {
 
                 {currentView === 'home' && (
                     <>
-                        <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                        <div className="absolute inset-0 overflow-hidden bg-slate-950">
                             <WorldMap
                                 accessToken={MAPBOX_TOKEN}
                                 initialLatitude={46.6034}
@@ -525,8 +466,13 @@ export default function Home() {
                                 pitch={mapPitch}
                                 height="100%"
                                 width="100%"
-                                className="h-full"
-                                padding={{ left: isConfigPanelOpen ? 400 : 0, top: 0, bottom: 0, right: 0 }}
+                                className="h-full w-full"
+                                padding={{
+                                    left: isConfigPanelOpen ? 440 : 0,
+                                    top: 24,
+                                    bottom: 64,
+                                    right: isAssistantOpen ? 360 : 24,
+                                }}
                                 onPoiClick={handlePoiClick}
                                 locations={mapLocations}
                                 onAirportSelect={handleAirportSelect}
@@ -536,22 +482,22 @@ export default function Home() {
                                 onClose={() => {
                                     setIsFlightModalOpen(false);
                                 }}
-                                departureCity={departureCity}
-                                setDepartureCity={setDepartureCity}
-                                arrivalCity={arrivalCity}
-                                setArrivalCity={setArrivalCity}
-                                arrivalDate={outboundDate}
-                                setArrivalDate={setOutboundDate}
-                                departureDate={returnDate}
-                                setDepartureDate={setReturnDate}
-                                arrivalTime={arrivalTime}
-                                setArrivalTime={setArrivalTime}
-                                departureTime={departureTime}
-                                setDepartureTime={setDepartureTime}
-                                travelerCount={travelerCount}
-                                setTravelerCount={setTravelerCount}
-                                budget={budget}
-                                setBudget={setBudget}
+                                departureCity={tripConfig.departureCity}
+                                setDepartureCity={tripConfig.setDepartureCity}
+                                arrivalCity={tripConfig.arrivalCity}
+                                setArrivalCity={tripConfig.setArrivalCity}
+                                arrivalDate={tripConfig.outboundDate}
+                                setArrivalDate={tripConfig.setOutboundDate}
+                                departureDate={tripConfig.returnDate}
+                                setDepartureDate={tripConfig.setReturnDate}
+                                arrivalTime={tripConfig.arrivalTime}
+                                setArrivalTime={tripConfig.setArrivalTime}
+                                departureTime={tripConfig.departureTime}
+                                setDepartureTime={tripConfig.setDepartureTime}
+                                travelerCount={tripConfig.travelerCount}
+                                setTravelerCount={tripConfig.setTravelerCount}
+                                budget={tripConfig.budget}
+                                setBudget={tripConfig.setBudget}
                                 onSearch={handleFlightSearch}
                                 onNewSearch={() => setApiResponse(null)}
                                 onSelectOffer={handleFlightSelect}
@@ -569,16 +515,16 @@ export default function Home() {
                             <HotelSearchModal
                                 visible={isHotelModalOpen}
                                 onClose={() => setIsHotelModalOpen(false)}
-                                cityCode={arrivalCity}
-                                setCityCode={setArrivalCity}
-                                arrivalDate={outboundDate}
-                                setArrivalDate={setOutboundDate}
-                                departureDate={returnDate}
-                                setDepartureDate={setReturnDate}
-                                travelerCount={travelerCount}
-                                setTravelerCount={setTravelerCount}
-                                budget={budget}
-                                setBudget={setBudget}
+                                cityCode={tripConfig.arrivalCity}
+                                setCityCode={tripConfig.setArrivalCity}
+                                arrivalDate={tripConfig.outboundDate}
+                                setArrivalDate={tripConfig.setOutboundDate}
+                                departureDate={tripConfig.returnDate}
+                                setDepartureDate={tripConfig.setReturnDate}
+                                travelerCount={tripConfig.travelerCount}
+                                setTravelerCount={tripConfig.setTravelerCount}
+                                budget={tripConfig.budget}
+                                setBudget={tripConfig.setBudget}
                                 selectedOptions={hotelSelectedOptions}
                                 setSelectedOptions={setHotelSelectedOptions}
                                 multiSelectOptions={multiSelectOptions}
@@ -595,18 +541,12 @@ export default function Home() {
                                 offer={selectedHotelOffer}
                             />
 
-                            {/* Bouton Configurer votre voyage - bas gauche (visible uniquement quand le panneau est fermé) */}
+                            {/* Bouton ouvrir config - bas gauche, uniquement quand panneau ferme */}
                             {!isConfigPanelOpen && (
                                 <button
                                     type="button"
                                     onClick={() => setIsConfigPanelOpen(true)}
-                                    className="absolute bottom-4 left-4 z-20 flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all hover:scale-105 shadow-lg"
-                                    style={{
-                                        backgroundColor: 'rgba(34, 34, 34, 0.98)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                                        color: 'var(--foreground, #ededed)',
-                                    }}
+                                    className="absolute bottom-4 left-4 z-20 hidden items-center gap-2 rounded-full border border-white/15 bg-slate-900/95 px-4 py-2.5 text-sm font-medium text-slate-100 shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 sm:flex"
                                     title="Configurer votre voyage"
                                 >
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -617,17 +557,12 @@ export default function Home() {
                                 </button>
                             )}
 
-                            {/* Bouton Assistant Triply - bas droite */}
+                            {/* Boutons Assistant + Filtre + Vue - ancres en bas a droite */}
                             <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsAssistantOpen((o) => !o)}
-                                    className="flex items-center justify-center w-12 h-12 rounded-full transition-all hover:scale-105 shadow-lg"
-                                    style={{
-                                        backgroundColor: 'var(--primary, #0096c7)',
-                                        color: '#fff',
-                                        boxShadow: '0 4px 12px rgba(0, 150, 199, 0.4)',
-                                    }}
+                                    className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                                     title="Triply Assistant"
                                     aria-label="Ouvrir l'assistant"
                                 >
@@ -639,30 +574,20 @@ export default function Home() {
                                     <button
                                         type="button"
                                         onClick={() => setHotelFilterMenuOpen((o) => !o)}
-                                        className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:bg-white/10 ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
-                                        style={{
-                                            backgroundColor: 'rgba(34, 34, 34, 0.98)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                                        }}
+                                        className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-900/95 shadow-md transition-colors hover:bg-white/10 ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
                                         title="Filtrer les hôtels"
                                     >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--foreground, #ededed)' }}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-100">
                                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                                         </svg>
                                     </button>
                                     <AnimatePresence>
                                         {hotelFilterMenuOpen && (
-                                            <div
-                                                className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[200px]"
-                                                style={{
-                                                    backgroundColor: 'rgba(34, 34, 34, 0.98)',
-                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
-                                                }}
+                                                <div
+                                                className="absolute bottom-full right-0 mb-3 min-w-[200px] overflow-hidden rounded-xl border border-white/15 bg-slate-900/95 shadow-2xl"
                                             >
-                                                <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                                                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Étoiles</span>
+                                                <div className="border-b border-white/10 px-3 py-2">
+                                                    <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Étoiles</span>
                                                 </div>
                                                 <div className="py-2">
                                                     {[
@@ -679,10 +604,7 @@ export default function Home() {
                                                                 key={label}
                                                                 type="button"
                                                                 onClick={() => applyHotelFilter(value)}
-                                                                className="w-full text-left py-2.5 px-4 text-sm font-medium hover:bg-white/10 transition-colors flex items-center gap-2"
-                                                                style={{
-                                                                    color: isActive ? '#0096c7' : 'var(--foreground, #ededed)',
-                                                                }}
+                                                                className={`flex w-full items-center gap-2 py-2.5 px-4 text-left text-sm font-medium transition-colors hover:bg-white/10 ${isActive ? 'text-cyan-400' : 'text-slate-100'}`}
                                                             >
                                                                 {isActive && <span className="text-cyan-400">●</span>}
                                                                 {label}
@@ -705,13 +627,13 @@ export default function Home() {
                                         <div
                                             className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[180px]"
                                             style={{
-                                                backgroundColor: 'rgba(34, 34, 34, 0.98)',
-                                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+                                                backgroundColor: 'rgba(15, 23, 42, 0.98)',
+                                                border: '1px solid rgba(148, 163, 184, 0.4)',
+                                                boxShadow: '0 12px 40px rgba(15, 23, 42, 0.9)',
                                             }}
                                         >
-                                            <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                                                <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Style</span>
+                                                <div className="border-b border-white/10 px-3 py-2">
+                                                <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Style</span>
                                             </div>
                                             {[
                                                 { id: 'dark', label: 'Sombre', style: 'mapbox://styles/mapbox/standard', config: { lightPreset: 'night' as const } },
@@ -721,15 +643,14 @@ export default function Home() {
                                                 <button
                                                     key={id} type="button"
                                                     onClick={() => { setMapStyle(style); setMapConfig(config); setMapPitch(0); setMapViewMenuOpen(false); }}
-                                                    className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors"
-                                                    style={{ color: 'var(--foreground, #ededed)' }}
+                                                    className="w-full py-3 px-4 text-left text-sm font-medium text-slate-100 transition-colors hover:bg-white/10"
                                                 >
                                                     {label}
                                                 </button>
                                             ))}
-                                            <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                                            <button type="button" onClick={() => { setMapPitch(0); setMapViewMenuOpen(false); }} className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors" style={{ color: 'var(--foreground, #ededed)' }}>Vue 2D</button>
-                                            <button type="button" onClick={() => { setMapPitch(60); setMapViewMenuOpen(false); }} className="w-full text-left py-3 px-4 text-sm font-medium hover:bg-white/10 transition-colors" style={{ color: 'var(--foreground, #ededed)' }}>Vue 3D</button>
+                                            <div className="border-t border-white/10" />
+                                            <button type="button" onClick={() => { setMapPitch(0); setMapViewMenuOpen(false); }} className="w-full py-3 px-4 text-left text-sm font-medium text-slate-100 transition-colors hover:bg-white/10">Vue 2D</button>
+                                            <button type="button" onClick={() => { setMapPitch(60); setMapViewMenuOpen(false); }} className="w-full py-3 px-4 text-left text-sm font-medium text-slate-100 transition-colors hover:bg-white/10">Vue 3D</button>
                                         </div>
                                     )}
                                 </AnimatePresence>
@@ -743,23 +664,22 @@ export default function Home() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 100, scale: 0.95 }}
                                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                        className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-[9999] rounded-t-2xl overflow-hidden shadow-2xl flex flex-col"
-                                        style={{
-                                            height: 'min(70vh, 500px)',
-                                            backgroundColor: 'var(--background, #222222)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.5)',
-                                        }}
+                                        className="fixed bottom-20 left-4 right-4 z-[9999] flex h-[min(80vh,640px)] flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl sm:left-auto sm:right-4 sm:w-full sm:max-w-lg lg:max-w-xl"
                                     >
-                                        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                                            <h3 className="font-semibold" style={{ color: 'var(--foreground)' }}>Triply Assistant</h3>
+                                        <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-slate-100">Triply Assistant</h3>
+                                                <p className="mt-0.5 text-xs text-slate-400">
+                                                    Posez vos questions voyage, nous structurons la réponse.
+                                                </p>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setIsAssistantOpen(false)}
-                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                                                 aria-label="Fermer"
                                             >
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--foreground)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-100">
                                                     <path d="M18 6L6 18M6 6l12 12" />
                                                 </svg>
                                             </button>
@@ -768,12 +688,12 @@ export default function Home() {
                                             {isConnected ? (
                                                 <Assistant
                                                     onUpdateLocations={handleAssistantUpdate}
-                                                    destination={arrivalCityName || arrivalCity}
+                                                    destination={tripConfig.arrivalCityName || tripConfig.arrivalCity}
                                                 />
                                             ) : (
-                                                <div className="p-6 overflow-y-auto">
-                                                    <p className="text-sm mb-4" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                                        Connecte-toi pour utiliser la discussion avec le LLM.
+                                                <div className="overflow-y-auto p-6">
+                                                    <p className="mb-4 text-sm text-slate-200">
+                                                        Vous devez être connecté pour utiliser la discussion avec le LLM.
                                                     </p>
                                                     <Button label="Se connecter" onClick={handleLoginClick} variant="dark" tone="tone1" />
                                                 </div>
@@ -784,40 +704,41 @@ export default function Home() {
                             </AnimatePresence>
                         </div>
 
-                        <AnimatePresence>
+                            <AnimatePresence>
                             {isConfigPanelOpen && (
                                 <motion.div
-                                    initial={{ width: 0, opacity: 0 }}
-                                    animate={{ width: '33.333%', opacity: 1 }}
-                                    exit={{ width: 0, opacity: 0 }}
-                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                    className="absolute left-0 top-0 bottom-0 flex flex-col overflow-hidden p-4 z-10 min-w-0 shrink-0"
+                                    initial={{ x: -24, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    exit={{ x: -24, opacity: 0 }}
+                                    transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                                    className="pointer-events-auto absolute left-0 top-0 bottom-0 z-10 w-full max-w-[420px] p-2 sm:p-3"
                                 >
-                                    <div className="flex-1 relative overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--background, #222222)', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                                        <div className="absolute top-3 left-3 z-10">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsConfigPanelOpen(false)}
-                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                                                aria-label="Fermer"
-                                            >
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--foreground)' }}>
-                                                    <path d="M18 6L6 18M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <AnimatePresence mode="wait" custom={slideDirection}>
-                                            <Slide
-                                                key={currentSlideIndex}
-                                                direction={slideDirection}
-                                                onNext={handleNext}
-                                                onPrev={handlePrev}
-                                                canNext={currentSlideIndex < slides.length - 1}
-                                                canPrev={currentSlideIndex > 0}
-                                            >
-                                                {slides[currentSlideIndex]?.content}
-                                            </Slide>
-                                        </AnimatePresence>
+                                    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl backdrop-blur-md">
+                                        <TripCreationWizard
+                                            state={tripConfig}
+                                            multiSelectOptions={multiSelectOptions}
+                                            selectedFlight={selectedFlightOffer}
+                                            selectedFlightCarrierName={selectedFlightCarrierName}
+                                            selectedHotel={selectedHotelOffer}
+                                            isFlightModalOpen={isFlightModalOpen}
+                                            isHotelModalOpen={isHotelModalOpen}
+                                            onOpenFlightSearch={() => setIsFlightModalOpen(true)}
+                                            onCloseFlightSearch={() => setIsFlightModalOpen(false)}
+                                            onOpenHotelSearch={() => setIsHotelModalOpen(true)}
+                                            onCloseHotelSearch={() => setIsHotelModalOpen(false)}
+                                            onFlightCardClick={() => setIsFlightDetailModalOpen(true)}
+                                            onRemoveFlight={() => {
+                                                setSelectedFlightOffer(null);
+                                                setSelectedFlightCarrierName('');
+                                                setIsFlightDetailModalOpen(false);
+                                            }}
+                                            onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
+                                            onRemoveHotel={() => {
+                                                setSelectedHotelOffer(null);
+                                                setIsHotelDetailModalOpen(false);
+                                            }}
+                                            onComplete={handleGenerateTrip}
+                                        />
                                     </div>
                                 </motion.div>
                             )}

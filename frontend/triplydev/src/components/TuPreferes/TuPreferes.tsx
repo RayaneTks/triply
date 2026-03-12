@@ -74,10 +74,10 @@ export function TuPreferes({ visible, onComplete, onSkip }: TuPreferesProps) {
                 >
                     <div className="p-6 pb-4 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                         <h2 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
-                            Tu préfères ?
+                            Vous préférez ?
                         </h2>
                         <p className="text-sm mt-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                            Aide-nous à personnaliser tes recommandations (optionnel)
+                            Aidez-nous à personnaliser vos recommandations (optionnel)
                         </p>
                     </div>
 

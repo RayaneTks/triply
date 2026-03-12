@@ -4,7 +4,6 @@ import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounte
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
-import { Button } from '@/src/components/Button/Button';
 import { SelectedFlightCard } from '@/src/components/SelectedFlightCard/SelectedFlightCard';
 import { SelectedHotelCard } from '@/src/components/SelectedHotelCard/SelectedHotelCard';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
@@ -12,28 +11,28 @@ import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
 interface TripConfigurationFormProps {
     departureCity: string;
-    setDepartureCity: (value: string) => void;
+    setDepartureCity: (v: string) => void;
     arrivalCity: string;
-    setArrivalCity: (value: string) => void;
-    setArrivalCityName?: (value: string) => void;
+    setArrivalCity: (v: string) => void;
+    setArrivalCityName?: (v: string) => void;
     travelDays: number;
-    setTravelDays: (value: number) => void;
+    setTravelDays: (v: number) => void;
     travelerCount: number;
-    setTravelerCount: (value: number) => void;
+    setTravelerCount: (v: number) => void;
     budget: string;
-    setBudget: (value: string) => void;
+    setBudget: (v: string) => void;
     activityTime: string;
-    setActivityTime: (value: string) => void;
+    setActivityTime: (v: string) => void;
     arrivalDate: string;
-    setArrivalDate: (value: string) => void;
+    setArrivalDate: (v: string) => void;
     departureDate: string;
-    setDepartureDate: (value: string) => void;
+    setDepartureDate: (v: string) => void;
     arrivalTime: string;
-    setArrivalTime: (value: string) => void;
+    setArrivalTime: (v: string) => void;
     departureTime: string;
-    setDepartureTime: (value: string) => void;
+    setDepartureTime: (v: string) => void;
     selectedOptions: string[];
-    setSelectedOptions: (options: string[]) => void;
+    setSelectedOptions: (o: string[]) => void;
     multiSelectOptions: string[];
     onOpenFlightSearch: () => void;
     onCloseFlightSearch?: () => void;
@@ -50,241 +49,128 @@ interface TripConfigurationFormProps {
     onRemoveHotel?: () => void;
 }
 
-export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = ({
-                                                                                departureCity, setDepartureCity,
-                                                                                arrivalCity, setArrivalCity,
-                                                                                travelDays, setTravelDays,
-                                                                                travelerCount, setTravelerCount,
-                                                                                budget, setBudget,
-                                                                                activityTime, setActivityTime,
-                                                                                arrivalDate, setArrivalDate,
-                                                                                departureDate, setDepartureDate,
-                                                                                arrivalTime, setArrivalTime,
-                                                                                departureTime, setDepartureTime,
-                                                                                selectedOptions, setSelectedOptions,
-                                                                                multiSelectOptions,
-                                                                                onOpenFlightSearch,
-                                                                                onCloseFlightSearch,
-                                                                                flightSearchChecked = false,
-                                                                                selectedFlight,
-                                                                                selectedFlightCarrierName = '',
-                                                                                onFlightCardClick,
-                                                                                onRemoveFlight,
-                                                                                setArrivalCityName,
-                                                                                onOpenHotelSearch,
-                                                                                onCloseHotelSearch,
-                                                                                hotelSearchChecked = false,
-                                                                                selectedHotel,
-                                                                                onHotelCardClick,
-                                                                                onRemoveHotel,
-                                                                            }) => {
+const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; children: React.ReactNode }> = ({ icon, title, tag, children }) => (
+    <fieldset className="min-w-0">
+        <div className="mb-2.5 flex items-center gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center text-cyan-400">{icon}</span>
+            <legend className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">{title}</legend>
+            {tag && <span className="ml-auto rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] font-medium text-slate-500">{tag}</span>}
+        </div>
+        {children}
+    </fieldset>
+);
+
+const svg = (d: string) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+);
+
+export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (props) => {
+    const {
+        departureCity, setDepartureCity, arrivalCity, setArrivalCity,
+        travelDays, setTravelDays, travelerCount, setTravelerCount,
+        budget, setBudget, activityTime, setActivityTime,
+        arrivalDate, setArrivalDate, departureDate, setDepartureDate,
+        arrivalTime, setArrivalTime, departureTime, setDepartureTime,
+        selectedOptions, setSelectedOptions, multiSelectOptions,
+        onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
+        onFlightCardClick, onRemoveFlight, setArrivalCityName,
+        onOpenHotelSearch, selectedHotel, onHotelCardClick, onRemoveHotel,
+    } = props;
+
+    const inputCls = 'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/[0.04] px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
+
     return (
-        <div
-            className="flex flex-col h-full p-4 sm:p-6 md:p-8 overflow-y-auto slide-content-scroll min-h-0"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-            <style>{`.slide-content-scroll::-webkit-scrollbar { display: none !important; }`}</style>
+        <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-auto px-3 py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-700/50">
+            <div className="space-y-5">
 
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6" style={{ color: 'var(--foreground, #ededed)' }}>
-                Configurez votre voyage
-            </h1>
-
-            <div className="space-y-4 max-w-2xl w-full min-w-0">
-                <label className="flex items-center gap-3 cursor-pointer mb-2">
-                    <input
-                        type="checkbox"
-                        checked={flightSearchChecked}
-                        onChange={(e) => (e.target.checked ? onOpenFlightSearch() : onCloseFlightSearch?.())}
-                        className="w-4 h-4 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
-                        style={{ accentColor: 'var(--primary, #0096c7)' }}
-                    />
-                    <span className="text-sm font-medium" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Rechercher des vols
-                    </span>
-                </label>
-
-                <label className="flex items-center gap-3 cursor-pointer mb-2">
-                    <input
-                        type="checkbox"
-                        checked={hotelSearchChecked}
-                        onChange={(e) => (e.target.checked ? onOpenHotelSearch() : onCloseHotelSearch?.())}
-                        className="w-4 h-4 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
-                        style={{ accentColor: 'var(--primary, #0096c7)' }}
-                    />
-                    <span className="text-sm font-medium" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Rechercher des hôtels
-                    </span>
-                </label>
-
-                {selectedFlight && (
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Billet sélectionné
-                        </label>
-                        <SelectedFlightCard
-                            offer={selectedFlight}
-                            carrierName={selectedFlightCarrierName}
-                            onClick={onFlightCardClick || (() => {})}
-                            onRemove={onRemoveFlight}
-                        />
+                {/* 1 - Destination */}
+                <Section icon={svg("M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z")} title="Où allez-vous ?">
+                    <div className="space-y-2.5">
+                        <CityAutocomplete value={departureCity} onChange={setDepartureCity} label="Ville de départ" placeholder="Ex. Paris, Lyon..." />
+                        <CityAutocomplete value={arrivalCity} onChange={setArrivalCity} onSelectName={(n) => setArrivalCityName?.(n)} label="Destination" placeholder="Ex. Barcelone, Tokyo..." />
                     </div>
-                )}
+                </Section>
 
-                {selectedHotel && (
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Hôtel sélectionné
-                        </label>
-                        <SelectedHotelCard
-                            offer={selectedHotel}
-                            onClick={onHotelCardClick || (() => {})}
-                            onRemove={onRemoveHotel}
-                        />
+                {/* 2 - Dates */}
+                <Section icon={svg("M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z")} title="Quand partez-vous ?">
+                    <DateRangePicker startDate={arrivalDate} endDate={departureDate} onDatesChange={(s, e) => { setArrivalDate(s); setDepartureDate(e); }} className="mb-2.5 w-full" />
+                    <div className="grid grid-cols-2 gap-2">
+                        <TimePicker value={arrivalTime} onChange={setArrivalTime} label="Heure départ" />
+                        <TimePicker value={departureTime} onChange={setDepartureTime} label="Heure retour" />
                     </div>
-                )}
+                </Section>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <CityAutocomplete
-                        value={departureCity}
-                        onChange={setDepartureCity}
-                        label="Ville de départ"
-                        placeholder="Ex. Paris, Lyon..."
-                        containerStyle={{ color: 'var(--foreground, #ededed)' }}
-                    />
-                    <CityAutocomplete
-                        value={arrivalCity}
-                        onChange={setArrivalCity}
-                        onSelectName={(name) => setArrivalCityName?.(name)}
-                        label="Ville d'arrivée"
-                        placeholder="Ex. Marseille, Bordeaux..."
-                        containerStyle={{ color: 'var(--foreground, #ededed)' }}
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Nombre de jours de voyage
-                    </label>
-                    <div className="input-assistant w-full">
-                        <input
-                            type="number"
-                            min={1}
-                            value={travelDays === 0 ? '' : travelDays}
-                            onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))}
-                            placeholder="Ex. 3"
-                            className="w-full flex-grow"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Nombre de voyageurs
-                    </label>
-                    <TravelerCounter
-                        count={travelerCount}
-                        onChange={setTravelerCount}
-                        className="w-full"
-                        style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                            color: 'rgba(255, 255, 255, 0.5)',
-                        }}
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Budget maximum (€)
-                    </label>
-                    <div className="input-assistant w-full">
-                        <span className="mr-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>€</span>
-                        <input
-                            type="number"
-                            value={budget}
-                            onChange={(e) => setBudget(e.target.value)}
-                            placeholder="0"
-                            className="flex-grow"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Temps par jour d'activité (heures)
-                    </label>
-                    <div className="input-assistant w-full">
-                        <input
-                            type="number"
-                            value={activityTime}
-                            onChange={(e) => setActivityTime(e.target.value)}
-                            placeholder="0"
-                            min="0"
-                            max="24"
-                            className="flex-grow"
-                        />
-                        <span className="ml-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>h</span>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Date d'arrivée / Départ
-                    </label>
-                    <DateRangePicker
-                        startDate={arrivalDate}
-                        endDate={departureDate}
-                        onDatesChange={(start, end) => {
-                            setArrivalDate(start);
-                            setDepartureDate(end);
-                        }}
-                        className="w-full mb-2"
-                        containerStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                            color: 'rgba(255, 255, 255, 0.5)',
-                        }}
-                    />
-                    <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                        <div className="flex-1 min-w-0">
-                            <TimePicker
-                                value={arrivalTime}
-                                onChange={setArrivalTime}
-                                label="Heure d'arrivée"
-                                containerStyle={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                                    color: 'rgba(255, 255, 255, 0.7)',
-                                }}
-                            />
+                {/* 3 - Voyageurs & séjour */}
+                <Section icon={svg("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2")} title="Voyageurs & séjour">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="min-w-0">
+                            <label className="mb-1 block text-[12px] font-medium text-slate-300">Voyageurs</label>
+                            <TravelerCounter count={travelerCount} onChange={setTravelerCount} className="w-full" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <TimePicker
-                                value={departureTime}
-                                onChange={setDepartureTime}
-                                label="Heure de départ"
-                                containerStyle={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                                    color: 'rgba(255, 255, 255, 0.7)',
-                                }}
-                            />
+                        <div className="min-w-0">
+                            <label className="mb-1 block text-[12px] font-medium text-slate-300">Durée (jours)</label>
+                            <div className={inputCls}>
+                                <input type="number" min={1} value={travelDays === 0 ? '' : travelDays} onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))} placeholder="3" className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none" />
+                            </div>
                         </div>
                     </div>
-                </div>
+                </Section>
 
-                <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Préférences
-                    </label>
-                    <MultiSelect
-                        options={multiSelectOptions}
-                        selectedValues={selectedOptions}
-                        onChange={setSelectedOptions}
-                        placeholder="Sélectionner des préférences..."
-                        className="w-full"
-                    />
-                </div>
+                {/* 4 - Transport */}
+                <Section icon={svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")} title="Transport" tag="optionnel">
+                    {selectedFlight ? (
+                        <SelectedFlightCard offer={selectedFlight} carrierName={selectedFlightCarrierName} onClick={onFlightCardClick || (() => {})} onRemove={onRemoveFlight} />
+                    ) : (
+                        <button type="button" onClick={onOpenFlightSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 transition-colors group-hover:bg-cyan-500/20">
+                                {svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")}
+                            </span>
+                            <span className="min-w-0">
+                                <span className="block text-[13px] font-medium text-slate-200">Rechercher un vol</span>
+                                <span className="block text-[11px] text-slate-500">Trouvez les meilleurs tarifs</span>
+                            </span>
+                        </button>
+                    )}
+                </Section>
+
+                {/* 5 - Hébergement */}
+                <Section icon={svg("M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4M5 21V10.9M19 21V10.9")} title="Hébergement" tag="optionnel">
+                    {selectedHotel ? (
+                        <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick || (() => {})} onRemove={onRemoveHotel} />
+                    ) : (
+                        <button type="button" onClick={onOpenHotelSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 transition-colors group-hover:bg-cyan-500/20">
+                                {svg("M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4M5 21V10.9M19 21V10.9")}
+                            </span>
+                            <span className="min-w-0">
+                                <span className="block text-[13px] font-medium text-slate-200">Rechercher un hôtel</span>
+                                <span className="block text-[11px] text-slate-500">Comparez les offres d'hébergement</span>
+                            </span>
+                        </button>
+                    )}
+                </Section>
+
+                {/* 6 - Budget & préférences */}
+                <Section icon={svg("M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z")} title="Budget & style" tag="optionnel">
+                    <div className="mb-2.5 grid grid-cols-2 gap-2">
+                        <div className="min-w-0">
+                            <label className="mb-1 block text-[12px] font-medium text-slate-300">Budget</label>
+                            <div className={inputCls}>
+                                <span className="mr-1 shrink-0 text-[12px] text-slate-500">€</span>
+                                <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none" />
+                            </div>
+                        </div>
+                        <div className="min-w-0">
+                            <label className="mb-1 block text-[12px] font-medium text-slate-300">Activité / jour</label>
+                            <div className={inputCls}>
+                                <input type="number" value={activityTime} onChange={(e) => setActivityTime(e.target.value)} placeholder="0" min="0" max="24" className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none" />
+                                <span className="ml-1 shrink-0 text-[12px] text-slate-500">h</span>
+                            </div>
+                        </div>
+                    </div>
+                    <MultiSelect options={multiSelectOptions} selectedValues={selectedOptions} onChange={setSelectedOptions} placeholder="Préférences de voyage..." className="w-full" />
+                </Section>
+
             </div>
         </div>
     );

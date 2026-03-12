@@ -20,8 +20,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="overflow-x-hidden">
+      <head>
+        <link rel="preload" href="/fonts/Chillax-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Gotham-Book.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Gotham-Medium.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+      </head>
       <body className="antialiased overflow-x-hidden min-h-[100dvh]">
-        {children}
+        <main className="flex min-h-[100dvh] flex-col">
+          {children}
+        </main>
       </body>
     </html>
   );
