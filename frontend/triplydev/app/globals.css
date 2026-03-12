@@ -146,15 +146,19 @@ h1, h2, h3, h4, h5, h6 {
   .input-assistant {
     display: flex;
     align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     background-color: rgba(255, 255, 255, 0.12) !important;
     border-width: 1px !important;
     border-style: solid !important;
     border-color: rgba(255, 255, 255, 0.3) !important;
     border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.625rem;
     min-height: 2.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     transition: border-color 0.2s, box-shadow 0.2s;
+    overflow: hidden;
   }
   .input-assistant:focus-within {
     border-color: var(--primary) !important;
@@ -179,4 +183,20 @@ h1, h2, h3, h4, h5, h6 {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* Forcer fieldset a respecter la largeur du parent */
+fieldset {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Forcer les inputs number/date/time a ne jamais deborder */
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="text"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }

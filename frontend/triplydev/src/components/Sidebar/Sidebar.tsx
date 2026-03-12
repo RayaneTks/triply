@@ -104,19 +104,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
             )}
         <motion.aside
-            className={`h-full relative flex-shrink-0 overflow-hidden flex flex-col z-30 md:z-auto ${className}`}
-            style={{
-                background: 'linear-gradient(180deg, #1a1a1a 0%, var(--background, #222222) 100%)',
-                borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-                boxShadow: isMobile && !isCollapsed ? '8px 0 32px rgba(0, 0, 0, 0.4)' : '4px 0 24px rgba(0, 0, 0, 0.25)',
-            }}
+            className={`relative z-30 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/95 shadow-xl md:z-auto ${className}`}
             animate={{ width: isCollapsed ? collapsedW : expandedW }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         >
             {/* Header avec logo + toggle */}
             <div
-                className={`flex items-center border-b ${isCollapsed ? 'justify-center p-3' : 'justify-between p-4'}`}
-                style={{ borderColor: 'rgba(255, 255, 255, 0.06)' }}
+                className={`flex items-center border-b border-white/10 ${isCollapsed ? 'justify-center p-3' : 'justify-between p-4'}`}
             >
                 {!isCollapsed && (
                     <div className="flex items-center gap-3 min-w-0">
@@ -134,11 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
                 <button
                     onClick={onToggle}
-                    className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-                    style={{
-                        color: 'var(--foreground, #ededed)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                    }}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                     aria-label={isCollapsed ? 'Ouvrir le menu' : 'Fermer le menu'}
                 >
                     <motion.span
@@ -151,20 +141,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <motion.div
-                className="flex flex-col flex-1 min-h-0 overflow-hidden"
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
                 animate={{ opacity: isCollapsed ? 0 : 1 }}
                 transition={{ duration: 0.2, delay: isCollapsed ? 0 : 0.05 }}
             >
                 {children || (
                     <>
-                        <nav className="flex-1 py-6 px-4">
+                        <nav className="flex-1 px-4 py-6">
                             <ul className="space-y-1">
                                 {navItems.map((item) => {
                                     const isActive = item.path ? pathname === item.path : false;
                                     const Icon = item.Icon;
                                     const content = (
                                         <>
-                                            <span className="flex-shrink-0 opacity-80" style={{ color: 'inherit' }}>
+                                            <span className="flex-shrink-0 opacity-80">
                                                 <Icon />
                                             </span>
                                             <span className="font-medium">{item.label}</span>
@@ -175,20 +165,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                             {item.path ? (
                                                 <Link
                                                     href={item.path}
-                                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 hover:bg-white/5 block ${
-                                                        isActive ? 'bg-white/10' : ''
-                                                    }`}
-                                                    style={{
-                                                        color: isActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.75)',
-                                                    }}
+                                                    className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                                                        isActive ? 'bg-white/10 text-cyan-400' : 'text-slate-200'
+                                                    } flex items-center gap-3`}
                                                 >
                                                     {content}
                                                 </Link>
                                             ) : (
                                                 <button
                                                     type="button"
-                                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 hover:bg-white/5"
-                                                    style={{ color: 'rgba(255, 255, 255, 0.75)' }}
+                                                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                                                 >
                                                     {content}
                                                 </button>
@@ -199,10 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </ul>
                         </nav>
 
-                        <div
-                            className="p-4 border-t"
-                            style={{ borderColor: 'rgba(255, 255, 255, 0.06)' }}
-                        >
+                        <div className="border-t border-white/10 p-4">
                             <Button
                                 label={isConnected ? 'Déconnexion' : 'Connexion'}
                                 onClick={isConnected ? onLogoutClick : onLoginClick}

@@ -154,6 +154,7 @@ export const WorldMap: React.FC<MapProps> = ({
     mapStyleRef.current = mapStyle;
     const [cursor, setCursor] = useState<string>('');
     const [isMapLoaded, setIsMapLoaded] = useState(false);
+    const [isStyleReady, setIsStyleReady] = useState(false);
 
     const [viewState, setViewState] = useState<ViewState>({
         longitude: initialLongitude,
@@ -501,6 +502,20 @@ export const WorldMap: React.FC<MapProps> = ({
                     setIsMapLoaded(true);
                     const map = mapRef.current?.getMap();
                     if (!map) return;
+
+                    // Marquer le style comme prêt uniquement quand mapbox le signale
+                    const checkStyleReady = () => {
+                        try {
+                            if (map.isStyleLoaded()) {
+                                setIsStyleReady(true);
+                            }
+                        } catch {
+                            // ignore
+                        }
+                    };
+                    checkStyleReady();
+                    map.on('styledata', checkStyleReady);
+
                     if (!IS_MAPBOX_STANDARD(mapStyleRef.current)) {
                         add3DBuildingsLayer(map, mapStyleRef.current);
                         map.on('style.load', () => add3DBuildingsLayer(map, mapStyleRef.current));
@@ -520,7 +535,7 @@ export const WorldMap: React.FC<MapProps> = ({
                     },
                 })}
             >
-                {isMapLoaded && (
+                {isMapLoaded && isStyleReady && (
                     <Source id="airports-source" type="geojson" data={AIRPORTS_DATA_SOURCE}>
                         <Layer
                             id="airports-layer"
@@ -555,7 +570,7 @@ export const WorldMap: React.FC<MapProps> = ({
                         />
                     </Source>
                 )}
-                {isMapLoaded && locationsGeoJson && (
+                {isMapLoaded && isStyleReady && locationsGeoJson && (
                     <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
                         <Layer
                             id="locations-layer-labels"

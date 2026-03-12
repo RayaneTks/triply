@@ -65,7 +65,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
     );
 
     return (
-        <div className={`relative ${className}`} ref={dropdownRef}>
+        <div className={`relative min-w-0 w-full ${className}`} ref={dropdownRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}

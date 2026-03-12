@@ -409,6 +409,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                         <button
                             ref={startButtonRef}
                             type="button"
+                            aria-label="Sélectionner la date de départ"
                             onClick={() => {
                                 if (!isStartCalendarOpen) {
                                     if (startDate) {
@@ -478,6 +479,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                         <button
                             ref={endButtonRef}
                             type="button"
+                            aria-label="Sélectionner la date de retour"
                             onClick={() => {
                                 if (!isEndCalendarOpen) {
                                     if (endDate) {

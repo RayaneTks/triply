@@ -54,6 +54,7 @@ export const TravelerCounter: FC<TravelerCounterProps> = ({
 
             <input
                 type="number"
+                aria-label="Nombre de voyageurs"
                 min={min}
                 max={max}
                 value={count}
