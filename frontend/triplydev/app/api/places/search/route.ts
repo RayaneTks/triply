@@ -51,9 +51,6 @@ export async function GET(request: Request) {
 
     try {
         const accessToken = await getAmadeusToken();
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'places/route.ts:auth',message:'Auth OK',data:{keyword,hasToken:!!accessToken},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         const url = `${AMADEUS_BASE_URL}/v1/reference-data/locations?subType=CITY,AIRPORT&keyword=${encodeURIComponent(keyword)}&page[limit]=10&view=FULL`;
         const response = await fetch(url, {
@@ -65,11 +62,6 @@ export async function GET(request: Request) {
 
         const data = await response.json();
         const raw = data.data || [];
-        const firstLoc = raw[0] as Record<string, unknown> | undefined;
-
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'places/route.ts:amadeus',message:'Amadeus response',data:{ok:response.ok,status:response.status,rawCount:raw.length,hasErrors:!!data.errors,firstLocKeys:firstLoc?Object.keys(firstLoc):[],firstIata:firstLoc?.iataCode??firstLoc?.iata_code},hypothesisId:'B,C',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         if (!response.ok) {
             console.error('Amadeus locations error:', data);
@@ -80,9 +72,6 @@ export async function GET(request: Request) {
 
         return NextResponse.json(normalized);
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'places/route.ts:catch',message:'API error',data:{error:String(error)},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         console.error('Erreur API Places:', error);
         return NextResponse.json([], { status: 500 });
     }

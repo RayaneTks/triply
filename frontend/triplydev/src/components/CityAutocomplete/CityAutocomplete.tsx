@@ -2,7 +2,6 @@
 
 import { FC, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-// AnimatePresence retiré : conflit possible avec createPortal
 
 // Interface pour la réponse d'Amadeus
 interface AmadeusLocation {
@@ -57,10 +56,6 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
 
     useEffect(() => {
         if (isOpen && suggestions.length > 0) {
-            const rect = containerRef.current?.getBoundingClientRect();
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:useEffect',message:'Portal position',data:{hasContainer:!!containerRef.current,rect:rect?{top:rect.top,bottom:rect.bottom,left:rect.left,width:rect.width}:null,suggestionsLen:suggestions.length},hypothesisId:'E',timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             updateDropdownPosition();
             const onScrollOrResize = () => updateDropdownPosition();
             window.addEventListener('scroll', onScrollOrResize, true);
@@ -99,9 +94,6 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
         setDisplayValue(text);
 
         if (!text.trim() || text.length < 2) {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:handleInputChange',message:'Early return: text too short',data:{text,length:text.length,trimmed:text.trim()},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             setSuggestions([]);
             setIsOpen(false);
             return;
@@ -114,30 +106,17 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
         debounceRef.current = setTimeout(() => {
             setLoading(true);
             const url = `/api/places/search?keyword=${encodeURIComponent(text)}`;
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:fetch',message:'Fetch started',data:{url,keyword:text},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             fetch(url)
                 .then((res) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:res',message:'API response',data:{ok:res.ok,status:res.status},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-                    // #endregion
                     if (!res.ok) throw new Error('Erreur API');
                     return res.json();
                 })
                 .then((data) => {
                     const results = Array.isArray(data) ? data : (data.data || data || []);
                     const filtered = results.filter((r: AmadeusLocation) => r && r.iataCode);
-                    const firstRaw = results[0];
-                    // #region agent log
-                    fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:data',message:'API data received',data:{rawCount:results.length,filteredCount:filtered.length,firstRawKeys:firstRaw?Object.keys(firstRaw):[],firstRawIata:firstRaw?.iataCode??firstRaw?.iata_code},hypothesisId:'C,D',timestamp:Date.now()})}).catch(()=>{});
-                    // #endregion
                     setSuggestions(filtered);
                 })
                 .catch((e) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:catch',message:'Fetch error',data:{error:String(e)},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-                    // #endregion
                     console.error(e);
                     setSuggestions([]);
                 })
@@ -190,12 +169,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     </div>
                 )}
 
-                {(() => {
-                    const willRender = isOpen && suggestions.length > 0 && dropdownRect && typeof document !== 'undefined';
-                    // #region agent log
-                    if (isOpen && suggestions.length > 0) fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CityAutocomplete.tsx:render',message:'Portal render check',data:{isOpen,suggestionsLen:suggestions.length,hasDropdownRect:!!dropdownRect,willRender},hypothesisId:'E',timestamp:Date.now()})}).catch(()=>{});
-                    // #endregion
-                    return willRender && createPortal(
+                {isOpen && suggestions.length > 0 && dropdownRect && typeof document !== 'undefined' && createPortal(
                     <div ref={dropdownRef} className="fixed z-[99999]" style={{ top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}>
                         <ul
                             className="rounded-lg overflow-hidden max-h-60 overflow-y-auto"
@@ -230,8 +204,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                             </ul>
                         </div>,
                         document.body
-                    );
-                })()}
+                    )}
             </div>
         </div>
     );
