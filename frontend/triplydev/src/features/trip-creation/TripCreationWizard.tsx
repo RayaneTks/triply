@@ -55,7 +55,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     const hasMinimum = !!state.arrivalCity && !!state.outboundDate && !!state.returnDate;
 
     return (
-        <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
+        <div className="flex h-full w-full min-w-0 flex-col overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
             {/* Header */}
             <div className="shrink-0 border-b border-white/10 px-4 py-3">
                 <h2 className="text-[15px] font-bold text-slate-100">Planifiez votre voyage</h2>

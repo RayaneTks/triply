@@ -61,11 +61,11 @@ export const Slide: React.FC<SlideProps> = ({
                                                 slideIndex = 0,
                                                 onJumpTo
                                             }) => {
-    // Détecter si c'est la dernière slide (slide 1 est toujours noir #222222)
+    // Détecter si c'est la dernière slide
     const isLastSlide: boolean = canNext === false || (slides !== undefined && slideIndex === slides.length - 1);
     const isFirstSlide = slideIndex === 0;
-    const bgColor = isFirstSlide ? '#222222' : (isLastSlide ? '#0096c7' : 'var(--background, #222222)');
-    const useLastSlideTextStyle = isLastSlide && !isFirstSlide;
+    const bgColor = 'var(--background, #222222)';
+    const useLastSlideTextStyle = false; // Toutes les slides utilisent le fond sombre
     
     return (
         <motion.div

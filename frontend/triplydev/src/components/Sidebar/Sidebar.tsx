@@ -104,7 +104,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
             )}
         <motion.aside
-            className={`relative z-30 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/95 shadow-xl md:z-auto ${className}`}
+            className={`relative z-30 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl md:z-auto ${className}`}
+            style={{ backgroundColor: 'var(--background, #222222)' }}
             animate={{ width: isCollapsed ? collapsedW : expandedW }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         >
