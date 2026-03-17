@@ -234,22 +234,20 @@ export default function Home() {
     const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
     const [selectedFlightOffer, setSelectedFlightOffer] = useState<FlightOffer | null>(null);
     const [selectedFlightCarrierName, setSelectedFlightCarrierName] = useState('');
+    const [flightModalBudget, setFlightModalBudget] = useState('');
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
+    const [hotelModalBudget, setHotelModalBudget] = useState('');
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
     const [hotelApiResponse, setHotelApiResponse] = useState<any>(null);
     const [isLoadingHotel, setIsLoadingHotel] = useState(false);
     const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
 
-    const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
-        setSelectedFlightOffer(offer);
-        setSelectedFlightCarrierName(carrierName);
-        setIsFlightModalOpen(false);
-
+    const syncFormFromFlight = useCallback((offer: FlightOffer) => {
         const outbound = offer.itineraries?.[0];
         const returnItin = offer.itineraries?.[1];
         const firstSeg = outbound?.segments?.[0];
@@ -270,17 +268,28 @@ export default function Home() {
             if (returnItin && firstReturnSeg?.departure?.at) {
                 tripConfig.setReturnDate(firstReturnSeg.departure.at.slice(0, 10));
                 tripConfig.setDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
+            } else if (returnItin && lastReturnSeg?.arrival?.at) {
+                tripConfig.setDepartureTime(lastReturnSeg.arrival.at.slice(11, 16));
             } else if (lastOutboundSeg.arrival.at) {
                 tripConfig.setDepartureTime(lastOutboundSeg.arrival.at.slice(11, 16));
             }
         }
-        if (offer.price?.grandTotal) {
-            tripConfig.setBudget(offer.price.grandTotal);
-        }
         if (offer.travelerPricings?.length) {
             tripConfig.setTravelerCount(offer.travelerPricings.length);
         }
+    }, [tripConfig]);
+
+    const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
+        setSelectedFlightOffer(offer);
+        setSelectedFlightCarrierName(carrierName);
+        setIsFlightModalOpen(false);
+        syncFormFromFlight(offer);
     };
+
+    useEffect(() => {
+        if (selectedFlightOffer) syncFormFromFlight(selectedFlightOffer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- sync only when selected flight changes
+    }, [selectedFlightOffer]);
 
     const handleHotelSelect = (offer: HotelOffer) => {
         setSelectedHotelOffer(offer);
@@ -288,7 +297,6 @@ export default function Home() {
         tripConfig.setArrivalCity(offer.cityCode);
         tripConfig.setOutboundDate(offer.checkInDate);
         tripConfig.setReturnDate(offer.checkOutDate);
-        if (offer.price?.total) tripConfig.setBudget(offer.price.total);
         if (offer.guests?.adults) tripConfig.setTravelerCount(offer.guests.adults);
     };
 
@@ -302,7 +310,7 @@ export default function Home() {
             tripConfig.outboundDate,
             tripConfig.returnDate,
             tripConfig.travelerCount,
-            tripConfig.budget,
+            flightModalBudget,
             tripConfig.arrivalTime,
             tripConfig.departureTime
         );
@@ -352,7 +360,7 @@ export default function Home() {
                     checkOutDate: checkOut,
                     adults: tripConfig.travelerCount,
                     roomQuantity: 1,
-                    maxPrice: tripConfig.budget ? parseInt(tripConfig.budget, 10) : undefined,
+                    maxPrice: hotelModalBudget ? parseInt(hotelModalBudget, 10) : undefined,
                     preferences: hotelSelectedOptions,
                 }),
             });
@@ -496,8 +504,8 @@ export default function Home() {
                                 setDepartureTime={tripConfig.setDepartureTime}
                                 travelerCount={tripConfig.travelerCount}
                                 setTravelerCount={tripConfig.setTravelerCount}
-                                budget={tripConfig.budget}
-                                setBudget={tripConfig.setBudget}
+                                budget={flightModalBudget}
+                                setBudget={setFlightModalBudget}
                                 onSearch={handleFlightSearch}
                                 onNewSearch={() => setApiResponse(null)}
                                 onSelectOffer={handleFlightSelect}
@@ -523,8 +531,8 @@ export default function Home() {
                                 setDepartureDate={tripConfig.setReturnDate}
                                 travelerCount={tripConfig.travelerCount}
                                 setTravelerCount={tripConfig.setTravelerCount}
-                                budget={tripConfig.budget}
-                                setBudget={tripConfig.setBudget}
+                                budget={hotelModalBudget}
+                                setBudget={setHotelModalBudget}
                                 selectedOptions={hotelSelectedOptions}
                                 setSelectedOptions={setHotelSelectedOptions}
                                 multiSelectOptions={multiSelectOptions}

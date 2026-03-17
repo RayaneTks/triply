@@ -173,7 +173,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
-                                            Budget maximum (€)
+                                            Budget maximum par nuit (€)
                                         </label>
                                         <div className="input-assistant flex h-11 w-full items-center rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-slate-100 shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                                             <span className="mr-2 text-slate-400">€</span>
@@ -181,7 +181,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                                 type="number"
                                                 value={budget}
                                                 onChange={(e) => setBudget(e.target.value)}
-                                                placeholder="0"
+                                                placeholder="Ex. 150"
                                                 className="h-full w-full flex-grow bg-transparent text-sm text-slate-100 placeholder:text-slate-500 outline-none"
                                                 aria-invalid={!!errors.budget}
                                                 aria-describedby={errors.budget ? 'hotel-budget-error' : undefined}

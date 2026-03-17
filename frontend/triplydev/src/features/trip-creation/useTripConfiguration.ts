@@ -1,4 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+function daysBetween(start: string, end: string): number {
+    if (!start || !end) return 0;
+    const a = new Date(start);
+    const b = new Date(end);
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+    const diff = b.getTime() - a.getTime();
+    return Math.max(1, Math.ceil(diff / (24 * 60 * 60 * 1000)));
+}
 
 export interface TripConfigurationState {
     departureCity: string;
@@ -43,6 +52,11 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [arrivalTime, setArrivalTime] = useState(initial?.arrivalTime ?? '');
     const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
+
+    useEffect(() => {
+        const days = daysBetween(outboundDate, returnDate);
+        if (days > 0) setTravelDays(days);
+    }, [outboundDate, returnDate]);
 
     return {
         departureCity,
