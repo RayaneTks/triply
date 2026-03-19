@@ -200,7 +200,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
     };
 
     return (
-        <div className="flex h-full min-h-0 flex-col bg-slate-950/90">
+        <div className="flex h-full min-h-0 flex-col" style={{ backgroundColor: 'var(--background, #222222)' }}>
             <div
                 ref={scrollContainerRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
@@ -222,7 +222,7 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
                     </div>
                 )}
             </div>
-            <div className="flex-shrink-0 border-t border-white/10 bg-slate-950/95 px-4 pb-4 pt-2 flex flex-col gap-2">
+            <div className="flex-shrink-0 border-t border-white/10 px-4 pb-4 pt-2 flex flex-col gap-2" style={{ backgroundColor: 'var(--background, #222222)' }}>
                 <div className="flex justify-between items-center">
                     <button
                         type="button"

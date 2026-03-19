@@ -159,7 +159,7 @@ export const TimePicker: FC<TimePickerProps> = ({
                 transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
                 className="fixed z-[9999] rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl"
                 style={{
-                    backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                    backgroundColor: 'var(--background, #222222)',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
                     top: `${position.top}px`,

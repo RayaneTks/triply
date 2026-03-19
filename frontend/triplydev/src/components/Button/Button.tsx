@@ -31,7 +31,7 @@ export const Button: React.FC<ButtonProps> = ({
     const colors: Record<Variant, Record<Tone, { color: string; outline: string; textColor: string }>> = {
         dark: {
             tone1: {
-                color: '#0077b6', // Better contrast than #0096c7
+                color: 'var(--primary, #0096c7)',
                 outline: '#FFFFFF',
                 textColor: '#FFFFFF',
             },
@@ -43,7 +43,7 @@ export const Button: React.FC<ButtonProps> = ({
         },
         light: {
             tone1: {
-                color: '#0077b6', // Better contrast than #0096c7
+                color: 'var(--primary, #0096c7)',
                 outline: '#222222',
                 textColor: '#FFFFFF',
             },

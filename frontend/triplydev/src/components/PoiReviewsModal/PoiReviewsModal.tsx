@@ -113,7 +113,7 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
                         top: `${top}px`,
                         width: `${width}px`,
                         maxHeight: `${MAX_HEIGHT}px`,
-                        backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                        backgroundColor: 'var(--background, #222222)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
                         boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
                     }}

@@ -52,7 +52,7 @@ interface TripConfigurationFormProps {
 const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; children: React.ReactNode }> = ({ icon, title, tag, children }) => (
     <fieldset className="min-w-0">
         <div className="mb-2.5 flex items-center gap-2">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center text-cyan-400">{icon}</span>
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: 'var(--primary, #0096c7)' }}>{icon}</span>
             <legend className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">{title}</legend>
             {tag && <span className="ml-auto rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] font-medium text-slate-500">{tag}</span>}
         </div>
@@ -60,8 +60,17 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; ch
     </fieldset>
 );
 
-const svg = (d: string) => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+const svg = (d: string | React.ReactNode) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {typeof d === 'string' ? <path d={d} /> : d}
+    </svg>
+);
+
+const iconUser = (
+    <>
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+    </>
 );
 
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (props) => {
@@ -101,7 +110,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 </Section>
 
                 {/* 3 - Voyageurs & séjour */}
-                <Section icon={svg("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2")} title="Voyageurs & séjour">
+                <Section icon={svg(iconUser)} title="Voyageurs & séjour">
                     <div className="grid grid-cols-2 gap-2">
                         <div className="min-w-0">
                             <label className="mb-1 block text-[12px] font-medium text-slate-300">Voyageurs</label>
@@ -122,7 +131,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                         <SelectedFlightCard offer={selectedFlight} carrierName={selectedFlightCarrierName} onClick={onFlightCardClick || (() => {})} onRemove={onRemoveFlight} />
                     ) : (
                         <button type="button" onClick={onOpenFlightSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 transition-colors group-hover:bg-cyan-500/20">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 transition-colors group-hover:bg-cyan-500/20" style={{ color: 'var(--primary, #0096c7)' }}>
                                 {svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")}
                             </span>
                             <span className="min-w-0">
@@ -139,7 +148,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                         <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick || (() => {})} onRemove={onRemoveHotel} />
                     ) : (
                         <button type="button" onClick={onOpenHotelSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 transition-colors group-hover:bg-cyan-500/20">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 transition-colors group-hover:bg-cyan-500/20" style={{ color: 'var(--primary, #0096c7)' }}>
                                 {svg("M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4M5 21V10.9M19 21V10.9")}
                             </span>
                             <span className="min-w-0">

@@ -44,7 +44,7 @@ export const HotelOfferCard: React.FC<HotelOfferCardProps> = ({
         <div
             className={`rounded-xl overflow-hidden border ${className}`}
             style={{
-                backgroundColor: 'rgba(40, 40, 40, 0.95)',
+                backgroundColor: 'var(--background, #222222)',
                 borderColor: 'rgba(255, 255, 255, 0.2)',
                 color: '#e5e5e5',
             }}

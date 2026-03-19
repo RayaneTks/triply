@@ -45,7 +45,7 @@ export const SelectedFlightCard: React.FC<SelectedFlightCardProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && onClick()}
             className="rounded-xl border p-4 cursor-pointer transition-all hover:border-[#0096c7] hover:bg-white/5"
             style={{
-                backgroundColor: 'rgba(40, 40, 40, 0.95)',
+                backgroundColor: 'var(--background, #222222)',
                 borderColor: 'rgba(255, 255, 255, 0.2)',
                 color: '#e5e5e5',
             }}

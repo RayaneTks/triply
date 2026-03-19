@@ -51,7 +51,7 @@ export const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                         className="fixed inset-2 sm:inset-4 md:inset-12 lg:inset-16 z-[10001] flex flex-col rounded-xl overflow-hidden max-h-[calc(100dvh-1rem)]"
                         style={{
-                            backgroundColor: '#222222',
+                            backgroundColor: 'var(--background, #222222)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                         }}
