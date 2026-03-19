@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { Bike } from 'lucide-react';
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
@@ -56,11 +56,9 @@ function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: numbe
                                     onSelect(d);
                                     setIsOpen(false);
                                 }}
-                                className="flex w-full items-center px-4 py-3 text-left text-[13px] font-medium transition-colors hover:bg-white/10"
-                                style={{
-                                    color: 'var(--foreground, #ededed)',
-                                    backgroundColor: d === selectedDay ? 'rgba(0, 150, 199, 0.15)' : 'transparent',
-                                }}
+                                className={`flex w-full items-center px-4 py-3 text-left text-[13px] font-medium transition-all duration-150 hover:bg-cyan-500/15 hover:text-cyan-300 ${
+                                    d === selectedDay ? 'bg-cyan-500/15 text-cyan-400' : 'bg-transparent text-slate-100'
+                                }`}
                             >
                                 Jour {d}
                             </button>
@@ -82,6 +80,18 @@ function getEstimatedDuration(layerId?: string): string {
     if (id.includes('place-city') || id.includes('place-town')) return '2h–4h';
     if (id.includes('shop') || id.includes('store')) return '30min–1h';
     return '~1h';
+}
+
+/** Coût moyen estimé selon le type de POI (layer Mapbox + nom + class) */
+function getEstimatedCost(layerId?: string, hint?: string): string {
+    const id = [layerId, hint].filter(Boolean).join(' ').toLowerCase();
+    if (!id) return '~15 €';
+    if (id.includes('restaurant') || id.includes('food') || id.includes('cafe') || id.includes('bar') || id.includes('bistro')) return '15–40 €';
+    if (id.includes('museum') || id.includes('musée') || id.includes('gallery') || id.includes('galerie') || id.includes('theater') || id.includes('théâtre')) return '10–20 €';
+    if (id.includes('park') || id.includes('parc') || id.includes('nature') || id.includes('garden') || id.includes('jardin')) return 'Gratuit';
+    if (id.includes('place-city') || id.includes('place-town') || id.includes('place-village')) return 'Gratuit';
+    if (id.includes('shop') || id.includes('store') || id.includes('boutique')) return '20–100 €';
+    return '~15 €';
 }
 
 /** Convertit la durée affichée en heures (nombre) pour le calcul de la barre de progression */
@@ -118,6 +128,8 @@ function ActivityCard({
     const [address, setAddress] = useState<string | null>(null);
     const [addressLoading, setAddressLoading] = useState(true);
     const duration = getEstimatedDuration(poi.layer?.id);
+    const costHint = [poi.properties?.class, name].filter(Boolean).join(' ');
+    const cost = getEstimatedCost(poi.layer?.id, costHint);
     const dragControls = useDragControls();
 
     useEffect(() => {
@@ -163,9 +175,15 @@ function ActivityCard({
                         <h4 className="mb-1.5 text-[14px] font-semibold text-slate-100 truncate">
                             {String(name)}
                         </h4>
-                    <div className="mb-2 flex items-center gap-1.5 text-[11px] text-cyan-400">
-                        <ClockIcon className="h-3.5 w-3.5" />
-                        <span>Temps moyen : {duration}</span>
+                    <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-cyan-400">
+                        <span className="flex items-center gap-1.5">
+                            <ClockIcon className="h-3.5 w-3.5" />
+                            Temps moyen : {duration}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <BanknotesIcon className="h-3.5 w-3.5" />
+                            Coût moyen : {cost}
+                        </span>
                     </div>
                     <div className="flex items-start gap-2 text-[12px] text-slate-400">
                         <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />

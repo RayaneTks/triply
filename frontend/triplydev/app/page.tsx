@@ -148,6 +148,9 @@ export default function Home() {
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
     const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
     const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
+    const [activityHoursByDay, setActivityHoursByDay] = useState<Record<number, number>>({});
+    const [activityHoursEditOpen, setActivityHoursEditOpen] = useState(false);
+    const activityHoursEditRef = useRef<HTMLDivElement>(null);
     const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
     const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: LocationPoint | null } | null>(null);
 
@@ -421,6 +424,18 @@ export default function Home() {
         }
     }, [mapViewMenuOpen, hotelFilterMenuOpen]);
 
+    useEffect(() => {
+        const handleActivityHoursClickOutside = (e: MouseEvent) => {
+            if (activityHoursEditRef.current && !activityHoursEditRef.current.contains(e.target as Node)) {
+                setActivityHoursEditOpen(false);
+            }
+        };
+        if (activityHoursEditOpen) {
+            document.addEventListener('mousedown', handleActivityHoursClickOutside);
+            return () => document.removeEventListener('mousedown', handleActivityHoursClickOutside);
+        }
+    }, [activityHoursEditOpen]);
+
     const travelDays = tripConfig.travelDays || 1;
     const dayActivities = dayActivitiesByDay[selectedDay] ?? [];
 
@@ -633,25 +648,69 @@ export default function Home() {
                             {/* Barre de progression Activité / jour - haut droite */}
                             {isConfigPanelOpen && (
                                 <div
-                                    className="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-xl border border-white/15 bg-slate-900/95 px-4 py-2.5 shadow-lg backdrop-blur-sm"
-                                    style={{ minWidth: 180 }}
+                                    ref={activityHoursEditRef}
+                                    className="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-xl border border-white/15 px-4 py-2.5 shadow-lg backdrop-blur-sm"
+                                    style={{ minWidth: 180, backgroundColor: 'var(--background, #222222)' }}
                                 >
-                                    <div className="flex items-center justify-between gap-3 text-[12px]">
+                                    <div className="flex items-center justify-between gap-2 text-[12px]">
                                         <span className="font-medium text-slate-300">Activités du jour</span>
-                                        <span className="tabular-nums text-cyan-400">
-                                            {dayActivities.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0).toFixed(1)}h
-                                            <span className="text-slate-500"> / </span>
-                                            <span className="text-slate-200">
-                                                {Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0)}h
+                                        <div className="flex items-center gap-1">
+                                            <span className="tabular-nums text-cyan-400">
+                                                {dayActivities.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0).toFixed(1)}h
+                                                <span className="text-slate-500"> / </span>
+                                                <span className="text-slate-200">
+                                                    {(activityHoursByDay[selectedDay] ?? Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0)) || 0}h
+                                                </span>
                                             </span>
-                                        </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActivityHoursEditOpen((o) => !o)}
+                                                className="rounded p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-cyan-400"
+                                                title="Modifier les heures max pour ce jour"
+                                                aria-label="Modifier les heures max"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
+                                    {activityHoursEditOpen && (
+                                        <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                                            <label className="text-[11px] text-slate-500 shrink-0">Max jour {selectedDay} :</label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={24}
+                                                step={0.5}
+                                                defaultValue={activityHoursByDay[selectedDay] ?? (parseFloat(String(tripConfig.activityTime || 0)) || 0)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const v = parseFloat((e.target as HTMLInputElement).value);
+                                                        if (!isNaN(v) && v >= 0) {
+                                                            setActivityHoursByDay((prev) => ({ ...prev, [selectedDay]: v }));
+                                                            setActivityHoursEditOpen(false);
+                                                        }
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    const v = parseFloat(e.target.value);
+                                                    if (!isNaN(v) && v >= 0) {
+                                                        setActivityHoursByDay((prev) => ({ ...prev, [selectedDay]: v }));
+                                                    }
+                                                    setActivityHoursEditOpen(false);
+                                                }}
+                                                className="w-16 rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-[12px] text-slate-100 outline-none focus:border-cyan-500/60"
+                                            />
+                                            <span className="text-[11px] text-slate-500">h</span>
+                                        </div>
+                                    )}
                                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                                         <div
                                             className="h-full rounded-full bg-cyan-500 transition-all duration-300"
                                             style={{
                                                 width: (() => {
-                                                    const maxH = parseFloat(String(tripConfig.activityTime || 0)) || 0;
+                                                    const maxH = activityHoursByDay[selectedDay] ?? (parseFloat(String(tripConfig.activityTime || 0)) || 0);
                                                     const currentH = dayActivities.reduce(
                                                         (acc, p) => acc + getEstimatedDurationHours(p.layer?.id),
                                                         0
