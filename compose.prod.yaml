@@ -30,13 +30,13 @@ services:
     container_name: tri-api
     restart: unless-stopped # Automatically restart unless the service is explicitly stopped
     volumes:
-      # Mount the 'laravel-storage-production' volume to '/var/www/storage' inside the container.
+      # Mount the 'tri-storage-production' volume to '/var/www/storage' inside the container.
       # -----------------------------------------------------------
       # This volume stores persistent data like uploaded files and cache.
       # The ':ro' option mounts it as read-only in the 'api' service because Nginx only needs to read these files.
       # The 'php-fpm' service mounts the same volume without ':ro' to allow write operations.
       # -----------------------------------------------------------
-      - tri-laravel-storage-production:/var/www/storage:ro
+      - tri-storage-production:/var/www/storage:ro
     networks:
       - tri-production
     depends_on:
@@ -52,8 +52,8 @@ services:
     container_name: tri-php-fpm
     restart: unless-stopped
     volumes:
-      - tri-laravel-public-assets:/var/www/public/build  # Mount built public assets to ensure the manifest.json and hashed files match between Nginx and PHP-FPM
-      - tri-laravel-storage-production:/var/www/storage  # Mount the storage volume
+      - tri-public-assets:/var/www/public/build  # Mount built public assets to ensure the manifest.json and hashed files match between Nginx and PHP-FPM
+      - tri-storage-production:/var/www/storage  # Mount the storage volume
     env_file:
       - ./backend/.env
     environment:
@@ -74,31 +74,26 @@ services:
       mysql:
         condition: service_healthy
 
-  mysql:
-    image: mysql:8.0
-    container_name: tri-mysql
+  tri-postgres:
+    image: postgres:16
     restart: unless-stopped
-    user: mysql
+    user: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      - MYSQL_DATABASE=${DB_DATABASE}
-      - MYSQL_USER=${DB_USERNAME}
-      - MYSQL_PASSWORD=${DB_PASSWORD}
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
     volumes:
-      - tri-mysql-data-production:/var/lib/mysql
+      - tri-postgres-data:/var/lib/postgresql/data
     networks:
-      - tri-production
-    # Health check for MySQL
-    # -----------------------------------------------------------
-    # Health checks allow Docker to determine if a service is operational.
-    # The 'mysqladmin ping' command checks if MySQL is ready to accept connections.
-    # This prevents dependent services from starting before the database is ready.
-    # -----------------------------------------------------------
+      - triply-development
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping" ]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_ROOT_PASSWORD || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:alpine
@@ -117,15 +112,21 @@ services:
       timeout: 5s
       retries: 3
   
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: tri-phpmyadmin
+  tri-pgadmin:
+    image: dpage/pgadmin4
     environment:
-      PMA_HOST: mysql
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      PMA_HOST: tri-postgres
+      POSTGRES_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_CONFIG_SERVER_MODE}
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
     networks:
-      - tri-production
-      - web
+      - triply-development
+    depends_on:
+      tri-postgres:
+        condition: service_healthy # Wait for postgres to be healthy
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
@@ -146,9 +147,6 @@ networks:
     external: true  # Use the existing 'web' network created by Traefik
 
 volumes:
-  tri-mysql-data-production:
-    name: tri-mysql-data-production
-  tri-laravel-storage-production:
-    name: tri-laravel-storage-production
-  tri-laravel-public-assets:
-    name: tri-laravel-public-assets
+  tri-postgres-data:
+  tri-storage-production:
+  tri-public-assets:
