@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { TruckIcon, UserIcon } from '@heroicons/react/24/outline';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Reorder, useDragControls } from 'framer-motion';
+import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Bike } from 'lucide-react';
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
@@ -9,7 +10,201 @@ import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 
 type PanelView = 'plan' | 'activity';
 
-export type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number } };
+export type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number }; _dragId?: string };
+
+function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: number; travelDays: number; onSelect: (day: number) => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const days = Array.from({ length: Math.max(1, travelDays) }, (_, i) => i + 1);
+
+    return (
+        <div className="flex items-center gap-2" ref={containerRef}>
+            <CalendarDaysIcon className="h-5 w-5 shrink-0 text-cyan-400" />
+            <div className="relative flex-1">
+                <button
+                    type="button"
+                    onClick={() => setIsOpen((o) => !o)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-white/5 py-2.5 pl-4 pr-10 text-[13px] font-semibold text-slate-100 outline-none transition-colors hover:bg-white/10 focus:border-cyan-500/60 focus:bg-cyan-500/10 focus:ring-2 focus:ring-cyan-500/30"
+                    style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
+                >
+                    <span>Jour {selectedDay}</span>
+                    <ChevronDownIcon className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isOpen && (
+                    <div
+                        className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto rounded-xl shadow-xl"
+                        style={{
+                            backgroundColor: 'var(--background, #222222)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                        }}
+                    >
+                        {days.map((d) => (
+                            <button
+                                key={d}
+                                type="button"
+                                onClick={() => {
+                                    onSelect(d);
+                                    setIsOpen(false);
+                                }}
+                                className="flex w-full items-center px-4 py-3 text-left text-[13px] font-medium transition-colors hover:bg-white/10"
+                                style={{
+                                    color: 'var(--foreground, #ededed)',
+                                    backgroundColor: d === selectedDay ? 'rgba(0, 150, 199, 0.15)' : 'transparent',
+                                }}
+                            >
+                                Jour {d}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/** Durée estimée selon le type de POI (layer Mapbox) */
+function getEstimatedDuration(layerId?: string): string {
+    if (!layerId) return '~1h';
+    const id = layerId.toLowerCase();
+    if (id.includes('restaurant') || id.includes('food') || id.includes('cafe') || id.includes('bar')) return '1h–2h';
+    if (id.includes('museum') || id.includes('gallery') || id.includes('theater')) return '1h30–3h';
+    if (id.includes('park') || id.includes('nature') || id.includes('garden')) return '1h–2h';
+    if (id.includes('place-city') || id.includes('place-town')) return '2h–4h';
+    if (id.includes('shop') || id.includes('store')) return '30min–1h';
+    return '~1h';
+}
+
+/** Convertit la durée affichée en heures (nombre) pour le calcul de la barre de progression */
+export function getEstimatedDurationHours(layerId?: string): number {
+    const s = getEstimatedDuration(layerId);
+    // "~1h" -> 1, "1h–2h" -> 1.5, "1h30–3h" -> 2.25, "30min–1h" -> 0.75, "2h–4h" -> 3
+    const simple = s.match(/^~?(\d+(?:\.\d+)?)h$/);
+    if (simple) return parseFloat(simple[1]);
+    const minRange = s.match(/(\d+)\s*min\s*–\s*(\d+(?:\.\d+)?)h/);
+    if (minRange) return (parseInt(minRange[1], 10) / 60 + parseFloat(minRange[2])) / 2;
+    const hMinRange = s.match(/(\d+)h(\d+)\s*–\s*(\d+(?:\.\d+)?)h/);
+    if (hMinRange) {
+        const a = parseInt(hMinRange[1], 10) + parseInt(hMinRange[2], 10) / 60;
+        const b = parseFloat(hMinRange[3]);
+        return (a + b) / 2;
+    }
+    const rangeH = s.match(/(\d+(?:\.\d+)?)h?\s*–\s*(\d+(?:\.\d+)?)h/);
+    if (rangeH) return (parseFloat(rangeH[1].replace('h', '')) + parseFloat(rangeH[2].replace('h', ''))) / 2;
+    const minOnly = s.match(/(\d+)\s*min/);
+    if (minOnly) return parseInt(minOnly[1], 10) / 60;
+    return 1;
+}
+
+function ActivityCard({
+    poi,
+    index,
+    onRemove,
+}: {
+    poi: DayActivityPoi;
+    index: number;
+    onRemove?: () => void;
+}) {
+    const name = poi.properties?.name ?? poi.properties?.name_en ?? poi.layer?.id ?? 'Lieu';
+    const [address, setAddress] = useState<string | null>(null);
+    const [addressLoading, setAddressLoading] = useState(true);
+    const duration = getEstimatedDuration(poi.layer?.id);
+    const dragControls = useDragControls();
+
+    useEffect(() => {
+        let cancelled = false;
+        setAddressLoading(true);
+        fetch(`/api/geocode/reverse?lng=${poi.lngLat.lng}&lat=${poi.lngLat.lat}`)
+            .then((r) => r.json())
+            .then((data) => {
+                if (!cancelled && data.address) setAddress(data.address);
+            })
+            .catch(() => {
+                if (!cancelled) setAddress(null);
+            })
+            .finally(() => {
+                if (!cancelled) setAddressLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, [poi.lngLat.lng, poi.lngLat.lat]);
+
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${poi.lngLat.lat},${poi.lngLat.lng}`;
+
+    return (
+        <Reorder.Item
+            value={poi}
+            id={poi._dragId ?? `${poi.lngLat.lng}-${poi.lngLat.lat}-${String(name)}`}
+            dragListener={false}
+            dragControls={dragControls}
+            className="rounded-xl border border-white/10 bg-white/[0.06] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.08] list-none"
+            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-start gap-2">
+                    <div
+                        onPointerDown={(e) => dragControls.start(e)}
+                        className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing rounded p-1 text-slate-500 hover:bg-white/10 hover:text-slate-300 touch-none"
+                        style={{ touchAction: 'none' }}
+                        title="Glisser pour réordonner"
+                        aria-label="Glisser pour réordonner"
+                    >
+                        <Bars3Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h4 className="mb-1.5 text-[14px] font-semibold text-slate-100 truncate">
+                            {String(name)}
+                        </h4>
+                    <div className="mb-2 flex items-center gap-1.5 text-[11px] text-cyan-400">
+                        <ClockIcon className="h-3.5 w-3.5" />
+                        <span>Temps moyen : {duration}</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[12px] text-slate-400">
+                        <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                        {addressLoading ? (
+                            <span className="animate-pulse">Chargement de l&apos;adresse...</span>
+                        ) : address ? (
+                            <span className="line-clamp-2">{address}</span>
+                        ) : (
+                            <span className="italic">Adresse non disponible</span>
+                        )}
+                    </div>
+                        <a
+                            href={googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-[12px] font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 hover:border-cyan-500/40"
+                        >
+                            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                            Laisser un avis
+                        </a>
+                    </div>
+                </div>
+                {onRemove && (
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-red-400"
+                        title="Retirer"
+                        aria-label={`Retirer ${name}`}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                )}
+            </div>
+        </Reorder.Item>
+    );
+}
 
 interface TripCreationWizardProps {
     state: UseTripConfigurationResult;
@@ -27,8 +222,12 @@ interface TripCreationWizardProps {
     onRemoveFlight: () => void;
     onHotelCardClick: () => void;
     onRemoveHotel: () => void;
+    selectedDay?: number;
+    onSelectedDayChange?: (day: number) => void;
+    travelDays?: number;
     dayActivities?: DayActivityPoi[];
     onRemoveDayActivity?: (index: number) => void;
+    onReorderDayActivities?: (reordered: DayActivityPoi[]) => void;
     dayRoutes?: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>;
     selectedRouteType?: 'driving' | 'walking' | 'cycling' | null;
     onSelectRouteType?: (type: 'driving' | 'walking' | 'cycling' | null) => void;
@@ -51,8 +250,12 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onRemoveFlight,
     onHotelCardClick,
     onRemoveHotel,
+    selectedDay = 1,
+    onSelectedDayChange,
+    travelDays = 1,
     dayActivities = [],
     onRemoveDayActivity,
+    onReorderDayActivities,
     dayRoutes = {},
     selectedRouteType = null,
     onSelectRouteType,
@@ -177,9 +380,19 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                 /* Activité de la journée - POIs sélectionnés sur la carte */
                 <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
-                        <p className="mb-3 text-[12px] text-slate-400">
-                            Cliquez sur un lieu sur la carte pour l&apos;ajouter à votre journée.
-                        </p>
+                        {/* En-tête avec sélecteur de jour */}
+                        <div className="mb-4 flex flex-col gap-3">
+                            {onSelectedDayChange && travelDays > 0 && (
+                                <DaySelector
+                                    selectedDay={selectedDay}
+                                    travelDays={travelDays}
+                                    onSelect={onSelectedDayChange}
+                                />
+                            )}
+                            <p className="text-[12px] text-slate-400">
+                                Cliquez sur un lieu sur la carte pour l&apos;ajouter à votre journée.
+                            </p>
+                        </div>
                         {dayActivities.length >= 2 && Object.keys(dayRoutes).length > 0 && onSelectRouteType && (
                             <div className="mb-4">
                                 <p className="mb-2 text-[11px] font-medium text-slate-500">
@@ -228,34 +441,21 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 Aucune activité ajoutée.
                             </p>
                         ) : (
-                            <ul className="space-y-2">
-                                {dayActivities.map((poi, index) => {
-                                    const name = poi.properties?.name ?? poi.properties?.name_en ?? poi.layer?.id ?? 'Lieu';
-                                    return (
-                                        <li
-                                            key={`${String(name)}-${poi.lngLat.lng.toFixed(5)}-${poi.lngLat.lat.toFixed(5)}-${index}`}
-                                            className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5"
-                                        >
-                                            <span className="text-[13px] font-medium text-slate-100 truncate">
-                                                {String(name)}
-                                            </span>
-                                            {onRemoveDayActivity && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onRemoveDayActivity(index)}
-                                                    className="shrink-0 rounded p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-red-400"
-                                                    title="Retirer"
-                                                    aria-label={`Retirer ${name}`}
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M18 6L6 18M6 6l12 12" />
-                                                    </svg>
-                                                </button>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
+                            <Reorder.Group
+                                axis="y"
+                                values={dayActivities}
+                                onReorder={onReorderDayActivities ?? (() => {})}
+                                className="flex flex-col gap-3"
+                            >
+                                {dayActivities.map((poi, index) => (
+                                    <ActivityCard
+                                        key={poi._dragId ?? `${poi.lngLat.lng.toFixed(6)}-${poi.lngLat.lat.toFixed(6)}-${index}`}
+                                        poi={poi}
+                                        index={index}
+                                        onRemove={onRemoveDayActivity ? () => onRemoveDayActivity(index) : undefined}
+                                    />
+                                ))}
+                            </Reorder.Group>
                         )}
                     </div>
                 </div>

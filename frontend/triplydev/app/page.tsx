@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
@@ -10,7 +10,7 @@ import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import { TuPreferes } from "@/src/components/TuPreferes/TuPreferes";
 import Assistant from "@/src/components/Assistant/Assistant";
-import { TripCreationWizard } from '@/src/features/trip-creation/TripCreationWizard';
+import { TripCreationWizard, getEstimatedDurationHours } from '@/src/features/trip-creation/TripCreationWizard';
 import { useTripConfiguration } from '@/src/features/trip-creation/useTripConfiguration';
 import { generateFlightRequest } from '@/utils/amadeus';
 const FlightSearchModal = dynamic(
@@ -136,7 +136,9 @@ export default function Home() {
 
     // Etats Mapbox
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
-    const [dayActivities, setDayActivities] = useState<Array<MapboxPoiFeature & { lngLat: { lng: number; lat: number } }>>([]);
+    type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number }; _dragId?: string };
+    const [dayActivitiesByDay, setDayActivitiesByDay] = useState<Record<number, DayActivityPoi[]>>({});
+    const [selectedDay, setSelectedDay] = useState(1);
     const [dayRoutes, setDayRoutes] = useState<Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>>({});
     const [selectedRouteType, setSelectedRouteType] = useState<'driving' | 'walking' | 'cycling' | null>(null);
     const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/standard');
@@ -419,34 +421,56 @@ export default function Home() {
         }
     }, [mapViewMenuOpen, hotelFilterMenuOpen]);
 
+    const travelDays = tripConfig.travelDays || 1;
+    const dayActivities = dayActivitiesByDay[selectedDay] ?? [];
+
+    useEffect(() => {
+        if (selectedDay > travelDays) setSelectedDay(Math.max(1, travelDays));
+    }, [travelDays, selectedDay]);
+
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
         const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
         console.log('POI cliqué:', { name, feature, lngLat });
 
-        // Ajouter à "Activité de la journée" (éviter les doublons par nom + coords)
-        setDayActivities((prev) => {
+        setDayActivitiesByDay((prev) => {
+            const prevDay = prev[selectedDay] ?? [];
             const key = `${name}-${lngLat.lng.toFixed(5)}-${lngLat.lat.toFixed(5)}`;
-            const exists = prev.some(
+            const exists = prevDay.some(
                 (p) =>
                     `${(p.properties?.name ?? p.properties?.name_en ?? p.layer?.id ?? '')}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key
             );
             if (exists) return prev;
-            return [...prev, { ...feature, lngLat }];
+            const _dragId = `poi-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            return { ...prev, [selectedDay]: [...prevDay, { ...feature, lngLat, _dragId }] };
         });
     };
 
     const handleRemoveDayActivity = (index: number) => {
-        setDayActivities((prev) => prev.filter((_, i) => i !== index));
+        setDayActivitiesByDay((prev) => ({
+            ...prev,
+            [selectedDay]: (prev[selectedDay] ?? []).filter((_, i) => i !== index),
+        }));
     };
+
+    const handleReorderDayActivities = (reordered: DayActivityPoi[]) => {
+        setDayActivitiesByDay((prev) => ({ ...prev, [selectedDay]: reordered }));
+    };
+
+    // Clé stable pour le useEffect des routes (évite changement de taille du tableau de deps)
+    const routeDepsKey = useMemo(() => {
+        const activities = dayActivitiesByDay[selectedDay] ?? [];
+        if (activities.length < 2) return '';
+        return `${selectedDay}:${activities.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';')}`;
+    }, [dayActivitiesByDay, selectedDay]);
 
     // Appel Mapbox Directions API pour tracer les routes (voiture, vélo, à pied)
     useEffect(() => {
-        if (dayActivities.length < 2 || !MAPBOX_TOKEN) {
+        if (!routeDepsKey || !MAPBOX_TOKEN) {
             setDayRoutes({});
             return;
         }
-        const coords = dayActivities.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';');
+        const coords = routeDepsKey.split(':')[1] ?? '';
         const profiles = ['driving', 'walking', 'cycling'] as const;
         let cancelled = false;
         Promise.all(
@@ -469,7 +493,7 @@ export default function Home() {
             setDayRoutes(next);
         });
         return () => { cancelled = true; };
-    }, [dayActivities, MAPBOX_TOKEN]);
+    }, [routeDepsKey, MAPBOX_TOKEN]);
 
     const handleLoginClick = () => setCurrentView('login');
     const handleLogoutClick = async () => {
@@ -605,6 +629,41 @@ export default function Home() {
                                 onClose={() => setIsHotelDetailModalOpen(false)}
                                 offer={selectedHotelOffer}
                             />
+
+                            {/* Barre de progression Activité / jour - haut droite */}
+                            {isConfigPanelOpen && (
+                                <div
+                                    className="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-xl border border-white/15 bg-slate-900/95 px-4 py-2.5 shadow-lg backdrop-blur-sm"
+                                    style={{ minWidth: 180 }}
+                                >
+                                    <div className="flex items-center justify-between gap-3 text-[12px]">
+                                        <span className="font-medium text-slate-300">Activités du jour</span>
+                                        <span className="tabular-nums text-cyan-400">
+                                            {dayActivities.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0).toFixed(1)}h
+                                            <span className="text-slate-500"> / </span>
+                                            <span className="text-slate-200">
+                                                {Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0)}h
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                                        <div
+                                            className="h-full rounded-full bg-cyan-500 transition-all duration-300"
+                                            style={{
+                                                width: (() => {
+                                                    const maxH = parseFloat(String(tripConfig.activityTime || 0)) || 0;
+                                                    const currentH = dayActivities.reduce(
+                                                        (acc, p) => acc + getEstimatedDurationHours(p.layer?.id),
+                                                        0
+                                                    );
+                                                    if (maxH <= 0) return '0%';
+                                                    return `${Math.min(100, (currentH / maxH) * 100)}%`;
+                                                })(),
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Bouton ouvrir config - bas gauche, uniquement quand panneau ferme */}
                             {!isConfigPanelOpen && (
@@ -803,8 +862,12 @@ export default function Home() {
                                                 setSelectedHotelOffer(null);
                                                 setIsHotelDetailModalOpen(false);
                                             }}
+                                            selectedDay={selectedDay}
+                                            onSelectedDayChange={setSelectedDay}
+                                            travelDays={travelDays}
                                             dayActivities={dayActivities}
                                             onRemoveDayActivity={handleRemoveDayActivity}
+                                            onReorderDayActivities={handleReorderDayActivities}
                                             dayRoutes={dayRoutes}
                                             selectedRouteType={selectedRouteType}
                                             onSelectRouteType={setSelectedRouteType}
