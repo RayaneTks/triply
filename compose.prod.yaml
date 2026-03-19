@@ -1,0 +1,154 @@
+services:
+  # ====================================
+  # Frontend service using Nginx to serve the built assets from Vite.
+  # ====================================
+  app:
+    build:
+      context: ./frontend/triplydev
+      dockerfile: ./docker/production/nginx/Dockerfile
+      target: production
+    container_name: tri-app
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_BACKEND_API_URL: /api/v1
+      BACKEND_API_BASE_URL: http://tri-api/api/v1
+    networks:
+      - tri-production
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.tri-front.rule=Host(`triply.ovh`)"
+      - "traefik.http.routers.tri-front.entrypoints=websecure"
+      - "traefik.http.routers.tri-front.tls.certresolver=myresolver"
+      - "traefik.http.services.tri-front.loadbalancer.server.port=3000"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: ./docker/production/nginx/Dockerfile
+    container_name: tri-api
+    restart: unless-stopped # Automatically restart unless the service is explicitly stopped
+    volumes:
+      # Mount the 'laravel-storage-production' volume to '/var/www/storage' inside the container.
+      # -----------------------------------------------------------
+      # This volume stores persistent data like uploaded files and cache.
+      # The ':ro' option mounts it as read-only in the 'api' service because Nginx only needs to read these files.
+      # The 'php-fpm' service mounts the same volume without ':ro' to allow write operations.
+      # -----------------------------------------------------------
+      - tri-laravel-storage-production:/var/www/storage:ro
+    networks:
+      - tri-production
+    depends_on:
+      php-fpm:
+        condition: service_healthy  # Wait for php-fpm health check
+
+  php-fpm:
+    # For the php-fpm service, we will create a custom image to install the necessary PHP extensions and setup proper permissions.
+    build:
+      context: ./backend
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: production
+    container_name: tri-php-fpm
+    restart: unless-stopped
+    volumes:
+      - tri-laravel-public-assets:/var/www/public/build  # Mount built public assets to ensure the manifest.json and hashed files match between Nginx and PHP-FPM
+      - tri-laravel-storage-production:/var/www/storage  # Mount the storage volume
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+    networks:
+      - tri-production
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    # The 'depends_on' attribute with 'condition: service_healthy' ensures that
+    # this service will not start until the 'mysql' service passes its health check.
+    # This prevents the application from trying to connect to the database before it's ready.
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: tri-mysql
+    restart: unless-stopped
+    user: mysql
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    volumes:
+      - tri-mysql-data-production:/var/lib/mysql
+    networks:
+      - tri-production
+    # Health check for MySQL
+    # -----------------------------------------------------------
+    # Health checks allow Docker to determine if a service is operational.
+    # The 'mysqladmin ping' command checks if MySQL is ready to accept connections.
+    # This prevents dependent services from starting before the database is ready.
+    # -----------------------------------------------------------
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: tri-redis
+    restart: unless-stopped  # Automatically restart unless the service is explicitly stopped
+    networks:
+      - tri-production
+    # Health check for Redis
+    # -----------------------------------------------------------
+    # Checks if Redis is responding to the 'PING' command.
+    # This ensures that the service is not only running but also operational.
+    # -----------------------------------------------------------
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: tri-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    networks:
+      - tri-production
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.tri-pgadmin.rule=Host(`bdmenacesatanique.triply.ovh`)"
+      - "traefik.http.routers.tri-pgadmin.entrypoints=websecure"
+      - "traefik.http.routers.tri-pgadmin.tls.certresolver=myresolver"
+      - "traefik.http.services.tri-pgadmin.loadbalancer.server.port=80"
+
+networks:
+  # Attach the service to the 'laravel' network.
+  # -----------------------------------------------------------
+  # This custom network allows all services within it to communicate using their service names as hostnames.
+  # For example, 'php-fpm' can connect to 'mysql' by using 'mysql' as the hostname.
+  # -----------------------------------------------------------
+  tri-production:
+    name: tri-production
+  web:
+    external: true  # Use the existing 'web' network created by Traefik
+
+volumes:
+  tri-mysql-data-production:
+    name: tri-mysql-data-production
+  tri-laravel-storage-production:
+    name: tri-laravel-storage-production
+  tri-laravel-public-assets:
+    name: tri-laravel-public-assets

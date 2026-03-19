@@ -31,7 +31,7 @@ interface ApiErrorResponse {
 }
 
 const AUTH_STORAGE_KEY = 'triply_auth_session';
-const API_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/$/, '');
+const API_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL || '/api/v1').replace(/\/$/, '');
 
 function getApiUrl(path: string): string {
     return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;

@@ -47,14 +47,12 @@ help:
 # -----------------------------------------
 
 init:
-	$(COMPOSE) down --remove-orphans
-	$(COMPOSE) up -d --build $(DOCKER_SERVICES)
-	$(MAKE) db-ensure
-	$(MAKE) env-sync
-	$(COMPOSE) exec -T backend php artisan optimize:clear
-	$(COMPOSE) exec -T backend php artisan migrate --force
-	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
-	$(MAKE) verify
+	$(COMPOSE) -f compose.dev.yaml down --remove-orphans
+	$(COMPOSE) -f compose.dev.yaml up -d --build --remove-orphans
+	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan optimize:clear
+	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	-$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan l5-swagger:generate
+	-$(COMPOSE) -f compose.dev.yaml rm -f tri-vendor-init tri-composer-init
 
 install: init
 
