@@ -2,7 +2,7 @@ import React from 'react';
 import { FlightOfferCard } from './FlightOfferCard';
 import type { FlightOffer } from './FlightOfferCard';
 
-interface AmadeusResponse {
+export interface AmadeusResponse {
     data: FlightOffer[];
     dictionaries: {
         carriers: Record<string, string>;
@@ -11,12 +11,16 @@ interface AmadeusResponse {
 }
 
 interface FlightResultsProps {
-    data: AmadeusResponse | null;
+    data: (AmadeusResponse | { error?: string; details?: string }) | null;
     onSelectOffer?: (offer: FlightOffer, carrierName: string) => void;
 }
 
+function isAmadeusResponse(d: FlightResultsProps['data']): d is AmadeusResponse {
+    return d !== null && 'data' in d && Array.isArray((d as AmadeusResponse).data);
+}
+
 export const FlightResults = ({ data, onSelectOffer }: FlightResultsProps) => {
-    if (!data || !data.data) return <div className="text-white">Aucun résultat.</div>;
+    if (!isAmadeusResponse(data) || !data.data.length) return <div className="text-white">Aucun résultat.</div>;
 
     return (
         <div className="flex flex-col gap-4 p-4 pb-20 max-w-4xl mx-auto w-full" style={{ color: '#e5e5e5' }}>

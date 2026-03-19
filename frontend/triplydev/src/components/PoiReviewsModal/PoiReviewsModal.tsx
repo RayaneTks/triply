@@ -71,7 +71,7 @@ function computeModalPosition(
 
     const topMin = EDGE_PADDING;
     const topMax = vh - MAX_HEIGHT - EDGE_PADDING;
-    let topClamped = Math.max(topMin, Math.min(topMax, top));
+    const topClamped = Math.max(topMin, Math.min(topMax, top));
 
     if (topClamped === topMin && top < topMin && spaceBottom > 0) {
         return { left, top: Math.min(topMax, anchor.y + OFFSET), width };
@@ -94,7 +94,7 @@ export const PoiReviewsModal: React.FC<PoiReviewsModalProps> = ({
 }) => {
     const { left, top, width } = useMemo(
         () => computeModalPosition(position, leftPanelWidth),
-        [position.x, position.y, leftPanelWidth]
+        [position, leftPanelWidth]
     );
 
     const modalContent = (

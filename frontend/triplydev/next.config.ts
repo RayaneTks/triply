@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "pics.avs.io", pathname: "/**" },
+    ],
+  },
 };
 
 export default nextConfig;

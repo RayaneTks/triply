@@ -18,16 +18,6 @@ const OVERLAP_THRESHOLD_DEG = 0.0001;
 const SPREAD_OFFSET_DEG = 0.0005;
 
 /**
- * Calcule la distance en degrés entre deux points (approximation Haversine simplifiée).
- * Suffisant pour des comparaisons locales.
- */
-function distanceDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const dLat = lat2 - lat1;
-    const dLng = (lng2 - lng1) * Math.cos((lat1 + lat2) / 2 * Math.PI / 180);
-    return Math.sqrt(dLat * dLat + dLng * dLng);
-}
-
-/**
  * Disperse les points qui se chevauchent en les répartissant en cercle autour de leur barycentre.
  * Préserve les points city-center (pas de modification).
  * Déterministe : même entrée = même sortie.
@@ -47,9 +37,8 @@ export function spreadOverlappingPoints<T extends LocationPoint>(locations: T[])
     const groups = new Map<string, T[]>();
     for (const h of hotels) {
         const key = cellKey(h.coordinates.latitude, h.coordinates.longitude);
-        const arr = groups.get(key) ?? [];
-        arr.push(h);
-        groups.set(key, arr);
+        const existing = groups.get(key) ?? [];
+        groups.set(key, [...existing, h]);
     }
 
     const result: T[] = [...nonHotels];

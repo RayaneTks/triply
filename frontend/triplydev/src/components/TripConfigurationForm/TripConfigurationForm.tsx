@@ -153,7 +153,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             </span>
                             <span className="min-w-0">
                                 <span className="block text-[13px] font-medium text-slate-200">Rechercher un hôtel</span>
-                                <span className="block text-[11px] text-slate-500">Comparez les offres d'hébergement</span>
+                                <span className="block text-[11px] text-slate-500">Comparez les offres d&apos;hébergement</span>
                             </span>
                         </button>
                     )}

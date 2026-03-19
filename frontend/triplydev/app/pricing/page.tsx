@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -90,7 +90,10 @@ export default function PricingPage() {
   const router = useRouter();
   const [isAnnual, setIsAnnual] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!getStoredSession()?.token;
+  });
   const toggleContainerRef = useRef<HTMLDivElement>(null);
   const btnMensuelRef = useRef<HTMLButtonElement>(null);
   const btnAnnuelRef = useRef<HTMLButtonElement>(null);
@@ -122,11 +125,6 @@ export default function PricingPage() {
     return () => clearTimeout(t);
   }, [isAnnual]);
   // #endregion
-
-  useEffect(() => {
-    const session = getStoredSession();
-    setIsConnected(!!session?.token);
-  }, []);
 
   return (
     <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>

@@ -154,7 +154,9 @@ export const WorldMap: React.FC<MapProps> = ({
     const mapRef = useRef<MapRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const mapStyleRef = useRef(mapStyle);
-    mapStyleRef.current = mapStyle;
+    useEffect(() => {
+        mapStyleRef.current = mapStyle;
+    }, [mapStyle]);
     const [cursor, setCursor] = useState<string>('');
     const [hoveredRoute, setHoveredRoute] = useState<{ profile: string; duration: number; x: number; y: number } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -173,7 +175,7 @@ export const WorldMap: React.FC<MapProps> = ({
         if (typeof bearing !== 'number' || !isMapLoaded || !mapRef.current) return;
         if (autoRotateSpeed != null) return;
         mapRef.current.getMap().setBearing(bearing);
-        if (interactive) setViewState((prev) => ({ ...prev, bearing }));
+        if (interactive) queueMicrotask(() => setViewState((prev) => ({ ...prev, bearing })));
     }, [bearing, isMapLoaded, interactive, autoRotateSpeed]);
 
     useEffect(() => {
@@ -213,7 +215,7 @@ export const WorldMap: React.FC<MapProps> = ({
     useEffect(() => {
         if (typeof pitch !== 'number' || !isMapLoaded || !mapRef.current) return;
         mapRef.current.getMap().setPitch(pitch);
-        if (interactive) setViewState((prev) => ({ ...prev, pitch }));
+        if (interactive) queueMicrotask(() => setViewState((prev) => ({ ...prev, pitch })));
     }, [pitch, isMapLoaded, interactive]);
 
     // Redimensionner la carte quand le conteneur change (ex: sidebar ouverte/fermée)
@@ -390,7 +392,7 @@ export const WorldMap: React.FC<MapProps> = ({
 
                 // AJOUT : Récupération des coordonnées géographiques
                 // Dans un GeoJSON Point, coordinates est un tableau [lng, lat]
-                const geometry = airportFeature.geometry as any; // Cast rapide car on sait que c'est un Point
+                const geometry = airportFeature.geometry as GeoJSON.Point;
                 const [lng, lat] = geometry.coordinates;
 
                 if (iata) {
@@ -423,7 +425,10 @@ export const WorldMap: React.FC<MapProps> = ({
         } catch {}
     }, [onPoiClick, onAirportSelect]);
 
-    const routeProfileLabels: Record<string, string> = { driving: 'Voiture', walking: 'À pied', cycling: 'Vélo' };
+    const routeProfileLabels = React.useMemo<Record<string, string>>(
+        () => ({ driving: 'Voiture', walking: 'À pied', cycling: 'Vélo' }),
+        []
+    );
 
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
@@ -490,7 +495,7 @@ export const WorldMap: React.FC<MapProps> = ({
             setHoveredRoute(null);
             onPoiLeave?.();
         }
-    }, [onPoiHover, onPoiLeave, routeData]);
+    }, [onPoiHover, onPoiLeave, routeData, routeProfileLabels]);
 
     const locationsGeoJson = React.useMemo(() => {
         if (!locations || locations.length === 0) return null;
@@ -520,7 +525,7 @@ export const WorldMap: React.FC<MapProps> = ({
         >
             <Map
                 ref={mapRef}
-                {...(autoRotateSpeed != null ? (({ bearing: _b, ...v }) => v)(viewState) : viewState)}
+                {...(autoRotateSpeed != null ? (({ bearing: _, ...v }) => v)(viewState) : viewState)}
                 {...(autoRotateSpeed == null && typeof bearing === 'number' ? { bearing } : {})}
                 {...(typeof pitch === 'number' ? { pitch } : {})}
                 onMove={handleMove}
@@ -603,7 +608,7 @@ export const WorldMap: React.FC<MapProps> = ({
                     </Source>
                 )}
                 {isMapLoaded && isStyleReady && locationsGeoJson && (
-                    <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
+                    <Source id="locations-source" type="geojson" data={locationsGeoJson as GeoJSON.FeatureCollection}>
                         <Layer
                             id="locations-layer-labels"
                             type="symbol"

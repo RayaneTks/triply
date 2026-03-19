@@ -65,7 +65,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 window.removeEventListener('resize', onScrollOrResize);
             };
         } else {
-            setDropdownRect(null);
+            queueMicrotask(() => setDropdownRect(null));
         }
     }, [isOpen, suggestions.length]);
 
@@ -73,8 +73,9 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     // Sauf si on a déjà une valeur d'affichage plus jolie (ex: Rome (FCO))
     useEffect(() => {
         if (value && value !== displayValue && !displayValue.includes(value)) {
-            setDisplayValue(value);
+            queueMicrotask(() => setDisplayValue(value));
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- On ne veut réagir qu'aux changements de value, pas de displayValue
     }, [value]);
 
     // Fermeture au clic dehors (container + dropdown porté)

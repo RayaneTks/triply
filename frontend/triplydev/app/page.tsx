@@ -10,7 +10,7 @@ import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import { TuPreferes } from "@/src/components/TuPreferes/TuPreferes";
 import Assistant from "@/src/components/Assistant/Assistant";
-import { TripCreationWizard } from '@/src/features/trip-creation/TripCreationWizard';
+import { TripCreationWizard, getEstimatedDurationHours } from '@/src/features/trip-creation/TripCreationWizard';
 import { useTripConfiguration } from '@/src/features/trip-creation/useTripConfiguration';
 import { generateFlightRequest } from '@/utils/amadeus';
 const FlightSearchModal = dynamic(
@@ -29,9 +29,12 @@ const HotelDetailModal = dynamic(
     () => import('@/src/components/HotelDetailModal/HotelDetailModal').then((m) => m.HotelDetailModal),
     { ssr: false }
 );
-import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
+import { mergeCityCenterWithHotels, spreadOverlappingPoints, type LocationPoint } from '@/src/utils/locations';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
+import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
+import type { FlightRequestPayload } from '@/utils/amadeus';
 import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
 
 function LoginWithMapBackground({
@@ -94,7 +97,7 @@ export default function Home() {
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [showTuPreferes, setShowTuPreferes] = useState(false);
-    const [mapLocations, setMapLocations] = useState<any[]>([]);
+    const [mapLocations, setMapLocations] = useState<LocationPoint[]>([]);
     const [isLoadingHotels, setIsLoadingHotels] = useState(false);
 
     // AUTO-COLLAPSE SIDEBAR IF CONNECTED
@@ -128,12 +131,14 @@ export default function Home() {
     // Etats Formulaire Voyage (centralisés dans un hook dédié)
     const tripConfig = useTripConfiguration();
     const [isLoading, setIsLoading] = useState(false);
-    const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
-    const [apiResponse, setApiResponse] = useState<any>(null);
+    const [lastRequestPayload, setLastRequestPayload] = useState<FlightRequestPayload | null>(null);
+    const [apiResponse, setApiResponse] = useState<(AmadeusResponse | { error?: string; details?: string }) | null>(null);
 
     // Etats Mapbox
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
-    const [dayActivities, setDayActivities] = useState<Array<MapboxPoiFeature & { lngLat: { lng: number; lat: number } }>>([]);
+    type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number }; _dragId?: string };
+    const [dayActivitiesByDay, setDayActivitiesByDay] = useState<Record<number, DayActivityPoi[]>>({});
+    const [selectedDay, setSelectedDay] = useState(1);
     const [dayRoutes, setDayRoutes] = useState<Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>>({});
     const [selectedRouteType, setSelectedRouteType] = useState<'driving' | 'walking' | 'cycling' | null>(null);
     const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/standard');
@@ -143,8 +148,11 @@ export default function Home() {
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
     const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
     const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
+    const [activityHoursByDay, setActivityHoursByDay] = useState<Record<number, number>>({});
+    const [activityHoursEditOpen, setActivityHoursEditOpen] = useState(false);
+    const activityHoursEditRef = useRef<HTMLDivElement>(null);
     const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
-    const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
+    const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: LocationPoint | null } | null>(null);
 
     // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
     const handleAirportSelect = (iata: string, name: string, lat: number, lng: number) => {
@@ -179,7 +187,7 @@ export default function Home() {
         }
     };
 
-    const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: any, ratingsFilter?: number[] | null) => {
+    const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: LocationPoint | null, ratingsFilter?: number[] | null) => {
         lastSearchRef.current = { lat, lng, cityCenter };
         const ratingsParam = ratingsFilter && ratingsFilter.length > 0 ? ratingsFilter.join(',') : undefined;
         console.log("🏨 Recherche d'hôtels demandée pour :", lat, lng, ratingsParam || 'tous');
@@ -209,7 +217,7 @@ export default function Home() {
         }
     }, []);
 
-    const handleAssistantUpdate = useCallback((locations: any[]) => {
+    const handleAssistantUpdate = useCallback((locations: LocationPoint[]) => {
         const cityCenter = locations.find((l) => l.type === 'city-center') ?? locations[0] ?? null;
 
         // Affichage immédiat du centre ville (rafraîchissement fluide)
@@ -246,7 +254,7 @@ export default function Home() {
     const [hotelModalBudget, setHotelModalBudget] = useState('');
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
-    const [hotelApiResponse, setHotelApiResponse] = useState<any>(null);
+    const [hotelApiResponse, setHotelApiResponse] = useState<(AmadeusHotelResponse | { error?: string; details?: string }) | null>(null);
     const [isLoadingHotel, setIsLoadingHotel] = useState(false);
     const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
 
@@ -416,34 +424,68 @@ export default function Home() {
         }
     }, [mapViewMenuOpen, hotelFilterMenuOpen]);
 
+    useEffect(() => {
+        const handleActivityHoursClickOutside = (e: MouseEvent) => {
+            if (activityHoursEditRef.current && !activityHoursEditRef.current.contains(e.target as Node)) {
+                setActivityHoursEditOpen(false);
+            }
+        };
+        if (activityHoursEditOpen) {
+            document.addEventListener('mousedown', handleActivityHoursClickOutside);
+            return () => document.removeEventListener('mousedown', handleActivityHoursClickOutside);
+        }
+    }, [activityHoursEditOpen]);
+
+    const travelDays = tripConfig.travelDays || 1;
+    const dayActivities = dayActivitiesByDay[selectedDay] ?? [];
+
+    useEffect(() => {
+        if (selectedDay > travelDays) setSelectedDay(Math.max(1, travelDays));
+    }, [travelDays, selectedDay]);
+
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
         const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
         console.log('POI cliqué:', { name, feature, lngLat });
 
-        // Ajouter à "Activité de la journée" (éviter les doublons par nom + coords)
-        setDayActivities((prev) => {
+        setDayActivitiesByDay((prev) => {
+            const prevDay = prev[selectedDay] ?? [];
             const key = `${name}-${lngLat.lng.toFixed(5)}-${lngLat.lat.toFixed(5)}`;
-            const exists = prev.some(
+            const exists = prevDay.some(
                 (p) =>
                     `${(p.properties?.name ?? p.properties?.name_en ?? p.layer?.id ?? '')}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key
             );
             if (exists) return prev;
-            return [...prev, { ...feature, lngLat }];
+            const _dragId = `poi-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            return { ...prev, [selectedDay]: [...prevDay, { ...feature, lngLat, _dragId }] };
         });
     };
 
     const handleRemoveDayActivity = (index: number) => {
-        setDayActivities((prev) => prev.filter((_, i) => i !== index));
+        setDayActivitiesByDay((prev) => ({
+            ...prev,
+            [selectedDay]: (prev[selectedDay] ?? []).filter((_, i) => i !== index),
+        }));
     };
+
+    const handleReorderDayActivities = (reordered: DayActivityPoi[]) => {
+        setDayActivitiesByDay((prev) => ({ ...prev, [selectedDay]: reordered }));
+    };
+
+    // Clé stable pour le useEffect des routes (évite changement de taille du tableau de deps)
+    const routeDepsKey = useMemo(() => {
+        const activities = dayActivitiesByDay[selectedDay] ?? [];
+        if (activities.length < 2) return '';
+        return `${selectedDay}:${activities.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';')}`;
+    }, [dayActivitiesByDay, selectedDay]);
 
     // Appel Mapbox Directions API pour tracer les routes (voiture, vélo, à pied)
     useEffect(() => {
-        if (dayActivities.length < 2 || !MAPBOX_TOKEN) {
+        if (!routeDepsKey || !MAPBOX_TOKEN) {
             setDayRoutes({});
             return;
         }
-        const coords = dayActivities.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';');
+        const coords = routeDepsKey.split(':')[1] ?? '';
         const profiles = ['driving', 'walking', 'cycling'] as const;
         let cancelled = false;
         Promise.all(
@@ -466,7 +508,7 @@ export default function Home() {
             setDayRoutes(next);
         });
         return () => { cancelled = true; };
-    }, [dayActivities, MAPBOX_TOKEN]);
+    }, [routeDepsKey, MAPBOX_TOKEN]);
 
     const handleLoginClick = () => setCurrentView('login');
     const handleLogoutClick = async () => {
@@ -602,6 +644,85 @@ export default function Home() {
                                 onClose={() => setIsHotelDetailModalOpen(false)}
                                 offer={selectedHotelOffer}
                             />
+
+                            {/* Barre de progression Activité / jour - haut droite */}
+                            {isConfigPanelOpen && (
+                                <div
+                                    ref={activityHoursEditRef}
+                                    className="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-xl border border-white/15 px-4 py-2.5 shadow-lg backdrop-blur-sm"
+                                    style={{ minWidth: 180, backgroundColor: 'var(--background, #222222)' }}
+                                >
+                                    <div className="flex items-center justify-between gap-2 text-[12px]">
+                                        <span className="font-medium text-slate-300">Activités du jour</span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="tabular-nums text-cyan-400">
+                                                {dayActivities.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0).toFixed(1)}h
+                                                <span className="text-slate-500"> / </span>
+                                                <span className="text-slate-200">
+                                                    {(activityHoursByDay[selectedDay] ?? Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0)) || 0}h
+                                                </span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActivityHoursEditOpen((o) => !o)}
+                                                className="rounded p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-cyan-400"
+                                                title="Modifier les heures max pour ce jour"
+                                                aria-label="Modifier les heures max"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {activityHoursEditOpen && (
+                                        <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                                            <label className="text-[11px] text-slate-500 shrink-0">Max jour {selectedDay} :</label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={24}
+                                                step={0.5}
+                                                defaultValue={activityHoursByDay[selectedDay] ?? (parseFloat(String(tripConfig.activityTime || 0)) || 0)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const v = parseFloat((e.target as HTMLInputElement).value);
+                                                        if (!isNaN(v) && v >= 0) {
+                                                            setActivityHoursByDay((prev) => ({ ...prev, [selectedDay]: v }));
+                                                            setActivityHoursEditOpen(false);
+                                                        }
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    const v = parseFloat(e.target.value);
+                                                    if (!isNaN(v) && v >= 0) {
+                                                        setActivityHoursByDay((prev) => ({ ...prev, [selectedDay]: v }));
+                                                    }
+                                                    setActivityHoursEditOpen(false);
+                                                }}
+                                                className="w-16 rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-[12px] text-slate-100 outline-none focus:border-cyan-500/60"
+                                            />
+                                            <span className="text-[11px] text-slate-500">h</span>
+                                        </div>
+                                    )}
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                                        <div
+                                            className="h-full rounded-full bg-cyan-500 transition-all duration-300"
+                                            style={{
+                                                width: (() => {
+                                                    const maxH = activityHoursByDay[selectedDay] ?? (parseFloat(String(tripConfig.activityTime || 0)) || 0);
+                                                    const currentH = dayActivities.reduce(
+                                                        (acc, p) => acc + getEstimatedDurationHours(p.layer?.id),
+                                                        0
+                                                    );
+                                                    if (maxH <= 0) return '0%';
+                                                    return `${Math.min(100, (currentH / maxH) * 100)}%`;
+                                                })(),
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Bouton ouvrir config - bas gauche, uniquement quand panneau ferme */}
                             {!isConfigPanelOpen && (
@@ -800,8 +921,12 @@ export default function Home() {
                                                 setSelectedHotelOffer(null);
                                                 setIsHotelDetailModalOpen(false);
                                             }}
+                                            selectedDay={selectedDay}
+                                            onSelectedDayChange={setSelectedDay}
+                                            travelDays={travelDays}
                                             dayActivities={dayActivities}
                                             onRemoveDayActivity={handleRemoveDayActivity}
+                                            onReorderDayActivities={handleReorderDayActivities}
                                             dayRoutes={dayRoutes}
                                             selectedRouteType={selectedRouteType}
                                             onSelectRouteType={setSelectedRouteType}
