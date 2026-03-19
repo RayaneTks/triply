@@ -1,0 +1,242 @@
+services:
+  # ========================================
+  # Development Frontend Service
+  # ========================================
+  tri-app-dev:
+    build:
+      context: ./frontend/triplydev
+      dockerfile: ./docker/development/Dockerfile
+      target: development
+    container_name: tri-app-dev
+    ports:
+      - "5173:3000"
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_PUBLIC_BACKEND_API_URL: /api/v1
+      BACKEND_API_BASE_URL: http://tri-api-dev/api/v1
+      BACKEND_PROXY_TARGET: http://tri-api-dev
+    user: "0:0"
+    command: npm run dev -- --webpack --hostname 0.0.0.0 --port 3000
+    networks:
+      - triply-development
+    volumes:
+      - ./frontend/triplydev:/app
+      - tri-frontend_node_modules:/app/node_modules
+      - tri-frontend_next:/app/.next
+    restart: unless-stopped
+
+
+  # ========================================
+  # Development Backend Service
+  # ========================================
+  # Backend - Nginx ========================
+  tri-api-dev:
+    container_name: tri-api-dev
+    image: nginx:latest
+    volumes:
+      # Mount the application code for live updates
+      - ./backend:/var/www
+
+      # Mount the Nginx configuration file
+      - ./backend/docker/development/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      # Map port 80 inside the container to the port specified by 'NGINX_PORT' on the host machine
+      - "8000:80"
+    environment:
+      - NGINX_HOST=localhost
+    networks:
+      - triply-development
+    depends_on:
+      tri-php-fpm:
+        condition: service_started # Wait for php-fpm to start
+
+  tri-vendor-init:
+    image: alpine:3.22
+    container_name: tri-vendor-init
+    user: "0:0"
+    command: >
+      sh -lc "mkdir -p /var/www/vendor &&
+              chown -R ${UID:-1000}:${GID:-1000} /var/www/vendor &&
+              chmod -R 775 /var/www/vendor &&
+              ls -la /var/www/"
+    volumes:
+      - tri-backend-vendor:/var/www/vendor
+    networks:
+      - triply-development
+    restart: "no"
+
+  tri-composer-init:
+    build:
+      context: ./backend
+      dockerfile: ./docker/development/workspace/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    container_name: tri-composer-init
+    env_file:
+      - ./backend/.env
+    command: >
+      sh -lc "if [ ! -f /var/www/vendor/autoload.php ]; then
+                echo '[composer-init] vendor missing, running composer install';
+                composer install --no-interaction --prefer-dist;
+              else
+                echo '[composer-init] vendor already present, skipping composer install';
+              fi"
+    volumes:
+      - ./backend:/var/www
+      - type: volume
+        source: tri-backend-vendor
+        target: /var/www/vendor
+        volume:
+          nocopy: true
+    networks:
+      - triply-development
+    depends_on:
+      tri-vendor-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Backend - PHP-FPM ======================
+  tri-php-fpm:
+    # For the php-fpm service, we will use our common PHP-FPM Dockerfile with the development target
+    build:
+      context: ./backend
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: development
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    env_file:
+      # Load the environment variables from the Laravel application
+      - ./backend/.env
+    ## user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      UID: "${UID:-1000}"
+      GID: "${GID:-1000}"
+    volumes:
+      # Mount the application code for live updates
+      - ./backend:/var/www
+      - type: volume
+        source: tri-backend-vendor
+        target: /var/www/vendor
+        volume:
+          nocopy: true
+    networks:
+      - triply-development
+    depends_on:
+      tri-postgres:
+        condition: service_healthy # Wait for postgres to be healthy
+      tri-vendor-init:
+        condition: service_completed_successfully # Wait for vendor initialization to complete successfully
+      tri-composer-init:
+        condition: service_completed_successfully # Ensure dependencies are installed before php-fpm starts
+
+  # Backend - Workspace ====================
+  tri-workspace:
+    # For the workspace service, we will also create a custom image to install and setup all the necessary stuff.
+    build:
+      context: ./backend
+      dockerfile: ./docker/development/workspace/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    tty: true # Enables an interactive terminal
+    stdin_open: true # Keeps standard input open for 'docker exec'
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/var/www
+      - type: volume
+        source: tri-backend-vendor
+        target: /var/www/vendor
+        volume:
+          nocopy: true
+    networks:
+      - triply-development
+    depends_on:
+      tri-vendor-init:
+        condition: service_completed_successfully # Wait for vendor initialization to complete successfully
+      tri-composer-init:
+        condition: service_completed_successfully # Ensure dependencies are installed before interactive workspace use
+
+  # Backend - Database =====================
+  tri-postgres:
+    image: postgres:16
+    restart: unless-stopped
+    user: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    volumes:
+      - tri-postgres-data:/var/lib/postgresql/data
+    networks:
+      - triply-development
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  tri-pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: tri-postgres
+      POSTGRES_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_CONFIG_SERVER_MODE}
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    networks:
+      - triply-development
+    depends_on:
+      tri-postgres:
+        condition: service_healthy # Wait for postgres to be healthy
+
+  # Backend - Cache ========================
+  tri-redis:
+    image: redis:alpine
+    networks:
+      - triply-development
+    depends_on:
+      tri-api-dev:
+        condition: service_started # Wait for tri-api-dev to start
+
+
+networks:
+  # Attach the service to the 'laravel' network.
+  # -----------------------------------------------------------
+  # This custom network allows all services within it to communicate using their service names as hostnames.
+  # For example, 'php-fpm' can connect to 'mysql' by using 'mysql' as the hostname.
+  # -----------------------------------------------------------
+  triply-development:
+
+volumes:
+  tri-postgres-data:
+  tri-frontend_node_modules:
+  tri-frontend_next:
+  tri-backend-vendor:
