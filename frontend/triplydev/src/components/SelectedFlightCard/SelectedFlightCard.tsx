@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 
 const formatTime = (dateString: string) => {
@@ -52,9 +53,11 @@ export const SelectedFlightCard: React.FC<SelectedFlightCardProps> = ({
         >
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                    <img
+                    <Image
                         src={logoUrl}
                         alt={carrierName}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-lg object-contain bg-white/10 shrink-0"
                         onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';

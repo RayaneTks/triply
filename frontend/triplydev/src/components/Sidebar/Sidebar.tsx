@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useSyncExternalStore } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -124,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!isCollapsed && (
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="flex-shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
-                            <img
+                            <Image
                                 src="/Logo-triply.svg"
                                 alt="Triply"
                                 width={100}

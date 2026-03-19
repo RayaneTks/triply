@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "pics.avs.io", pathname: "/**" },
+    ],
+  },
 };
 
 export default nextConfig;

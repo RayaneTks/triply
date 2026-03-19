@@ -117,7 +117,7 @@ export function getEstimatedDurationHours(layerId?: string): number {
 
 function ActivityCard({
     poi,
-    index,
+    index: _index,
     onRemove,
 }: {
     poi: DayActivityPoi;
@@ -134,7 +134,6 @@ function ActivityCard({
 
     useEffect(() => {
         let cancelled = false;
-        setAddressLoading(true);
         fetch(`/api/geocode/reverse?lng=${poi.lngLat.lng}&lat=${poi.lngLat.lat}`)
             .then((r) => r.json())
             .then((data) => {

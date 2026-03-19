@@ -63,7 +63,6 @@ export const Slide: React.FC<SlideProps> = ({
                                             }) => {
     // Détecter si c'est la dernière slide
     const isLastSlide: boolean = canNext === false || (slides !== undefined && slideIndex === slides.length - 1);
-    const isFirstSlide = slideIndex === 0;
     const bgColor = 'var(--background, #222222)';
     const useLastSlideTextStyle = false; // Toutes les slides utilisent le fond sombre
     

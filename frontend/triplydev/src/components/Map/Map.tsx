@@ -425,7 +425,10 @@ export const WorldMap: React.FC<MapProps> = ({
         } catch {}
     }, [onPoiClick, onAirportSelect]);
 
-    const routeProfileLabels: Record<string, string> = { driving: 'Voiture', walking: 'À pied', cycling: 'Vélo' };
+    const routeProfileLabels = React.useMemo<Record<string, string>>(
+        () => ({ driving: 'Voiture', walking: 'À pied', cycling: 'Vélo' }),
+        []
+    );
 
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
@@ -492,7 +495,7 @@ export const WorldMap: React.FC<MapProps> = ({
             setHoveredRoute(null);
             onPoiLeave?.();
         }
-    }, [onPoiHover, onPoiLeave, routeData]);
+    }, [onPoiHover, onPoiLeave, routeData, routeProfileLabels]);
 
     const locationsGeoJson = React.useMemo(() => {
         if (!locations || locations.length === 0) return null;
@@ -522,7 +525,7 @@ export const WorldMap: React.FC<MapProps> = ({
         >
             <Map
                 ref={mapRef}
-                {...(autoRotateSpeed != null ? (({ bearing: _b, ...v }) => v)(viewState) : viewState)}
+                {...(autoRotateSpeed != null ? (({ bearing: _, ...v }) => v)(viewState) : viewState)}
                 {...(autoRotateSpeed == null && typeof bearing === 'number' ? { bearing } : {})}
                 {...(typeof pitch === 'number' ? { pitch } : {})}
                 onMove={handleMove}

@@ -42,6 +42,8 @@ export const Header: FC<HeaderProps> = ({ logoAlt, navItems, ctaButtons }) => {
                 <div className="header-cta flex gap-3">
                     {ctaButtons.map((buttonProps, index) => {
                         const { variant, tone, ...restProps } = buttonProps;
+void variant;
+void tone;
                         return (
                             <Button
                                 key={index}

@@ -75,6 +75,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
         if (value && value !== displayValue && !displayValue.includes(value)) {
             queueMicrotask(() => setDisplayValue(value));
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- On ne veut réagir qu'aux changements de value, pas de displayValue
     }, [value]);
 
     // Fermeture au clic dehors (container + dropdown porté)

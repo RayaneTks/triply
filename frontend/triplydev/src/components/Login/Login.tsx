@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Button } from '@/src/components/Button/Button';
 import { login, register, saveSession, type AuthUser } from '@/src/lib/auth-client';
 
@@ -76,7 +77,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                 }}
             >
                 <div className="pt-10 pb-6 px-8 text-center border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                    <img
+                    <Image
                         src="/Logo-triply.svg"
                         alt="Triply"
                         width={80}

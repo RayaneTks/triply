@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../Button/Button';
 
@@ -37,10 +38,13 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                     className="w-full h-40 flex-shrink-0 overflow-hidden cursor-pointer z-20 relative"
                     onClick={toggleOpen}
                 >
-                    <img
+                    <Image
                         src={imageSrc}
                         alt={imageAlt}
+                        width={256}
+                        height={160}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        unoptimized
                     />
 
                     <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm pointer-events-none">

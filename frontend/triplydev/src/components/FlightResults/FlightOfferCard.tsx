@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Button } from '@/src/components/Button/Button';
 
 export interface FlightSegment {
@@ -98,9 +99,11 @@ export const FlightOfferCard: React.FC<FlightOfferCardProps> = ({
                 style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
             >
                 <div className="flex items-center gap-3">
-                    <img
+                    <Image
                         src={logoUrl}
                         alt={carrierName}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-lg object-contain bg-white/10"
                         onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
