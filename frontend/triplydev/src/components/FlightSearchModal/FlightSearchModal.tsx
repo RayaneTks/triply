@@ -116,7 +116,8 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-2 z-[9999] flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-950/95 shadow-2xl sm:inset-4 sm:max-h-[calc(100dvh-2rem)] md:inset-8 md:max-h-[calc(100dvh-4rem)] lg:inset-12"
+                        className="fixed inset-2 z-[9999] flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl sm:inset-4 sm:max-h-[calc(100dvh-2rem)] md:inset-8 md:max-h-[calc(100dvh-4rem)] lg:inset-12"
+                        style={{ backgroundColor: 'var(--background, #222222)' }}
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
@@ -141,7 +142,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                         </div>
 
                         {/* Content - scrollable */}
-                        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-950/95 p-4 sm:p-6">
+                        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" style={{ backgroundColor: 'var(--background, #222222)' }}>
                             {!apiResponse?.data ? (
                                 /* Formulaire de recherche */
                                 <div className="mx-auto max-w-2xl space-y-4">

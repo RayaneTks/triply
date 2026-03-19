@@ -125,7 +125,7 @@ export default function Home() {
         void syncAuth();
     }, []);
 
-    // Etats Formulaire Voyage (centralisés dans un hook dédié)
+    // Etats Formulaire Voyage (centralis├®s dans un hook d├®di├®)
     const tripConfig = useTripConfiguration();
     const [isLoading, setIsLoading] = useState(false);
     const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
@@ -133,9 +133,6 @@ export default function Home() {
 
     // Etats Mapbox
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
-    const [dayActivities, setDayActivities] = useState<Array<MapboxPoiFeature & { lngLat: { lng: number; lat: number } }>>([]);
-    const [dayRoutes, setDayRoutes] = useState<Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>>({});
-    const [selectedRouteType, setSelectedRouteType] = useState<'driving' | 'walking' | 'cycling' | null>(null);
     const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/standard');
     const [mapConfig, setMapConfig] = useState<{ lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' }>({ lightPreset: 'day' });
     const [mapPitch, setMapPitch] = useState<number>(0);
@@ -143,18 +140,18 @@ export default function Home() {
     const mapViewMenuRef = useRef<HTMLDivElement>(null);
     const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
     const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
-    const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
+    const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtr├®
     const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
 
     // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
     const handleAirportSelect = (iata: string, name: string, lat: number, lng: number) => {
-        console.log(`Aéroport sélectionné: ${name} (${iata}) @ ${lat}, ${lng}`);
+        console.log(`A├®roport s├®lectionn├®: ${name} (${iata}) @ ${lat}, ${lng}`);
 
-        // 1. Si pas de départ, c'est le départ
+        // 1. Si pas de d├®part, c'est le d├®part
         if (!tripConfig.departureCity) {
             tripConfig.setDepartureCity(iata);
         }
-        // 2. Sinon, c'est l'arrivée
+        // 2. Sinon, c'est l'arriv├®e
         else {
             if (tripConfig.departureCity !== iata) {
                 tripConfig.setArrivalCity(iata);
@@ -162,8 +159,8 @@ export default function Home() {
 
                 // --- CORRECTION MAJEURE ---
                 // Au lieu d'attendre que l'utilisateur ouvre la modal,
-                // on lance directement la recherche d'hôtels autour de ces coordonnées (GPS).
-                // Cela contourne le problème du code IATA non reconnu par Amadeus.
+                // on lance directement la recherche d'h├┤tels autour de ces coordonn├®es (GPS).
+                // Cela contourne le probl├¿me du code IATA non reconnu par Amadeus.
 
                 const airportLocationObj = {
                     id: `airport-${iata}`,
@@ -182,7 +179,7 @@ export default function Home() {
     const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: any, ratingsFilter?: number[] | null) => {
         lastSearchRef.current = { lat, lng, cityCenter };
         const ratingsParam = ratingsFilter && ratingsFilter.length > 0 ? ratingsFilter.join(',') : undefined;
-        console.log("🏨 Recherche d'hôtels demandée pour :", lat, lng, ratingsParam || 'tous');
+        console.log("­ƒÅ¿ Recherche d'h├┤tels demand├®e pour :", lat, lng, ratingsParam || 'tous');
         setIsLoadingHotels(true);
 
         try {
@@ -202,7 +199,7 @@ export default function Home() {
                 setMapLocations([cityCenter]);
             }
         } catch (error) {
-            console.error("Erreur chargement hôtels:", error);
+            console.error("Erreur chargement h├┤tels:", error);
             if (cityCenter) setMapLocations([cityCenter]);
         } finally {
             setIsLoadingHotels(false);
@@ -212,7 +209,7 @@ export default function Home() {
     const handleAssistantUpdate = useCallback((locations: any[]) => {
         const cityCenter = locations.find((l) => l.type === 'city-center') ?? locations[0] ?? null;
 
-        // Affichage immédiat du centre ville (rafraîchissement fluide)
+        // Affichage imm├®diat du centre ville (rafra├«chissement fluide)
         if (cityCenter) {
             setMapLocations([cityCenter]);
         } else {
@@ -321,7 +318,7 @@ export default function Home() {
         setLastRequestPayload(payload);
 
         try {
-            console.log("Envoi de la requête...", payload);
+            console.log("Envoi de la requ├¬te...", payload);
             const res = await fetch('/api/flights/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -330,7 +327,7 @@ export default function Home() {
 
             const data = await res.json();
 
-            // 4. On sauvegarde la réponse (affichée dans la modal)
+            // 4. On sauvegarde la r├®ponse (affich├®e dans la modal)
             setApiResponse(data);
 
         } catch (error) {
@@ -344,7 +341,7 @@ export default function Home() {
     const handleHotelSearch = async () => {
         const city = tripConfig.arrivalCity || tripConfig.departureCity;
         if (!city) {
-            setHotelApiResponse({ error: 'Veuillez sélectionner une ville de destination.' });
+            setHotelApiResponse({ error: 'Veuillez s├®lectionner une ville de destination.' });
             return;
         }
         const today = new Date().toISOString().slice(0, 10);
@@ -370,7 +367,7 @@ export default function Home() {
             const data = await res.json();
             setHotelApiResponse(data);
         } catch (error) {
-            console.error('Erreur recherche hôtels:', error);
+            console.error('Erreur recherche h├┤tels:', error);
             setHotelApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
         } finally {
             setIsLoadingHotel(false);
@@ -378,9 +375,9 @@ export default function Home() {
     };
 
     const multiSelectOptions = [
-        'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
-        'Plage', 'Équipement', 'Retour positif', 'Hôtel de luxe',
-        'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly'
+        'Petit d├®jeuner inclus', 'Proche du centre ville', 'Spa/piscine',
+        'Plage', '├ëquipement', 'Retour positif', 'H├┤tel de luxe',
+        'Animaux domestiques', 'R├®serv├® aux adultes', 'LGBTQIA+ friendly'
     ];
 
     const handleGenerateTrip = useCallback(() => {
@@ -419,54 +416,8 @@ export default function Home() {
     const handlePoiClick = (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => {
         setSelectedPoi(feature);
         const name = feature.properties?.name ?? feature.properties?.name_en ?? feature.layer?.id ?? 'Lieu';
-        console.log('POI cliqué:', { name, feature, lngLat });
-
-        // Ajouter à "Activité de la journée" (éviter les doublons par nom + coords)
-        setDayActivities((prev) => {
-            const key = `${name}-${lngLat.lng.toFixed(5)}-${lngLat.lat.toFixed(5)}`;
-            const exists = prev.some(
-                (p) =>
-                    `${(p.properties?.name ?? p.properties?.name_en ?? p.layer?.id ?? '')}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key
-            );
-            if (exists) return prev;
-            return [...prev, { ...feature, lngLat }];
-        });
+        console.log('POI cliqu├®:', { name, feature, lngLat });
     };
-
-    const handleRemoveDayActivity = (index: number) => {
-        setDayActivities((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    // Appel Mapbox Directions API pour tracer les routes (voiture, vélo, à pied)
-    useEffect(() => {
-        if (dayActivities.length < 2 || !MAPBOX_TOKEN) {
-            setDayRoutes({});
-            return;
-        }
-        const coords = dayActivities.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';');
-        const profiles = ['driving', 'walking', 'cycling'] as const;
-        let cancelled = false;
-        Promise.all(
-            profiles.map((profile) =>
-                fetch(`https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
-                    .then((res) => res.json())
-                    .then((data) => {
-                        const geom = data.routes?.[0]?.geometry;
-                        const duration = data.routes?.[0]?.duration ?? 0;
-                        return { profile, geometry: geom?.type === 'LineString' ? geom : null, duration };
-                    })
-                    .catch(() => ({ profile, geometry: null, duration: 0 }))
-            )
-        ).then((results) => {
-            if (cancelled) return;
-            const next: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>> = {};
-            results.forEach(({ profile, geometry, duration }) => {
-                if (geometry) next[profile] = { geometry, duration };
-            });
-            setDayRoutes(next);
-        });
-        return () => { cancelled = true; };
-    }, [dayActivities, MAPBOX_TOKEN]);
 
     const handleLoginClick = () => setCurrentView('login');
     const handleLogoutClick = async () => {
@@ -492,7 +443,7 @@ export default function Home() {
     const handleBackToHome = () => setCurrentView('home');
 
     return (
-        <div className="flex h-dvh overflow-hidden text-slate-100" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-dvh overflow-hidden bg-slate-950 text-slate-100">
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -512,7 +463,7 @@ export default function Home() {
 
                 {currentView === 'home' && (
                     <>
-                        <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                        <div className="absolute inset-0 overflow-hidden bg-slate-950">
                             <WorldMap
                                 accessToken={MAPBOX_TOKEN}
                                 initialLatitude={46.6034}
@@ -533,11 +484,6 @@ export default function Home() {
                                 onPoiClick={handlePoiClick}
                                 locations={mapLocations}
                                 onAirportSelect={handleAirportSelect}
-                                routeData={
-                                    selectedRouteType && dayRoutes[selectedRouteType]
-                                        ? { [selectedRouteType]: dayRoutes[selectedRouteType]! }
-                                        : {}
-                                }
                             />
                             <FlightSearchModal
                                 visible={isFlightModalOpen}
@@ -624,7 +570,7 @@ export default function Home() {
                                 <button
                                     type="button"
                                     onClick={() => setIsAssistantOpen((o) => !o)}
-                                    className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                                    className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                                     title="Triply Assistant"
                                     aria-label="Ouvrir l'assistant"
                                 >
@@ -636,8 +582,8 @@ export default function Home() {
                                     <button
                                         type="button"
                                         onClick={() => setHotelFilterMenuOpen((o) => !o)}
-                                        className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-[var(--background)] shadow-md transition-colors hover:bg-[#333333] ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
-                                        title="Filtrer les hôtels"
+                                        className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-900/95 shadow-md transition-colors hover:bg-white/10 ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
+                                        title="Filtrer les h├┤tels"
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-100">
                                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
@@ -646,17 +592,17 @@ export default function Home() {
                                     <AnimatePresence>
                                         {hotelFilterMenuOpen && (
                                                 <div
-                                                className="absolute bottom-full right-0 mb-3 min-w-[200px] overflow-hidden rounded-xl border border-white/15 bg-[var(--background)] shadow-2xl"
+                                                className="absolute bottom-full right-0 mb-3 min-w-[200px] overflow-hidden rounded-xl border border-white/15 bg-slate-900/95 shadow-2xl"
                                             >
                                                 <div className="border-b border-white/10 px-3 py-2">
-                                                    <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Étoiles</span>
+                                                    <span className="text-xs font-medium uppercase tracking-wide text-slate-400">├ëtoiles</span>
                                                 </div>
                                                 <div className="py-2">
                                                     {[
                                                         { label: 'Tous', value: null },
-                                                        { label: '2, 3, 4 étoiles', value: [2, 3, 4] },
-                                                        { label: '4 et 5 étoiles', value: [4, 5] },
-                                                        { label: '5 étoiles uniquement', value: [5] },
+                                                        { label: '2, 3, 4 ├®toiles', value: [2, 3, 4] },
+                                                        { label: '4 et 5 ├®toiles', value: [4, 5] },
+                                                        { label: '5 ├®toiles uniquement', value: [5] },
                                                     ].map(({ label, value }) => {
                                                         const isActive = value === null
                                                             ? !hotelStarsFilter || hotelStarsFilter.length === 0
@@ -668,7 +614,7 @@ export default function Home() {
                                                                 onClick={() => applyHotelFilter(value)}
                                                                 className={`flex w-full items-center gap-2 py-2.5 px-4 text-left text-sm font-medium transition-colors hover:bg-white/10 ${isActive ? 'text-cyan-400' : 'text-slate-100'}`}
                                                             >
-                                                                {isActive && <span className="text-cyan-400">●</span>}
+                                                                {isActive && <span className="text-cyan-400">ÔùÅ</span>}
                                                                 {label}
                                                             </button>
                                                         );
@@ -689,7 +635,7 @@ export default function Home() {
                                         <div
                                             className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[180px]"
                                             style={{
-                                                backgroundColor: 'var(--background, #222222)',
+                                                backgroundColor: 'rgba(15, 23, 42, 0.98)',
                                                 border: '1px solid rgba(148, 163, 184, 0.4)',
                                                 boxShadow: '0 12px 40px rgba(15, 23, 42, 0.9)',
                                             }}
@@ -726,14 +672,13 @@ export default function Home() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 100, scale: 0.95 }}
                                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                        className="fixed bottom-20 left-4 right-4 z-[9999] flex h-[min(80vh,640px)] flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl sm:left-auto sm:right-4 sm:w-full sm:max-w-lg lg:max-w-xl"
-                                        style={{ backgroundColor: 'var(--background, #222222)' }}
+                                        className="fixed bottom-20 left-4 right-4 z-[9999] flex h-[min(80vh,640px)] flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl sm:left-auto sm:right-4 sm:w-full sm:max-w-lg lg:max-w-xl"
                                     >
                                         <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
                                             <div>
                                                 <h3 className="text-sm font-semibold text-slate-100">Triply Assistant</h3>
                                                 <p className="mt-0.5 text-xs text-slate-400">
-                                                    Posez vos questions voyage, nous structurons la réponse.
+                                                    Posez vos questions voyage, nous structurons la r├®ponse.
                                                 </p>
                                             </div>
                                             <button
@@ -756,7 +701,7 @@ export default function Home() {
                                             ) : (
                                                 <div className="overflow-y-auto p-6">
                                                     <p className="mb-4 text-sm text-slate-200">
-                                                        Vous devez être connecté pour utiliser la discussion avec le LLM.
+                                                        Vous devez ├¬tre connect├® pour utiliser la discussion avec le LLM.
                                                     </p>
                                                     <Button label="Se connecter" onClick={handleLoginClick} variant="dark" tone="tone1" />
                                                 </div>
@@ -776,7 +721,7 @@ export default function Home() {
                                     transition={{ type: 'spring', damping: 26, stiffness: 220 }}
                                     className="pointer-events-auto absolute left-0 top-0 bottom-0 z-10 w-full max-w-[420px] p-2 sm:p-3"
                                 >
-                                    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl backdrop-blur-md" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                                    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl backdrop-blur-md">
                                         <TripCreationWizard
                                             state={tripConfig}
                                             multiSelectOptions={multiSelectOptions}
@@ -800,11 +745,6 @@ export default function Home() {
                                                 setSelectedHotelOffer(null);
                                                 setIsHotelDetailModalOpen(false);
                                             }}
-                                            dayActivities={dayActivities}
-                                            onRemoveDayActivity={handleRemoveDayActivity}
-                                            dayRoutes={dayRoutes}
-                                            selectedRouteType={selectedRouteType}
-                                            onSelectRouteType={setSelectedRouteType}
                                             onComplete={handleGenerateTrip}
                                         />
                                     </div>

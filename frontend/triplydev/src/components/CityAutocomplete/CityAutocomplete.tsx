@@ -174,7 +174,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                         <ul
                             className="rounded-lg overflow-hidden max-h-60 overflow-y-auto"
                             style={{
-                                backgroundColor: '#2a2a2a',
+                                backgroundColor: 'var(--background, #222222)',
                                 border: '1px solid rgba(255, 255, 255, 0.15)',
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                             }}

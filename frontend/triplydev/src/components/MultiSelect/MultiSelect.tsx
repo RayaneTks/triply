@@ -125,7 +125,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                 <div
                     className="mt-2 w-full rounded-lg shadow-xl max-h-60 overflow-hidden"
                     style={{
-                        backgroundColor: '#2a2a2a',
+                        backgroundColor: 'var(--background, #222222)',
                         border: '1px solid rgba(255, 255, 255, 0.2)',
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                     }}

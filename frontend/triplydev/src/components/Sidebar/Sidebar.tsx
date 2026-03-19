@@ -58,10 +58,18 @@ const MailIcon = () => (
     </svg>
 );
 
+const PricingIcon = () => (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+);
+
 const NAV_ITEMS = [
     { label: 'Accueil', Icon: HomeIcon, path: '/' },
     { label: 'Profil', Icon: UserIcon, path: '/profil' },
     { label: 'Mes voyages', Icon: ClipboardIcon, path: '/voyages' },
+    { label: 'Tarifs', Icon: PricingIcon, path: '/pricing' },
     { label: 'À propos', Icon: InfoIcon, path: undefined },
     { label: 'Contact', Icon: MailIcon, path: undefined },
 ];
@@ -167,8 +175,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                 <Link
                                                     href={item.path}
                                                     className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                                                        isActive ? 'bg-white/10 text-cyan-400' : 'text-slate-200'
+                                                        isActive ? 'text-[var(--primary)]' : 'text-slate-200'
                                                     } flex items-center gap-3`}
+                                                    style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' } : undefined}
                                                 >
                                                     {content}
                                                 </Link>
