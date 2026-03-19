@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Branch, Gitgraph, TemplateName, Orientation, templateExtend } from "@gitgraph/react";
+import React from 'react';
+import { Branch, Gitgraph, TemplateName, Orientation, templateExtend, type CommitOptions } from "@gitgraph/react";
 
 export interface CommitAction {
     type: 'commit';
@@ -38,7 +38,7 @@ export interface GitViewProps {
 
 export interface LocalGitgraphUserApi {
     branch(name: string): Branch;
-    commit(options: any): void;
+    commit(options?: CommitOptions): void;
 }
 
 const compactTemplate = templateExtend(TemplateName.Metro, {
@@ -55,8 +55,6 @@ const compactTemplate = templateExtend(TemplateName.Metro, {
 });
 
 export const GitView: React.FC<GitViewProps> = ({ history }) => {
-    const branchMap = useMemo(() => new Map<string, Branch>(), []);
-
     return (
         <div className="w-full overflow-x-auto p-2 bg-white rounded-lg">
             <Gitgraph options={{
@@ -64,17 +62,15 @@ export const GitView: React.FC<GitViewProps> = ({ history }) => {
                 template: compactTemplate,
             }}>
                 {(gitgraph) => {
-                    branchMap.clear();
-
+                    const branchMap = new Map<string, Branch>();
                     const mainBranch = gitgraph.branch('main');
                     branchMap.set('main', mainBranch);
 
                     const getAuthoredBranch = (branchName: string): Branch => {
                         if (!branchName || branchName === 'main') return mainBranch;
 
-                        if (branchMap.has(branchName)) {
-                            return branchMap.get(branchName)!;
-                        }
+                        const cached = branchMap.get(branchName);
+                        if (cached) return cached;
 
                         const newBranch = mainBranch.branch(branchName);
                         branchMap.set(branchName, newBranch);

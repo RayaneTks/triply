@@ -10,6 +10,7 @@ import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { Button } from '@/src/components/Button/Button';
 import { HotelResults } from '@/src/components/HotelResults/HotelResults';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
+import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 
 export const HOTEL_PREFERENCE_OPTIONS = [
     'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
@@ -37,7 +38,7 @@ export interface HotelSearchModalProps {
     onNewSearch?: () => void;
     onSelectOffer?: (offer: HotelOffer) => void;
     isLoading: boolean;
-    apiResponse: any;
+    apiResponse: (AmadeusHotelResponse | { error?: string; details?: string }) | null;
 }
 
 interface HotelFormErrors {
@@ -124,7 +125,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                             className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-6 sm:py-4"
                         >
                             <h2 id="hotel-search-title" className="text-xl font-semibold text-slate-100">
-                                Recherche d'hôtels
+                                Recherche d&apos;hôtels
                             </h2>
                             <button
                                 onClick={onClose}
@@ -138,7 +139,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                         </div>
 
                         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" style={{ backgroundColor: 'var(--background, #222222)' }}>
-                            {!apiResponse?.data ? (
+                            {!apiResponse || !('data' in apiResponse) || !apiResponse.data ? (
                                 <div className="mx-auto max-w-2xl space-y-4">
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
@@ -197,7 +198,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
-                                            Date d'arrivée / Départ
+                                            Date d&apos;arrivée / Départ
                                         </label>
                                         <DateRangePicker
                                             startDate={arrivalDate}

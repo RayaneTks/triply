@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/Button/Button';
 
 function useMediaQuery(query: string): boolean {
-    const [matches, setMatches] = useState(false);
-    useEffect(() => {
-        const m = window.matchMedia(query);
-        setMatches(m.matches);
-        const h = () => setMatches(m.matches);
-        m.addEventListener('change', h);
-        return () => m.removeEventListener('change', h);
-    }, [query]);
-    return matches;
+    return useSyncExternalStore(
+        (onStoreChange) => {
+            const m = window.matchMedia(query);
+            m.addEventListener('change', onStoreChange);
+            return () => m.removeEventListener('change', onStoreChange);
+        },
+        () => window.matchMedia(query).matches,
+        () => false
+    );
 }
 
 const iconSize = 20;

@@ -33,14 +33,7 @@ export const Logo: React.FC<LogoProps> = ({
                                               size = 'default',
                                               tone = 'light',
                                           }) => {
-    // Utiliser le contexte pour détecter la dernière slide
-    let slideContext = { isLastSlide: false };
-    try {
-        slideContext = useSlideContext();
-    } catch (e) {
-        // Le contexte n'est pas disponible (pas dans une slide), utiliser la valeur par défaut
-    }
-    
+    const slideContext = useSlideContext();
     // Si c'est la dernière slide, utiliser le logo light-colorless
     const finalTone = slideContext.isLastSlide ? 'light-colorless' : tone;
     

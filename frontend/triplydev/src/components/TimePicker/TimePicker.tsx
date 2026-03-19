@@ -44,12 +44,16 @@ export const TimePicker: FC<TimePickerProps> = ({
     useEffect(() => {
         if (value) {
             const [h, m] = value.split(':').map(Number);
-            setHours(h || 0);
-            setMinutes(m || 0);
+            queueMicrotask(() => {
+                setHours(h || 0);
+                setMinutes(m || 0);
+            });
         } else {
             const now = new Date();
-            setHours(now.getHours());
-            setMinutes(now.getMinutes());
+            queueMicrotask(() => {
+                setHours(now.getHours());
+                setMinutes(now.getMinutes());
+            });
         }
     }, [value]);
 
@@ -177,7 +181,7 @@ export const TimePicker: FC<TimePickerProps> = ({
                     }}
                 >
                     <h3 className="text-lg font-semibold tracking-tight text-center" style={{ color: 'var(--foreground, #ededed)' }}>
-                        Sélectionner l'heure
+                        Sélectionner l&apos;heure
                     </h3>
                 </div>
 
@@ -336,7 +340,7 @@ export const TimePicker: FC<TimePickerProps> = ({
                 <button
                     ref={buttonRef}
                     type="button"
-                    aria-label="Sélectionner l'heure"
+                    aria-label="Sélectionner l&apos;heure"
                     onClick={() => {
                         if (!isOpen) {
                             const pos = calculatePosition(buttonRef);

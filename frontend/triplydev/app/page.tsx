@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
@@ -29,9 +29,12 @@ const HotelDetailModal = dynamic(
     () => import('@/src/components/HotelDetailModal/HotelDetailModal').then((m) => m.HotelDetailModal),
     { ssr: false }
 );
-import { mergeCityCenterWithHotels, spreadOverlappingPoints } from '@/src/utils/locations';
+import { mergeCityCenterWithHotels, spreadOverlappingPoints, type LocationPoint } from '@/src/utils/locations';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
+import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
+import type { FlightRequestPayload } from '@/utils/amadeus';
 import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
 
 function LoginWithMapBackground({
@@ -94,7 +97,7 @@ export default function Home() {
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [showTuPreferes, setShowTuPreferes] = useState(false);
-    const [mapLocations, setMapLocations] = useState<any[]>([]);
+    const [mapLocations, setMapLocations] = useState<LocationPoint[]>([]);
     const [isLoadingHotels, setIsLoadingHotels] = useState(false);
 
     // AUTO-COLLAPSE SIDEBAR IF CONNECTED
@@ -128,8 +131,8 @@ export default function Home() {
     // Etats Formulaire Voyage (centralisés dans un hook dédié)
     const tripConfig = useTripConfiguration();
     const [isLoading, setIsLoading] = useState(false);
-    const [lastRequestPayload, setLastRequestPayload] = useState<any>(null);
-    const [apiResponse, setApiResponse] = useState<any>(null);
+    const [lastRequestPayload, setLastRequestPayload] = useState<FlightRequestPayload | null>(null);
+    const [apiResponse, setApiResponse] = useState<(AmadeusResponse | { error?: string; details?: string }) | null>(null);
 
     // Etats Mapbox
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
@@ -144,7 +147,7 @@ export default function Home() {
     const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
     const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
     const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
-    const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: any } | null>(null);
+    const lastSearchRef = useRef<{ lat: number; lng: number; cityCenter: LocationPoint | null } | null>(null);
 
     // --- GESTION SELECTION AEROPORT (NOUVEAU) ---
     const handleAirportSelect = (iata: string, name: string, lat: number, lng: number) => {
@@ -179,7 +182,7 @@ export default function Home() {
         }
     };
 
-    const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: any, ratingsFilter?: number[] | null) => {
+    const searchHotelsAtLocation = useCallback(async (lat: number, lng: number, cityCenter: LocationPoint | null, ratingsFilter?: number[] | null) => {
         lastSearchRef.current = { lat, lng, cityCenter };
         const ratingsParam = ratingsFilter && ratingsFilter.length > 0 ? ratingsFilter.join(',') : undefined;
         console.log("🏨 Recherche d'hôtels demandée pour :", lat, lng, ratingsParam || 'tous');
@@ -209,7 +212,7 @@ export default function Home() {
         }
     }, []);
 
-    const handleAssistantUpdate = useCallback((locations: any[]) => {
+    const handleAssistantUpdate = useCallback((locations: LocationPoint[]) => {
         const cityCenter = locations.find((l) => l.type === 'city-center') ?? locations[0] ?? null;
 
         // Affichage immédiat du centre ville (rafraîchissement fluide)
@@ -246,7 +249,7 @@ export default function Home() {
     const [hotelModalBudget, setHotelModalBudget] = useState('');
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
-    const [hotelApiResponse, setHotelApiResponse] = useState<any>(null);
+    const [hotelApiResponse, setHotelApiResponse] = useState<(AmadeusHotelResponse | { error?: string; details?: string }) | null>(null);
     const [isLoadingHotel, setIsLoadingHotel] = useState(false);
     const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
 

@@ -9,6 +9,8 @@ import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicke
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import { Button } from '@/src/components/Button/Button';
 import { FlightResults } from '@/src/components/FlightResults/FlightResults';
+import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 
 export interface FlightSearchModalProps {
     visible: boolean;
@@ -31,9 +33,9 @@ export interface FlightSearchModalProps {
     setBudget: (value: string) => void;
     onSearch: () => void;
     onNewSearch?: () => void;
-    onSelectOffer?: (offer: any, carrierName: string) => void;
+    onSelectOffer?: (offer: FlightOffer, carrierName: string) => void;
     isLoading: boolean;
-    apiResponse: any;
+    apiResponse: (AmadeusResponse | { error?: string; details?: string }) | null;
 }
 
 interface FlightFormErrors {
@@ -143,7 +145,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
 
                         {/* Content - scrollable */}
                         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" style={{ backgroundColor: 'var(--background, #222222)' }}>
-                            {!apiResponse?.data ? (
+                            {!apiResponse || !('data' in apiResponse) || !apiResponse.data ? (
                                 /* Formulaire de recherche */
                                 <div className="mx-auto max-w-2xl space-y-4">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -212,7 +214,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
-                                            Date d'arrivée / Départ
+                                            Date d&apos;arrivée / Départ
                                         </label>
                                         <DateRangePicker
                                             startDate={arrivalDate}

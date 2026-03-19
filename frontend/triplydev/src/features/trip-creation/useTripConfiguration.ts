@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 function daysBetween(start: string, end: string): number {
     if (!start || !end) return 0;
@@ -43,7 +43,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [departureCity, setDepartureCity] = useState(initial?.departureCity ?? '');
     const [arrivalCity, setArrivalCity] = useState(initial?.arrivalCity ?? '');
     const [arrivalCityName, setArrivalCityName] = useState(initial?.arrivalCityName ?? '');
-    const [travelDays, setTravelDays] = useState(initial?.travelDays ?? 3);
+    const [travelDaysFallback, setTravelDaysFallback] = useState(initial?.travelDays ?? 3);
     const [travelerCount, setTravelerCount] = useState(initial?.travelerCount ?? 1);
     const [budget, setBudget] = useState(initial?.budget ?? '');
     const [activityTime, setActivityTime] = useState(initial?.activityTime ?? '');
@@ -53,10 +53,8 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
 
-    useEffect(() => {
-        const days = daysBetween(outboundDate, returnDate);
-        if (days > 0) setTravelDays(days);
-    }, [outboundDate, returnDate]);
+    const computedDays = daysBetween(outboundDate, returnDate);
+    const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
 
     return {
         departureCity,
@@ -74,7 +72,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
-        setTravelDays,
+        setTravelDays: setTravelDaysFallback,
         setTravelerCount,
         setBudget,
         setActivityTime,

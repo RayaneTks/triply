@@ -59,14 +59,14 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onComplete,
 }) => {
     const filledFields = useMemo(() => {
-        let count = 0;
-        if (state.arrivalCity) count++;
-        if (state.outboundDate && state.returnDate) count++;
-        if (state.travelerCount > 0) count++;
-        if (selectedFlight) count++;
-        if (selectedHotel) count++;
-        if (state.budget) count++;
-        return count;
+        return [
+            state.arrivalCity,
+            state.outboundDate && state.returnDate,
+            state.travelerCount > 0,
+            selectedFlight,
+            selectedHotel,
+            state.budget,
+        ].filter(Boolean).length;
     }, [state.arrivalCity, state.outboundDate, state.returnDate, state.travelerCount, selectedFlight, selectedHotel, state.budget]);
 
     const hasMinimum = !!state.arrivalCity && !!state.outboundDate && !!state.returnDate;

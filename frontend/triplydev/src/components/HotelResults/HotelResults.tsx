@@ -4,7 +4,7 @@ import React from 'react';
 import { HotelOfferCard } from './HotelOfferCard';
 import type { HotelOffer } from './HotelOfferCard';
 
-interface AmadeusHotelResponse {
+export interface AmadeusHotelResponse {
     data?: Array<{
         type?: string;
         hotel?: {
@@ -58,12 +58,16 @@ function flattenHotelOffers(data: AmadeusHotelResponse): HotelOffer[] {
 }
 
 interface HotelResultsProps {
-    data: AmadeusHotelResponse | null;
+    data: (AmadeusHotelResponse | { error?: string; details?: string }) | null;
     onSelectOffer?: (offer: HotelOffer) => void;
 }
 
+function isAmadeusHotelResponse(d: HotelResultsProps['data']): d is AmadeusHotelResponse {
+    return d !== null && 'data' in d;
+}
+
 export const HotelResults = ({ data, onSelectOffer }: HotelResultsProps) => {
-    const offers = data ? flattenHotelOffers(data) : [];
+    const offers = isAmadeusHotelResponse(data) ? flattenHotelOffers(data) : [];
 
     if (offers.length === 0) {
         return <div className="text-white">Aucun résultat.</div>;

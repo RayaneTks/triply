@@ -47,9 +47,8 @@ export function spreadOverlappingPoints<T extends LocationPoint>(locations: T[])
     const groups = new Map<string, T[]>();
     for (const h of hotels) {
         const key = cellKey(h.coordinates.latitude, h.coordinates.longitude);
-        const arr = groups.get(key) ?? [];
-        arr.push(h);
-        groups.set(key, arr);
+        const existing = groups.get(key) ?? [];
+        groups.set(key, [...existing, h]);
     }
 
     const result: T[] = [...nonHotels];

@@ -42,7 +42,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
         onChange?.(newSelected);
     };
 
-    const removeOption = (option: string, e: React.MouseEvent) => {
+    const removeOption = (option: string, e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
         const newSelected = selected.filter(item => item !== option);
         setSelected(newSelected);
@@ -100,7 +100,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' || e.key === ' ') {
                                                     e.preventDefault();
-                                                    removeOption(option, e as any);
+                                                    removeOption(option, e);
                                                 }
                                             }}
                                         >

@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         let finalLat = aiCoordinates?.lat;
         let finalLng = aiCoordinates?.lng;
         let finalName = targetLocation;
-        let finalZoom = aiZoom || 10;
+        const finalZoom = aiZoom || 10;
 
         const finalLocations: Array<{
             id: string;

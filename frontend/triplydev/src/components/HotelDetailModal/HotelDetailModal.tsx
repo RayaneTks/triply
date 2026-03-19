@@ -62,7 +62,7 @@ export const HotelDetailModal: React.FC<HotelDetailModalProps> = ({
                             style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
                         >
                             <h2 id="hotel-detail-title" className="text-xl font-semibold" style={{ color: '#ededed' }}>
-                                Détail de l'hôtel
+                                Détail de l&apos;hôtel
                             </h2>
                             <button
                                 onClick={onClose}
