@@ -13,7 +13,7 @@ services:
       NEXT_PUBLIC_BACKEND_API_URL: /api/v1
       BACKEND_API_BASE_URL: http://tri-api/api/v1
     networks:
-      - tri-production
+      - triply-production
       - web
     labels:
       - "traefik.enable=true"
@@ -38,7 +38,7 @@ services:
       # -----------------------------------------------------------
       - tri-storage-production:/var/www/storage:ro
     networks:
-      - tri-production
+      - triply-production
     depends_on:
       php-fpm:
         condition: service_healthy  # Wait for php-fpm health check
@@ -61,7 +61,7 @@ services:
       DB_HOST: tri-postgres
       DB_PORT: 5432
     networks:
-      - tri-production
+      - triply-production
     healthcheck:
       test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
       interval: 10s
@@ -88,7 +88,7 @@ services:
     volumes:
       - tri-postgres-data:/var/lib/postgresql/data
     networks:
-      - triply-development
+      - triply-production
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_ROOT_PASSWORD || exit 1"]
       interval: 10s
@@ -100,7 +100,7 @@ services:
     container_name: tri-redis
     restart: unless-stopped  # Automatically restart unless the service is explicitly stopped
     networks:
-      - tri-production
+      - triply-production
     # Health check for Redis
     # -----------------------------------------------------------
     # Checks if Redis is responding to the 'PING' command.
@@ -123,7 +123,7 @@ services:
     volumes:
       - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
     networks:
-      - triply-development
+      - triply-production
     depends_on:
       tri-postgres:
         condition: service_healthy # Wait for postgres to be healthy
@@ -141,8 +141,8 @@ networks:
   # This custom network allows all services within it to communicate using their service names as hostnames.
   # For example, 'php-fpm' can connect to 'pgsql' by using 'tri-postgres' as the hostname.
   # -----------------------------------------------------------
-  tri-production:
-    name: tri-production
+  triply-production:
+    name: triply-production
   web:
     external: true  # Use the existing 'web' network created by Traefik
 
