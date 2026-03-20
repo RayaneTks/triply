@@ -57,9 +57,9 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_CONNECTION: pgsql
+      DB_HOST: tri-postgres
+      DB_PORT: 5432
     networks:
       - tri-production
     healthcheck:
@@ -68,10 +68,10 @@ services:
       timeout: 5s
       retries: 3
     # The 'depends_on' attribute with 'condition: service_healthy' ensures that
-    # this service will not start until the 'mysql' service passes its health check.
+    # this service will not start until the 'pgsql' service passes its health check.
     # This prevents the application from trying to connect to the database before it's ready.
     depends_on:
-      mysql:
+      tri-postgres:
         condition: service_healthy
 
   tri-postgres:
@@ -139,7 +139,7 @@ networks:
   # Attach the service to the 'laravel' network.
   # -----------------------------------------------------------
   # This custom network allows all services within it to communicate using their service names as hostnames.
-  # For example, 'php-fpm' can connect to 'mysql' by using 'mysql' as the hostname.
+  # For example, 'php-fpm' can connect to 'pgsql' by using 'tri-postgres' as the hostname.
   # -----------------------------------------------------------
   tri-production:
     name: tri-production
