@@ -226,6 +226,7 @@ function ActivityCard({
 interface TripCreationWizardProps {
     state: UseTripConfigurationResult;
     multiSelectOptions: string[];
+    dietaryMultiSelectOptions: string[];
     selectedFlight: FlightOffer | null;
     selectedFlightCarrierName: string;
     selectedHotel: HotelOffer | null;
@@ -254,6 +255,7 @@ interface TripCreationWizardProps {
 export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     state,
     multiSelectOptions,
+    dietaryMultiSelectOptions,
     selectedFlight,
     selectedFlightCarrierName,
     selectedHotel,
@@ -352,6 +354,9 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             selectedOptions={state.selectedOptions}
                             setSelectedOptions={state.setSelectedOptions}
                             multiSelectOptions={multiSelectOptions}
+                            dietaryMultiSelectOptions={dietaryMultiSelectOptions}
+                            dietarySelections={state.dietarySelections}
+                            setDietarySelections={state.setDietarySelections}
                             onOpenFlightSearch={onOpenFlightSearch}
                             onCloseFlightSearch={onCloseFlightSearch}
                             flightSearchChecked={isFlightModalOpen}

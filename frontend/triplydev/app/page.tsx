@@ -257,6 +257,7 @@ export default function Home() {
     const [hotelApiResponse, setHotelApiResponse] = useState<(AmadeusHotelResponse | { error?: string; details?: string }) | null>(null);
     const [isLoadingHotel, setIsLoadingHotel] = useState(false);
     const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
+    const [hotelMealRegime, setHotelMealRegime] = useState('');
 
     const syncFormFromFlight = useCallback((offer: FlightOffer) => {
         const outbound = offer.itineraries?.[0];
@@ -373,6 +374,7 @@ export default function Home() {
                     roomQuantity: 1,
                     maxPrice: hotelModalBudget ? parseInt(hotelModalBudget, 10) : undefined,
                     preferences: hotelSelectedOptions,
+                    ...(hotelMealRegime.trim() ? { boardType: hotelMealRegime.trim() } : {}),
                 }),
             });
             const data = await res.json();
@@ -391,6 +393,19 @@ export default function Home() {
         'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly'
     ];
 
+    const dietaryMultiSelectOptions = [
+        'Végétarien',
+        'Végan',
+        'Sans gluten',
+        'Sans lactose',
+        'Halal',
+        'Casher',
+        'Pesco-végétarien',
+        'Flexitarien',
+        'Sans porc',
+        'Faible en FODMAP',
+    ];
+
     const handleGenerateTrip = useCallback(() => {
         const destination = tripConfig.arrivalCityName || tripConfig.arrivalCity;
         if (!destination) return;
@@ -401,6 +416,7 @@ export default function Home() {
             dates: `${tripConfig.outboundDate} - ${tripConfig.returnDate}`,
             travelers: tripConfig.travelerCount,
             budget: tripConfig.budget,
+            dietary: tripConfig.dietarySelections,
             flight: selectedFlightOffer ? 'selected' : 'none',
             hotel: selectedHotelOffer ? 'selected' : 'none',
         });
@@ -629,6 +645,8 @@ export default function Home() {
                                 setTravelerCount={tripConfig.setTravelerCount}
                                 budget={hotelModalBudget}
                                 setBudget={setHotelModalBudget}
+                                mealRegime={hotelMealRegime}
+                                setMealRegime={setHotelMealRegime}
                                 selectedOptions={hotelSelectedOptions}
                                 setSelectedOptions={setHotelSelectedOptions}
                                 multiSelectOptions={multiSelectOptions}
@@ -901,6 +919,7 @@ export default function Home() {
                                         <TripCreationWizard
                                             state={tripConfig}
                                             multiSelectOptions={multiSelectOptions}
+                                            dietaryMultiSelectOptions={dietaryMultiSelectOptions}
                                             selectedFlight={selectedFlightOffer}
                                             selectedFlightCarrierName={selectedFlightCarrierName}
                                             selectedHotel={selectedHotelOffer}
