@@ -1,21 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useSyncExternalStore } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/Button/Button';
 
 function useMediaQuery(query: string): boolean {
-    const [matches, setMatches] = useState(false);
-    useEffect(() => {
-        const m = window.matchMedia(query);
-        setMatches(m.matches);
-        const h = () => setMatches(m.matches);
-        m.addEventListener('change', h);
-        return () => m.removeEventListener('change', h);
-    }, [query]);
-    return matches;
+    return useSyncExternalStore(
+        (onStoreChange) => {
+            const m = window.matchMedia(query);
+            m.addEventListener('change', onStoreChange);
+            return () => m.removeEventListener('change', onStoreChange);
+        },
+        () => window.matchMedia(query).matches,
+        () => false
+    );
 }
 
 const iconSize = 20;
@@ -58,10 +59,18 @@ const MailIcon = () => (
     </svg>
 );
 
+const PricingIcon = () => (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+);
+
 const NAV_ITEMS = [
     { label: 'Accueil', Icon: HomeIcon, path: '/' },
     { label: 'Profil', Icon: UserIcon, path: '/profil' },
     { label: 'Mes voyages', Icon: ClipboardIcon, path: '/voyages' },
+    { label: 'Tarifs', Icon: PricingIcon, path: '/pricing' },
     { label: 'À propos', Icon: InfoIcon, path: undefined },
     { label: 'Contact', Icon: MailIcon, path: undefined },
 ];
@@ -104,7 +113,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
             )}
         <motion.aside
-            className={`relative z-30 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/95 shadow-xl md:z-auto ${className}`}
+            className={`relative z-30 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl md:z-auto ${className}`}
+            style={{ backgroundColor: 'var(--background, #222222)' }}
             animate={{ width: isCollapsed ? collapsedW : expandedW }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         >
@@ -115,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!isCollapsed && (
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="flex-shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
-                            <img
+                            <Image
                                 src="/Logo-triply.svg"
                                 alt="Triply"
                                 width={100}
@@ -166,8 +176,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                 <Link
                                                     href={item.path}
                                                     className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                                                        isActive ? 'bg-white/10 text-cyan-400' : 'text-slate-200'
+                                                        isActive ? 'text-[var(--primary)]' : 'text-slate-200'
                                                     } flex items-center gap-3`}
+                                                    style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' } : undefined}
                                                 >
                                                     {content}
                                                 </Link>

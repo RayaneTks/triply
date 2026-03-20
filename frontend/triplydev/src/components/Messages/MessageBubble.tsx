@@ -20,21 +20,21 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         >
             <ReactMarkdown
                 components={{
-                    h1: ({ node, ...props }) => (
+                    h1: ({ node: _node, ...props }) => (
                         <h1 className="mb-1 text-base font-semibold" {...props} />
                     ),
-                    h2: ({ node, ...props }) => (
+                    h2: ({ node: _node, ...props }) => (
                         <h2 className="mt-2 mb-1 text-sm font-semibold" {...props} />
                     ),
-                    h3: ({ node, ...props }) => (
+                    h3: ({ node: _node, ...props }) => (
                         <h3 className="mt-2 mb-1 text-sm font-semibold" {...props} />
                     ),
-                    p: ({ node, ...props }) => <p className="mb-1 text-slate-200" {...props} />,
-                    ul: ({ node, ...props }) => (
+                    p: ({ node: _node, ...props }) => <p className="mb-1 text-slate-200" {...props} />,
+                    ul: ({ node: _node, ...props }) => (
                         <ul className="my-1 list-inside list-disc space-y-1" {...props} />
                     ),
-                    li: ({ node, ...props }) => <li {...props} />,
-                    strong: ({ node, ...props }) => (
+                    li: ({ node: _node, ...props }) => <li {...props} />,
+                    strong: ({ node: _node, ...props }) => (
                         <strong className="font-semibold" {...props} />
                     ),
                 }}

@@ -119,6 +119,8 @@ export interface MapProps {
     showLogo?: boolean;
 
     locations?: Location[];
+    /** Routes par profil (voiture, vélo, à pied) avec géométrie et durée en secondes */
+    routeData?: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>;
 }
 
 export const WorldMap: React.FC<MapProps> = ({
@@ -147,12 +149,16 @@ export const WorldMap: React.FC<MapProps> = ({
                                                  showAttribution = false,
                                                  showLogo = false,
                                                  locations = [],
+                                                 routeData = {},
                                              }: MapProps) => {
     const mapRef = useRef<MapRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const mapStyleRef = useRef(mapStyle);
-    mapStyleRef.current = mapStyle;
+    useEffect(() => {
+        mapStyleRef.current = mapStyle;
+    }, [mapStyle]);
     const [cursor, setCursor] = useState<string>('');
+    const [hoveredRoute, setHoveredRoute] = useState<{ profile: string; duration: number; x: number; y: number } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isStyleReady, setIsStyleReady] = useState(false);
 
@@ -169,7 +175,7 @@ export const WorldMap: React.FC<MapProps> = ({
         if (typeof bearing !== 'number' || !isMapLoaded || !mapRef.current) return;
         if (autoRotateSpeed != null) return;
         mapRef.current.getMap().setBearing(bearing);
-        if (interactive) setViewState((prev) => ({ ...prev, bearing }));
+        if (interactive) queueMicrotask(() => setViewState((prev) => ({ ...prev, bearing })));
     }, [bearing, isMapLoaded, interactive, autoRotateSpeed]);
 
     useEffect(() => {
@@ -209,7 +215,7 @@ export const WorldMap: React.FC<MapProps> = ({
     useEffect(() => {
         if (typeof pitch !== 'number' || !isMapLoaded || !mapRef.current) return;
         mapRef.current.getMap().setPitch(pitch);
-        if (interactive) setViewState((prev) => ({ ...prev, pitch }));
+        if (interactive) queueMicrotask(() => setViewState((prev) => ({ ...prev, pitch })));
     }, [pitch, isMapLoaded, interactive]);
 
     // Redimensionner la carte quand le conteneur change (ex: sidebar ouverte/fermée)
@@ -386,7 +392,7 @@ export const WorldMap: React.FC<MapProps> = ({
 
                 // AJOUT : Récupération des coordonnées géographiques
                 // Dans un GeoJSON Point, coordinates est un tableau [lng, lat]
-                const geometry = airportFeature.geometry as any; // Cast rapide car on sait que c'est un Point
+                const geometry = airportFeature.geometry as GeoJSON.Point;
                 const [lng, lat] = geometry.coordinates;
 
                 if (iata) {
@@ -419,10 +425,39 @@ export const WorldMap: React.FC<MapProps> = ({
         } catch {}
     }, [onPoiClick, onAirportSelect]);
 
+    const routeProfileLabels = React.useMemo<Record<string, string>>(
+        () => ({ driving: 'Voiture', walking: 'À pied', cycling: 'Vélo' }),
+        []
+    );
+
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
         try {
             const features = mapRef.current.queryRenderedFeatures(e.point);
+            const rect = containerRef.current?.getBoundingClientRect();
+            const screenX = rect ? rect.left + e.point.x : e.point.x;
+            const screenY = rect ? rect.top + e.point.y : e.point.y;
+
+            // Check survol route (priorité haute pour le tooltip)
+            const routeLayerId = features.find((f) =>
+                f.layer?.id?.startsWith('route-layer-')
+            )?.layer?.id;
+            if (routeLayerId && routeData) {
+                const profile = routeLayerId.replace('route-layer-', '') as 'driving' | 'walking' | 'cycling';
+                const route = routeData[profile];
+                if (route) {
+                    setHoveredRoute({
+                        profile: routeProfileLabels[profile] ?? profile,
+                        duration: route.duration,
+                        x: screenX,
+                        y: screenY,
+                    });
+                    setCursor('pointer');
+                    onPoiLeave?.();
+                    return;
+                }
+            }
+            setHoveredRoute(null);
 
             // Check si survol aéroport
             const isOverAirport = features.some(f => f.layer?.id === 'airports-layer');
@@ -440,9 +475,6 @@ export const WorldMap: React.FC<MapProps> = ({
             }
 
             if (isOverPoi && onPoiHover) {
-                const rect = containerRef.current?.getBoundingClientRect();
-                const screenX = rect ? rect.left + e.point.x : e.point.x;
-                const screenY = rect ? rect.top + e.point.y : e.point.y;
                 onPoiHover(
                     {
                         id: poiFeature.id,
@@ -460,9 +492,10 @@ export const WorldMap: React.FC<MapProps> = ({
             }
         } catch {
             setCursor('');
+            setHoveredRoute(null);
             onPoiLeave?.();
         }
-    }, [onPoiHover, onPoiLeave]);
+    }, [onPoiHover, onPoiLeave, routeData, routeProfileLabels]);
 
     const locationsGeoJson = React.useMemo(() => {
         if (!locations || locations.length === 0) return null;
@@ -488,11 +521,11 @@ export const WorldMap: React.FC<MapProps> = ({
             ref={containerRef}
             className={className}
             style={{ width, height, position: 'relative' }}
-            onMouseLeave={() => { setCursor(''); onPoiLeave?.(); }}
+            onMouseLeave={() => { setCursor(''); setHoveredRoute(null); onPoiLeave?.(); }}
         >
             <Map
                 ref={mapRef}
-                {...(autoRotateSpeed != null ? (({ bearing: _b, ...v }) => v)(viewState) : viewState)}
+                {...(autoRotateSpeed != null ? (({ bearing: _, ...v }) => v)(viewState) : viewState)}
                 {...(autoRotateSpeed == null && typeof bearing === 'number' ? { bearing } : {})}
                 {...(typeof pitch === 'number' ? { pitch } : {})}
                 onMove={handleMove}
@@ -526,7 +559,11 @@ export const WorldMap: React.FC<MapProps> = ({
                 mapStyle={mapStyle}
                 mapboxAccessToken={accessToken}
                 attributionControl={showAttribution}
-                interactiveLayerIds={onPoiClick ? undefined : ['airports-layer']} // Optimisation
+                interactiveLayerIds={
+                    onPoiClick || Object.keys(routeData || {}).length > 0
+                        ? undefined
+                        : ['airports-layer']
+                }
                 {...(mapConfig && IS_MAPBOX_STANDARD(mapStyle) && {
                     config: {
                         basemap: Object.fromEntries(
@@ -571,7 +608,7 @@ export const WorldMap: React.FC<MapProps> = ({
                     </Source>
                 )}
                 {isMapLoaded && isStyleReady && locationsGeoJson && (
-                    <Source id="locations-source" type="geojson" data={locationsGeoJson as any}>
+                    <Source id="locations-source" type="geojson" data={locationsGeoJson as GeoJSON.FeatureCollection}>
                         <Layer
                             id="locations-layer-labels"
                             type="symbol"
@@ -591,7 +628,70 @@ export const WorldMap: React.FC<MapProps> = ({
                         />
                     </Source>
                 )}
+                {isMapLoaded && isStyleReady && routeData && Object.entries(routeData).map(([profile, { geometry }]) => {
+                    const colors: Record<string, string> = {
+                        driving: '#f97316',
+                        walking: '#22d3ee',
+                        cycling: '#84cc16',
+                    };
+                    return (
+                        <Source
+                            key={`route-${profile}`}
+                            id={`route-source-${profile}`}
+                            type="geojson"
+                            data={{
+                                type: 'Feature',
+                                geometry,
+                                properties: {},
+                            }}
+                        >
+                            <Layer
+                                id={`route-layer-${profile}`}
+                                type="line"
+                                layout={{
+                                    'line-join': 'round',
+                                    'line-cap': 'round',
+                                }}
+                                paint={{
+                                    'line-color': colors[profile] ?? '#22d3ee',
+                                    'line-width': 5,
+                                    'line-opacity': 0.85,
+                                }}
+                            />
+                        </Source>
+                    );
+                })}
             </Map>
+
+            {routeData && Object.keys(routeData).length > 0 && (
+                <div className="absolute bottom-4 left-4 z-10 rounded-full border border-white/15 bg-slate-900/95 px-4 py-2 shadow-lg backdrop-blur-md">
+                    <span className="flex items-center gap-2 text-[13px] font-medium text-slate-100">
+                        <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{
+                                backgroundColor:
+                                    Object.keys(routeData)[0] === 'driving'
+                                        ? '#f97316'
+                                        : Object.keys(routeData)[0] === 'cycling'
+                                          ? '#84cc16'
+                                          : '#22d3ee',
+                            }}
+                        />
+                        {routeProfileLabels[Object.keys(routeData)[0]] ?? Object.keys(routeData)[0]} · {Object.values(routeData)[0] && `${Math.round(Object.values(routeData)[0].duration / 60)} min`}
+                    </span>
+                </div>
+            )}
+            {hoveredRoute && (
+                <div
+                    className="pointer-events-none fixed z-[1000] rounded-full border border-white/20 bg-slate-900/95 px-4 py-2 text-[13px] font-medium text-slate-100 shadow-xl backdrop-blur-md"
+                    style={{
+                        left: hoveredRoute.x + 14,
+                        top: hoveredRoute.y + 14,
+                    }}
+                >
+                    {hoveredRoute.profile} · {Math.round(hoveredRoute.duration / 60)} min
+                </div>
+            )}
 
             {(!showLogo || !showAttribution) && (
                 <style>{`

@@ -143,7 +143,7 @@ export default function ProfilPage() {
                             className="text-sm font-medium hover:underline"
                             style={{ color: 'rgba(255, 255, 255, 0.7)' }}
                         >
-                            {'<- Retour a l\'accueil'}
+                            {'<- Retour a l\'application'}
                         </Link>
                     </div>
 

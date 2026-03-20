@@ -50,7 +50,13 @@ export async function GET(req: Request) {
 
         const data = await res.json();
 
-        const locations = (data.data || []).map((h: any) => {
+        interface AmadeusHotelGeoItem {
+            hotelId?: string;
+            iataCode?: string;
+            name?: string;
+            geoCode?: { latitude?: number; lat?: number; longitude?: number; lng?: number; lon?: number };
+        }
+        const locations = (data.data || []).map((h: AmadeusHotelGeoItem) => {
             const geo = h.geoCode || {};
             const lat = geo.latitude ?? geo.lat ?? 0;
             const lng = geo.longitude ?? geo.lng ?? geo.lon ?? 0;
@@ -64,9 +70,9 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ locations });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Erreur Search Route:", error);
-        return NextResponse.json({ error: error.message, locations: [] }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : String(error), locations: [] }, { status: 500 });
     }
 }
 

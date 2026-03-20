@@ -9,6 +9,8 @@ import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicke
 import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import { Button } from '@/src/components/Button/Button';
 import { FlightResults } from '@/src/components/FlightResults/FlightResults';
+import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
+import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 
 export interface FlightSearchModalProps {
     visible: boolean;
@@ -31,9 +33,9 @@ export interface FlightSearchModalProps {
     setBudget: (value: string) => void;
     onSearch: () => void;
     onNewSearch?: () => void;
-    onSelectOffer?: (offer: any, carrierName: string) => void;
+    onSelectOffer?: (offer: FlightOffer, carrierName: string) => void;
     isLoading: boolean;
-    apiResponse: any;
+    apiResponse: (AmadeusResponse | { error?: string; details?: string }) | null;
 }
 
 interface FlightFormErrors {
@@ -116,7 +118,8 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-2 z-[9999] flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-xl border border-white/10 bg-slate-950/95 shadow-2xl sm:inset-4 sm:max-h-[calc(100dvh-2rem)] md:inset-8 md:max-h-[calc(100dvh-4rem)] lg:inset-12"
+                        className="fixed inset-2 z-[9999] flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl sm:inset-4 sm:max-h-[calc(100dvh-2rem)] md:inset-8 md:max-h-[calc(100dvh-4rem)] lg:inset-12"
+                        style={{ backgroundColor: 'var(--background, #222222)' }}
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
@@ -141,8 +144,8 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                         </div>
 
                         {/* Content - scrollable */}
-                        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-950/95 p-4 sm:p-6">
-                            {!apiResponse?.data ? (
+                        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                            {!apiResponse || !('data' in apiResponse) || !apiResponse.data ? (
                                 /* Formulaire de recherche */
                                 <div className="mx-auto max-w-2xl space-y-4">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -188,7 +191,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
-                                            Budget maximum (€)
+                                            Budget maximum vol (€)
                                         </label>
                                         <div className="input-assistant flex h-11 w-full items-center rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-slate-100 shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                                             <span className="mr-2 text-slate-400">€</span>
@@ -196,7 +199,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                                 type="number"
                                                 value={budget}
                                                 onChange={(e) => setBudget(e.target.value)}
-                                                placeholder="0"
+                                                placeholder="Ex. 500"
                                                 className="h-full w-full flex-grow bg-transparent text-sm text-slate-100 placeholder:text-slate-500 outline-none"
                                                 aria-invalid={!!errors.budget}
                                                 aria-describedby={errors.budget ? 'flight-budget-error' : undefined}
@@ -211,7 +214,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
-                                            Date d'arrivée / Départ
+                                            Date d&apos;arrivée / Départ
                                         </label>
                                         <DateRangePicker
                                             startDate={arrivalDate}

@@ -1,5 +1,4 @@
 import { FC, useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export interface MultiSelectProps {
     options: string[];
@@ -18,7 +17,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState<string[]>(selectedValues);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setSelected(selectedValues);
@@ -26,7 +25,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -43,7 +42,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
         onChange?.(newSelected);
     };
 
-    const removeOption = (option: string, e: React.MouseEvent) => {
+    const removeOption = (option: string, e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
         const newSelected = selected.filter(item => item !== option);
         setSelected(newSelected);
@@ -65,7 +64,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
     );
 
     return (
-        <div className={`relative min-w-0 w-full ${className}`} ref={dropdownRef}>
+        <div className={`relative min-w-0 w-full ${className}`} ref={containerRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
@@ -101,7 +100,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' || e.key === ' ') {
                                                     e.preventDefault();
-                                                    removeOption(option, e as any);
+                                                    removeOption(option, e);
                                                 }
                                             }}
                                         >
@@ -122,93 +121,73 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                 {ChevronIcon}
             </button>
 
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute z-50 w-full mt-2 rounded-lg shadow-xl max-h-60 overflow-hidden"
-                        style={{ 
-                            backgroundColor: 'var(--background, #222222)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                        }}
+            {isOpen && (
+                <div
+                    className="mt-2 w-full rounded-lg shadow-xl max-h-60 overflow-hidden"
+                    style={{
+                        backgroundColor: 'var(--background, #222222)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                    }}
+                >
+                    <div
+                        className="max-h-60 overflow-y-auto multi-select-scroll"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        <div 
-                            className="max-h-60 overflow-y-auto multi-select-scroll"
-                            style={{
-                                scrollbarWidth: 'none',
-                                msOverflowStyle: 'none',
-                            }}
-                        >
-                            <style>{`
-                                .multi-select-scroll::-webkit-scrollbar {
-                                    display: none !important;
-                                }
-                            `}</style>
-                            {options.map((option, index) => {
-                                const isSelected = selected.includes(option);
-                                return (
-                                    <motion.label
-                                        key={option}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.02 }}
-                                        className="flex items-center px-4 py-3 cursor-pointer transition-colors duration-150"
-                                        style={{ 
-                                            color: 'var(--foreground, #ededed)',
-                                            backgroundColor: isSelected ? 'rgba(0, 150, 199, 0.15)' : 'transparent',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!isSelected) {
-                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isSelected) {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                            }
-                                        }}
-                                        onClick={() => toggleOption(option)}
-                                    >
-                                        <div className="relative mr-3">
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => toggleOption(option)}
-                                                className="sr-only"
-                                            />
-                                            <div
-                                                className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150"
-                                                style={{
-                                                    borderColor: isSelected ? 'var(--primary, #0096C7)' : 'rgba(255, 255, 255, 0.3)',
-                                                    backgroundColor: isSelected ? 'var(--primary, #0096C7)' : 'transparent',
-                                                }}
-                                            >
-                                                {isSelected && (
-                                                    <motion.svg
-                                                        initial={{ scale: 0 }}
-                                                        animate={{ scale: 1 }}
-                                                        className="w-3 h-3"
-                                                        fill="none"
-                                                        stroke="white"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                    </motion.svg>
-                                                )}
-                                            </div>
+                        <style>{`
+                            .multi-select-scroll::-webkit-scrollbar { display: none !important; }
+                        `}</style>
+                        {options.map((option) => {
+                            const isSelected = selected.includes(option);
+                            return (
+                                <label
+                                    key={option}
+                                    className="flex items-center px-4 py-3 cursor-pointer transition-colors duration-150"
+                                    style={{
+                                        color: 'var(--foreground, #ededed)',
+                                        backgroundColor: isSelected ? 'rgba(0, 150, 199, 0.15)' : 'transparent',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        toggleOption(option);
+                                    }}
+                                >
+                                    <div className="relative mr-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleOption(option)}
+                                            className="sr-only"
+                                            tabIndex={-1}
+                                        />
+                                        <div
+                                            className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150"
+                                            style={{
+                                                borderColor: isSelected ? 'var(--primary, #0096C7)' : 'rgba(255, 255, 255, 0.3)',
+                                                backgroundColor: isSelected ? 'var(--primary, #0096C7)' : 'transparent',
+                                            }}
+                                        >
+                                            {isSelected && (
+                                                <svg className="w-3 h-3" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={3}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
                                         </div>
-                                        <span className="text-sm flex-1">{option}</span>
-                                    </motion.label>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                    </div>
+                                    <span className="text-sm flex-1">{option}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

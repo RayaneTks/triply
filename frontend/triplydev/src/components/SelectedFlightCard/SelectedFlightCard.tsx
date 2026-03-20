@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 
 const formatTime = (dateString: string) => {
@@ -45,16 +46,18 @@ export const SelectedFlightCard: React.FC<SelectedFlightCardProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && onClick()}
             className="rounded-xl border p-4 cursor-pointer transition-all hover:border-[#0096c7] hover:bg-white/5"
             style={{
-                backgroundColor: 'rgba(40, 40, 40, 0.95)',
+                backgroundColor: 'var(--background, #222222)',
                 borderColor: 'rgba(255, 255, 255, 0.2)',
                 color: '#e5e5e5',
             }}
         >
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                    <img
+                    <Image
                         src={logoUrl}
                         alt={carrierName}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-lg object-contain bg-white/10 shrink-0"
                         onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';

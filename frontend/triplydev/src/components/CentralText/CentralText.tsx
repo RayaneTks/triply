@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Button } from '../Button/Button';
 import { Logo, logoSizeVariants } from '../Logo/Logo';
 
@@ -32,13 +33,13 @@ export const CentralText: React.FC<CentralTextProps> = ({
         <div className="text-center">
             {logoSrc ? (
                 <div className="mx-auto mb-4 flex justify-center">
-                    <img
+                    <Image
                         src={logoSrc}
                         alt={logoAlt || 'Logo'}
-                        className={`mx-auto ${logoDimensions.width}px ${logoDimensions.height}px w-auto mb-4`}
-                        style={{
-                            height: `${logoDimensions.height}px`
-                        }}
+                        width={logoDimensions.width}
+                        height={logoDimensions.height}
+                        className="mx-auto w-auto mb-4"
+                        unoptimized
                     />
                 </div>
             ) : (

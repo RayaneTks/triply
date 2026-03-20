@@ -7,8 +7,6 @@ const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
 const AMADEUS_BASE_URL = 'https://test.api.amadeus.com';
 const BACKEND_API_BASE_URL = (process.env.BACKEND_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/$/, '');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 async function getAmadeusToken() {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
@@ -30,6 +28,8 @@ export async function POST(req: Request) {
     if (!process.env.OPENAI_API_KEY) {
         return NextResponse.json({ error: 'Cle API manquante.' }, { status: 500 });
     }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     try {
         const authHeader = req.headers.get('authorization');
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         let finalLat = aiCoordinates?.lat;
         let finalLng = aiCoordinates?.lng;
         let finalName = targetLocation;
-        let finalZoom = aiZoom || 10;
+        const finalZoom = aiZoom || 10;
 
         const finalLocations: Array<{
             id: string;

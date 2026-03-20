@@ -1,5 +1,14 @@
 import { useState } from 'react';
 
+function daysBetween(start: string, end: string): number {
+    if (!start || !end) return 0;
+    const a = new Date(start);
+    const b = new Date(end);
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+    const diff = b.getTime() - a.getTime();
+    return Math.max(1, Math.ceil(diff / (24 * 60 * 60 * 1000)));
+}
+
 export interface TripConfigurationState {
     departureCity: string;
     arrivalCity: string;
@@ -34,7 +43,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [departureCity, setDepartureCity] = useState(initial?.departureCity ?? '');
     const [arrivalCity, setArrivalCity] = useState(initial?.arrivalCity ?? '');
     const [arrivalCityName, setArrivalCityName] = useState(initial?.arrivalCityName ?? '');
-    const [travelDays, setTravelDays] = useState(initial?.travelDays ?? 3);
+    const [travelDaysFallback, setTravelDaysFallback] = useState(initial?.travelDays ?? 3);
     const [travelerCount, setTravelerCount] = useState(initial?.travelerCount ?? 1);
     const [budget, setBudget] = useState(initial?.budget ?? '');
     const [activityTime, setActivityTime] = useState(initial?.activityTime ?? '');
@@ -43,6 +52,9 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [arrivalTime, setArrivalTime] = useState(initial?.arrivalTime ?? '');
     const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
+
+    const computedDays = daysBetween(outboundDate, returnDate);
+    const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
 
     return {
         departureCity,
@@ -60,7 +72,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
-        setTravelDays,
+        setTravelDays: setTravelDaysFallback,
         setTravelerCount,
         setBudget,
         setActivityTime,

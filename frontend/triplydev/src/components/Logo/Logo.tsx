@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import logoLight from '../../assets/Logo-light.png';
 import logoLightColorless from '../../assets/Logo-light-colorless.png';
 import logoDark from '../../assets/Logo-dark.png';
@@ -33,14 +34,7 @@ export const Logo: React.FC<LogoProps> = ({
                                               size = 'default',
                                               tone = 'light',
                                           }) => {
-    // Utiliser le contexte pour détecter la dernière slide
-    let slideContext = { isLastSlide: false };
-    try {
-        slideContext = useSlideContext();
-    } catch (e) {
-        // Le contexte n'est pas disponible (pas dans une slide), utiliser la valeur par défaut
-    }
-    
+    const slideContext = useSlideContext();
     // Si c'est la dernière slide, utiliser le logo light-colorless
     const finalTone = slideContext.isLastSlide ? 'light-colorless' : tone;
     
@@ -50,5 +44,5 @@ export const Logo: React.FC<LogoProps> = ({
     const logoSrc = logoToneVariants[finalTone];
 
     const src = typeof logoSrc === 'string' ? logoSrc : logoSrc.src;
-    return <img src={src} width={finalWidth} height={finalHeight} alt={alt} />;
+    return <Image src={src} width={finalWidth} height={finalHeight} alt={alt} />;
 };

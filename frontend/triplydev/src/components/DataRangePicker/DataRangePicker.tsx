@@ -10,19 +10,6 @@ export interface DateRangePickerProps {
     containerStyle?: React.CSSProperties;
 }
 
-const CalendarIcon = (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-    >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-);
-
 const getDaysInMonth = (year: number, month: number): number => {
     return new Date(year, month + 1, 0).getDate();
 };
@@ -243,7 +230,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                 transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
                 className="fixed z-[9999] rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl"
                 style={{
-                    backgroundColor: 'rgba(34, 34, 34, 0.98)',
+                    backgroundColor: 'var(--background, #222222)',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
                     top: `${position.top}px`,
