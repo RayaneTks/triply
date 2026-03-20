@@ -4,13 +4,18 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
-import { WorldMap } from '@/src/components/Map/Map';
+import { WorldMap, type RouteMapSegment } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
 import { TuPreferes } from "@/src/components/TuPreferes/TuPreferes";
 import Assistant from "@/src/components/Assistant/Assistant";
-import { TripCreationWizard, getEstimatedDurationHours } from '@/src/features/trip-creation/TripCreationWizard';
+import {
+    TripCreationWizard,
+    getEstimatedDurationHours,
+    type ActivityRouteProfile,
+    type DayActivityPoi,
+} from '@/src/features/trip-creation/TripCreationWizard';
 import { useTripConfiguration } from '@/src/features/trip-creation/useTripConfiguration';
 import { generateFlightRequest } from '@/utils/amadeus';
 const FlightSearchModal = dynamic(
@@ -36,6 +41,98 @@ import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import type { FlightRequestPayload } from '@/utils/amadeus';
 import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
+
+/** Segment / carte en alerte dépassement temps jour */
+const ACTIVITY_TIME_ALERT_COLOR = '#ef4444';
+
+/** Couleurs par activité sur la barre de temps (contraste sur fond sombre) */
+const ACTIVITY_TIMELINE_COLORS = [
+    '#22d3ee',
+    '#a78bfa',
+    '#fbbf24',
+    '#34d399',
+    '#fb7185',
+    '#60a5fa',
+    '#f472b6',
+    '#2dd4bf',
+    '#f97316',
+    '#4ade80',
+];
+
+function getDayActivityLabel(p: {
+    properties?: Record<string, unknown> | null;
+    layer?: { id?: string };
+}): string {
+    const n = p.properties?.name ?? p.properties?.name_en ?? p.layer?.id ?? 'Lieu';
+    return String(n);
+}
+
+function poiStableKeyForLeg(p: DayActivityPoi) {
+    return p._dragId ?? `${p.lngLat.lng.toFixed(6)},${p.lngLat.lat.toFixed(6)}`;
+}
+
+function legPairKey(from: DayActivityPoi, to: DayActivityPoi) {
+    return `${poiStableKeyForLeg(from)}→${poiStableKeyForLeg(to)}`;
+}
+
+/** Recalcule les modes par tronçon quand la liste d’activités change (ajout / suppression / réordonnancement). */
+function buildLegTransportModesForActivities(
+    ordered: DayActivityPoi[],
+    prevOrdered: DayActivityPoi[] | undefined,
+    prevModes: ActivityRouteProfile[] | undefined,
+    defaultForNewLeg: ActivityRouteProfile
+): ActivityRouteProfile[] {
+    const n = ordered.length;
+    if (n < 2) return [];
+    const oldPairToMode = new Map<string, ActivityRouteProfile>();
+    if (prevOrdered && prevOrdered.length >= 2) {
+        for (let i = 0; i < prevOrdered.length - 1; i++) {
+            oldPairToMode.set(
+                legPairKey(prevOrdered[i], prevOrdered[i + 1]),
+                prevModes?.[i] ?? defaultForNewLeg
+            );
+        }
+    }
+    const out: ActivityRouteProfile[] = [];
+    for (let i = 0; i < n - 1; i++) {
+        out.push(oldPairToMode.get(legPairKey(ordered[i], ordered[i + 1])) ?? defaultForNewLeg);
+    }
+    return out;
+}
+
+function activityListSignature(list: DayActivityPoi[]) {
+    return list.map(poiStableKeyForLeg).join('|');
+}
+
+/** Assemble la géométrie d’un leg Mapbox à partir des steps (un LineString par tronçon entre waypoints). */
+function geometryFromLegSteps(leg: { steps?: Array<{ geometry?: GeoJSON.Geometry }> }): GeoJSON.LineString | null {
+    const steps = leg.steps;
+    if (!Array.isArray(steps) || steps.length === 0) return null;
+    const coordinates: number[][] = [];
+    for (const step of steps) {
+        const g = step.geometry;
+        if (
+            g &&
+            typeof g === 'object' &&
+            'type' in g &&
+            g.type === 'LineString' &&
+            'coordinates' in g &&
+            Array.isArray((g as GeoJSON.LineString).coordinates)
+        ) {
+            for (const c of (g as GeoJSON.LineString).coordinates) {
+                const pt = c as number[];
+                if (coordinates.length === 0) {
+                    coordinates.push(pt);
+                } else {
+                    const last = coordinates[coordinates.length - 1];
+                    if (last[0] !== pt[0] || last[1] !== pt[1]) coordinates.push(pt);
+                }
+            }
+        }
+    }
+    if (coordinates.length < 2) return null;
+    return { type: 'LineString', coordinates };
+}
 
 function LoginWithMapBackground({
                                     mapboxToken,
@@ -136,11 +233,29 @@ export default function Home() {
 
     // Etats Mapbox
     const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
-    type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number }; _dragId?: string };
     const [dayActivitiesByDay, setDayActivitiesByDay] = useState<Record<number, DayActivityPoi[]>>({});
+    const [legTransportByDay, setLegTransportByDay] = useState<Record<number, ActivityRouteProfile[]>>({});
+    const dayActivitiesByDayForMapRef = useRef(dayActivitiesByDay);
+    const legTransportByDayForMapRef = useRef(legTransportByDay);
+    dayActivitiesByDayForMapRef.current = dayActivitiesByDay;
+    legTransportByDayForMapRef.current = legTransportByDay;
+    const prevActivitiesByDayRef = useRef<Record<number, DayActivityPoi[]>>({});
+    const selectedRouteTypeRef = useRef<'driving' | 'walking' | 'cycling' | null>(null);
     const [selectedDay, setSelectedDay] = useState(1);
-    const [dayRoutes, setDayRoutes] = useState<Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>>({});
+    const [dayRoutes, setDayRoutes] = useState<
+        Partial<
+            Record<
+                'driving' | 'walking' | 'cycling',
+                {
+                    geometry: GeoJSON.LineString;
+                    duration: number;
+                    legs: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>;
+                }
+            >
+        >
+    >({});
     const [selectedRouteType, setSelectedRouteType] = useState<'driving' | 'walking' | 'cycling' | null>(null);
+    selectedRouteTypeRef.current = selectedRouteType;
     const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/standard');
     const [mapConfig, setMapConfig] = useState<{ lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' }>({ lightPreset: 'day' });
     const [mapPitch, setMapPitch] = useState<number>(0);
@@ -149,6 +264,8 @@ export default function Home() {
     const [hotelFilterMenuOpen, setHotelFilterMenuOpen] = useState(false);
     const hotelFilterMenuRef = useRef<HTMLDivElement>(null);
     const [activityHoursByDay, setActivityHoursByDay] = useState<Record<number, number>>({});
+    /** `_dragId` de la dernière activité ajoutée pour ce jour (pour alerte dépassement) */
+    const [lastAddedActivityDragIdByDay, setLastAddedActivityDragIdByDay] = useState<Record<number, string | undefined>>({});
     const [activityHoursEditOpen, setActivityHoursEditOpen] = useState(false);
     const activityHoursEditRef = useRef<HTMLDivElement>(null);
     const [hotelStarsFilter, setHotelStarsFilter] = useState<number[] | null>(null); // null = tous, [2,3,4] = filtré
@@ -455,6 +572,20 @@ export default function Home() {
     const travelDays = tripConfig.travelDays || 1;
     const dayActivities = dayActivitiesByDay[selectedDay] ?? [];
 
+    /** Dernière activité ajoutée en alerte si le total du jour dépasse le max */
+    const activityTimeAlertDragId = useMemo(() => {
+        const list = dayActivitiesByDay[selectedDay] ?? [];
+        const maxH =
+            activityHoursByDay[selectedDay] ??
+            Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0);
+        if (maxH <= 0) return null;
+        const currentH = list.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0);
+        if (currentH <= maxH) return null;
+        const lid = lastAddedActivityDragIdByDay[selectedDay];
+        if (!lid || !list.some((p) => p._dragId === lid)) return null;
+        return lid;
+    }, [selectedDay, dayActivitiesByDay, activityHoursByDay, tripConfig.activityTime, lastAddedActivityDragIdByDay]);
+
     useEffect(() => {
         if (selectedDay > travelDays) setSelectedDay(Math.max(1, travelDays));
     }, [travelDays, selectedDay]);
@@ -473,20 +604,82 @@ export default function Home() {
             );
             if (exists) return prev;
             const _dragId = `poi-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            setLastAddedActivityDragIdByDay((m) => ({ ...m, [selectedDay]: _dragId }));
             return { ...prev, [selectedDay]: [...prevDay, { ...feature, lngLat, _dragId }] };
         });
     };
 
     const handleRemoveDayActivity = (index: number) => {
-        setDayActivitiesByDay((prev) => ({
-            ...prev,
-            [selectedDay]: (prev[selectedDay] ?? []).filter((_, i) => i !== index),
-        }));
+        setDayActivitiesByDay((prev) => {
+            const list = prev[selectedDay] ?? [];
+            const removed = list[index];
+            if (removed?._dragId) {
+                setLastAddedActivityDragIdByDay((m) =>
+                    m[selectedDay] === removed._dragId ? { ...m, [selectedDay]: undefined } : m
+                );
+            }
+            return {
+                ...prev,
+                [selectedDay]: list.filter((_, i) => i !== index),
+            };
+        });
     };
 
     const handleReorderDayActivities = (reordered: DayActivityPoi[]) => {
         setDayActivitiesByDay((prev) => ({ ...prev, [selectedDay]: reordered }));
     };
+
+    const handleLegTransportChange = useCallback((legIndex: number, mode: ActivityRouteProfile) => {
+        setLegTransportByDay((prev) => {
+            const list = [...(prev[selectedDay] ?? [])];
+            if (legIndex < 0 || legIndex >= list.length) return prev;
+            list[legIndex] = mode;
+            return { ...prev, [selectedDay]: list };
+        });
+    }, [selectedDay]);
+
+    /** Modes de transport par tronçon : mis à jour quand la liste ou l’ordre des activités change. */
+    useEffect(() => {
+        const prevSnap = prevActivitiesByDayRef.current;
+        const dayKeys = Object.keys(dayActivitiesByDay);
+        const prevDayKeys = Object.keys(prevSnap);
+        let sameStructure =
+            dayKeys.length === prevDayKeys.length &&
+            dayKeys.every((k) => prevDayKeys.includes(k));
+        if (sameStructure) {
+            for (const dayStr of dayKeys) {
+                const day = Number(dayStr);
+                const ordered = dayActivitiesByDay[day] ?? [];
+                const prevList = prevSnap[day] ?? [];
+                if (activityListSignature(ordered) !== activityListSignature(prevList)) {
+                    sameStructure = false;
+                    break;
+                }
+            }
+        }
+        if (sameStructure) return;
+
+        setLegTransportByDay((prevLegModes) => {
+            const next: Record<number, ActivityRouteProfile[]> = {};
+            for (const dayStr of Object.keys(dayActivitiesByDay)) {
+                const day = Number(dayStr);
+                const ordered = dayActivitiesByDay[day] ?? [];
+                next[day] = buildLegTransportModesForActivities(
+                    ordered,
+                    prevSnap[day],
+                    prevLegModes[day],
+                    selectedRouteTypeRef.current ?? 'driving'
+                );
+            }
+            return next;
+        });
+        const snap: Record<number, DayActivityPoi[]> = {};
+        for (const dayStr of Object.keys(dayActivitiesByDay)) {
+            const day = Number(dayStr);
+            snap[day] = [...(dayActivitiesByDay[day] ?? [])];
+        }
+        prevActivitiesByDayRef.current = snap;
+    }, [dayActivitiesByDay]);
 
     // Clé stable pour le useEffect des routes (évite changement de taille du tableau de deps)
     const routeDepsKey = useMemo(() => {
@@ -506,25 +699,126 @@ export default function Home() {
         let cancelled = false;
         Promise.all(
             profiles.map((profile) =>
-                fetch(`https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
+                fetch(
+                    `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`
+                )
                     .then((res) => res.json())
                     .then((data) => {
-                        const geom = data.routes?.[0]?.geometry;
-                        const duration = data.routes?.[0]?.duration ?? 0;
-                        return { profile, geometry: geom?.type === 'LineString' ? geom : null, duration };
+                        const route = data.routes?.[0];
+                        const geom = route?.geometry;
+                        const duration = route?.duration ?? 0;
+                        const rawLegs = route?.legs;
+                        const legs = Array.isArray(rawLegs)
+                            ? rawLegs.map((leg: { duration?: number; distance?: number; steps?: Array<{ geometry?: GeoJSON.Geometry }> }) => {
+                                  const legGeom = geometryFromLegSteps(leg);
+                                  return {
+                                      duration: typeof leg?.duration === 'number' ? leg.duration : 0,
+                                      distance: typeof leg?.distance === 'number' ? leg.distance : 0,
+                                      ...(legGeom ? { geometry: legGeom } : {}),
+                                  };
+                              })
+                            : [];
+                        return { profile, geometry: geom?.type === 'LineString' ? geom : null, duration, legs };
                     })
-                    .catch(() => ({ profile, geometry: null, duration: 0 }))
+                    .catch(() => ({
+                        profile,
+                        geometry: null,
+                        duration: 0,
+                        legs: [] as Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>,
+                    }))
             )
         ).then((results) => {
             if (cancelled) return;
-            const next: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>> = {};
-            results.forEach(({ profile, geometry, duration }) => {
-                if (geometry) next[profile] = { geometry, duration };
+            const next: Partial<
+                Record<
+                    'driving' | 'walking' | 'cycling',
+                    {
+                        geometry: GeoJSON.LineString;
+                        duration: number;
+                        legs: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>;
+                    }
+                >
+            > = {};
+            results.forEach(({ profile, geometry, duration, legs }) => {
+                if (geometry) next[profile] = { geometry, duration, legs };
             });
             setDayRoutes(next);
         });
         return () => { cancelled = true; };
     }, [routeDepsKey, MAPBOX_TOKEN]);
+
+    /** Signature des POI du jour (évite des refetch inutiles quand un autre jour change). */
+    const selectedDayActivityCoordsKey = useMemo(() => {
+        const list = dayActivitiesByDay[selectedDay] ?? [];
+        if (list.length < 2) return '';
+        return list.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';');
+    }, [dayActivitiesByDay, selectedDay]);
+
+    const selectedDayLegModesKey = useMemo(
+        () => JSON.stringify(legTransportByDay[selectedDay] ?? []),
+        [legTransportByDay, selectedDay]
+    );
+
+    /**
+     * Tracé carte : une requête Directions par tronçon (A→B) avec le profil choisi dans le wizard.
+     * Les legs de l’itinéraire multi-waypoints ne fournissent pas toujours de géométrie exploitable sans steps/polyline.
+     */
+    const [mapDisplaySegments, setMapDisplaySegments] = useState<RouteMapSegment[]>([]);
+
+    useEffect(() => {
+        if (!MAPBOX_TOKEN || !selectedDayActivityCoordsKey) {
+            setMapDisplaySegments([]);
+            return;
+        }
+        const activities = dayActivitiesByDayForMapRef.current[selectedDay] ?? [];
+        const modes = legTransportByDayForMapRef.current[selectedDay] ?? [];
+        if (activities.length < 2) {
+            setMapDisplaySegments([]);
+            return;
+        }
+
+        let cancelled = false;
+        const tasks = activities.slice(0, -1).map((_, i) => {
+            const a = activities[i].lngLat;
+            const b = activities[i + 1].lngLat;
+            const profile = (modes[i] ?? 'driving') as ActivityRouteProfile;
+            const coordStr = `${a.lng},${a.lat};${b.lng},${b.lat}`;
+            const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordStr}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+            return fetch(url)
+                .then((res) => res.json())
+                .then((data) => {
+                    if (cancelled) return null;
+                    const route = data.routes?.[0];
+                    const geom = route?.geometry;
+                    const duration = typeof route?.duration === 'number' ? route.duration : 0;
+                    if (
+                        geom &&
+                        geom.type === 'LineString' &&
+                        Array.isArray(geom.coordinates) &&
+                        geom.coordinates.length >= 2
+                    ) {
+                        return {
+                            id: String(i),
+                            profile,
+                            geometry: geom as GeoJSON.LineString,
+                            durationSec: duration,
+                        } satisfies RouteMapSegment;
+                    }
+                    return null;
+                })
+                .catch(() => null);
+        });
+
+        void Promise.all(tasks).then((results) => {
+            if (cancelled) return;
+            const next = results.filter((r): r is RouteMapSegment => r != null);
+            setMapDisplaySegments(next);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [MAPBOX_TOKEN, selectedDay, selectedDayActivityCoordsKey, selectedDayLegModesKey]);
 
     const handleLoginClick = () => setCurrentView('login');
     const handleLogoutClick = async () => {
@@ -591,10 +885,13 @@ export default function Home() {
                                 onPoiClick={handlePoiClick}
                                 locations={mapLocations}
                                 onAirportSelect={handleAirportSelect}
+                                routeSegments={mapDisplaySegments}
                                 routeData={
-                                    selectedRouteType && dayRoutes[selectedRouteType]
-                                        ? { [selectedRouteType]: dayRoutes[selectedRouteType]! }
-                                        : {}
+                                    mapDisplaySegments.length > 0
+                                        ? {}
+                                        : selectedRouteType && dayRoutes[selectedRouteType]
+                                          ? { [selectedRouteType]: dayRoutes[selectedRouteType]! }
+                                          : {}
                                 }
                             />
                             <FlightSearchModal
@@ -664,21 +961,37 @@ export default function Home() {
                             />
 
                             {/* Barre de progression Activité / jour - haut droite */}
-                            {isConfigPanelOpen && (
+                            {isConfigPanelOpen && (() => {
+                                const maxH =
+                                    activityHoursByDay[selectedDay] ??
+                                    Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0);
+                                const activitySegments = dayActivities.map((p, i) => {
+                                    const key = p._dragId ?? `${p.lngLat.lng}-${p.lngLat.lat}-${i}`;
+                                    const isAlert = activityTimeAlertDragId != null && key === activityTimeAlertDragId;
+                                    return {
+                                        key,
+                                        label: getDayActivityLabel(p),
+                                        hours: getEstimatedDurationHours(p.layer?.id),
+                                        color: isAlert
+                                            ? ACTIVITY_TIME_ALERT_COLOR
+                                            : ACTIVITY_TIMELINE_COLORS[i % ACTIVITY_TIMELINE_COLORS.length],
+                                        isAlert,
+                                    };
+                                });
+                                const currentH = activitySegments.reduce((acc, s) => acc + s.hours, 0);
+                                return (
                                 <div
                                     ref={activityHoursEditRef}
-                                    className="absolute top-4 right-4 z-20 flex flex-col gap-1 rounded-xl border border-white/15 px-4 py-2.5 shadow-lg backdrop-blur-sm"
-                                    style={{ minWidth: 180, backgroundColor: 'var(--background, #222222)' }}
+                                    className="absolute top-4 right-4 z-20 flex w-[min(92vw,380px)] min-w-[280px] flex-col gap-2 rounded-xl border border-white/15 px-4 py-3 shadow-lg backdrop-blur-sm sm:min-w-[320px]"
+                                    style={{ backgroundColor: 'var(--background, #222222)' }}
                                 >
                                     <div className="flex items-center justify-between gap-2 text-[12px]">
                                         <span className="font-medium text-slate-300">Activités du jour</span>
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex shrink-0 items-center gap-1">
                                             <span className="tabular-nums text-cyan-400">
-                                                {dayActivities.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0).toFixed(1)}h
+                                                {currentH.toFixed(1)}h
                                                 <span className="text-slate-500"> / </span>
-                                                <span className="text-slate-200">
-                                                    {(activityHoursByDay[selectedDay] ?? Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0)) || 0}h
-                                                </span>
+                                                <span className="text-slate-200">{maxH || 0}h</span>
                                             </span>
                                             <button
                                                 type="button"
@@ -694,8 +1007,8 @@ export default function Home() {
                                         </div>
                                     </div>
                                     {activityHoursEditOpen && (
-                                        <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-                                            <label className="text-[11px] text-slate-500 shrink-0">Max jour {selectedDay} :</label>
+                                        <div className="flex items-center gap-2 border-t border-white/10 pt-2">
+                                            <label className="shrink-0 text-[11px] text-slate-500">Max jour {selectedDay} :</label>
                                             <input
                                                 type="number"
                                                 min={0}
@@ -723,24 +1036,76 @@ export default function Home() {
                                             <span className="text-[11px] text-slate-500">h</span>
                                         </div>
                                     )}
-                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                                        <div
-                                            className="h-full rounded-full bg-cyan-500 transition-all duration-300"
-                                            style={{
-                                                width: (() => {
-                                                    const maxH = activityHoursByDay[selectedDay] ?? (parseFloat(String(tripConfig.activityTime || 0)) || 0);
-                                                    const currentH = dayActivities.reduce(
-                                                        (acc, p) => acc + getEstimatedDurationHours(p.layer?.id),
-                                                        0
-                                                    );
-                                                    if (maxH <= 0) return '0%';
-                                                    return `${Math.min(100, (currentH / maxH) * 100)}%`;
-                                                })(),
-                                            }}
-                                        />
+                                    <div
+                                        className="flex h-3.5 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/5"
+                                        role="img"
+                                        aria-label={`Temps planifié ${currentH.toFixed(1)} heures sur ${maxH || 0} heures max`}
+                                    >
+                                        {maxH > 0 && activitySegments.length > 0 ? (
+                                            activitySegments.map((seg) => {
+                                                const pct = Math.max(0, (seg.hours / maxH) * 100);
+                                                return (
+                                                    <div
+                                                        key={seg.key}
+                                                        title={
+                                                            seg.isAlert
+                                                                ? `${seg.label} — ${seg.hours.toFixed(1)} h (dépasse le temps max du jour)`
+                                                                : `${seg.label} — ${seg.hours.toFixed(1)} h`
+                                                        }
+                                                        className={`h-full shrink-0 transition-all duration-300 first:rounded-l-full last:rounded-r-full ${seg.isAlert ? 'animate-pulse ring-2 ring-red-400/90 ring-inset' : ''}`}
+                                                        style={{
+                                                            width: `${pct}%`,
+                                                            minWidth: seg.hours > 0 ? 4 : 0,
+                                                            backgroundColor: seg.color,
+                                                            boxShadow: seg.isAlert
+                                                                ? 'inset 0 0 12px rgba(254,202,202,0.35)'
+                                                                : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+                                                        }}
+                                                    />
+                                                );
+                                            })
+                                        ) : null}
                                     </div>
+                                    {activitySegments.some((s) => s.isAlert) && (
+                                        <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-400" role="alert">
+                                            <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-400" aria-hidden />
+                                            Dernière activité ajoutée : dépassement du temps max du jour
+                                        </p>
+                                    )}
+                                    {activitySegments.length > 0 && (
+                                        <div className="flex max-h-24 flex-wrap gap-x-3 gap-y-1.5 overflow-y-auto text-[10px] leading-tight">
+                                            {activitySegments.map((seg) => (
+                                                <span
+                                                    key={seg.key}
+                                                    className={`flex max-w-[11rem] items-center gap-1.5 ${seg.isAlert ? 'text-red-300' : 'text-slate-400'}`}
+                                                    title={
+                                                        seg.isAlert
+                                                            ? `${seg.label} — ${seg.hours.toFixed(1)} h (alerte)`
+                                                            : `${seg.label} — ${seg.hours.toFixed(1)} h`
+                                                    }
+                                                >
+                                                    <span
+                                                        className={`h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ${seg.isAlert ? 'ring-red-400/60' : 'ring-white/20'}`}
+                                                        style={{ backgroundColor: seg.color }}
+                                                        aria-hidden
+                                                    />
+                                                    <span
+                                                        className={`min-w-0 truncate font-medium ${seg.isAlert ? 'text-red-200' : 'text-slate-300'}`}
+                                                    >
+                                                        {seg.label}
+                                                    </span>
+                                                    <span
+                                                        className={`shrink-0 tabular-nums ${seg.isAlert ? 'text-red-400' : 'text-slate-500'}`}
+                                                    >
+                                                        {seg.hours.toFixed(1)}h
+                                                    </span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Bouton ouvrir config - bas gauche, uniquement quand panneau ferme */}
                             {!isConfigPanelOpen && (
@@ -944,11 +1309,14 @@ export default function Home() {
                                             onSelectedDayChange={setSelectedDay}
                                             travelDays={travelDays}
                                             dayActivities={dayActivities}
+                                            activityTimeAlertDragId={activityTimeAlertDragId}
                                             onRemoveDayActivity={handleRemoveDayActivity}
                                             onReorderDayActivities={handleReorderDayActivities}
                                             dayRoutes={dayRoutes}
                                             selectedRouteType={selectedRouteType}
                                             onSelectRouteType={setSelectedRouteType}
+                                            legTransportModes={legTransportByDay[selectedDay] ?? []}
+                                            onLegTransportChange={handleLegTransportChange}
                                             onComplete={handleGenerateTrip}
                                         />
                                     </div>

@@ -68,6 +68,15 @@ interface Location {
     zoom?: number;
 }
 
+/** Tronçon d’itinéraire affiché sur la carte (mode + géométrie d’un leg) */
+export type RouteMapSegment = {
+    id: string;
+    profile: 'driving' | 'walking' | 'cycling';
+    geometry: GeoJSON.LineString;
+    /** Durée du tronçon en secondes */
+    durationSec: number;
+};
+
 export interface MapProps {
     /** Token d'accès API (requis) */
     accessToken: string;
@@ -119,8 +128,19 @@ export interface MapProps {
     showLogo?: boolean;
 
     locations?: Location[];
-    /** Routes par profil (voiture, vélo, à pied) avec géométrie et durée en secondes */
-    routeData?: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>;
+    /** Routes par profil (voiture, vélo, à pied) avec géométrie et durée en secondes ; legs = tronçons entre waypoints */
+    routeData?: Partial<
+        Record<
+            'driving' | 'walking' | 'cycling',
+            {
+                geometry: GeoJSON.LineString;
+                duration: number;
+                legs?: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>;
+            }
+        >
+    >;
+    /** Tronçons successifs avec un mode chacun (prioritaire sur routeData pour l’affichage) */
+    routeSegments?: RouteMapSegment[];
 }
 
 export const WorldMap: React.FC<MapProps> = ({
@@ -150,6 +170,7 @@ export const WorldMap: React.FC<MapProps> = ({
                                                  showLogo = false,
                                                  locations = [],
                                                  routeData = {},
+                                                 routeSegments = [],
                                              }: MapProps) => {
     const mapRef = useRef<MapRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -430,6 +451,8 @@ export const WorldMap: React.FC<MapProps> = ({
         []
     );
 
+    const hasSegmentRoutes = routeSegments.length > 0;
+
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
         try {
@@ -438,9 +461,30 @@ export const WorldMap: React.FC<MapProps> = ({
             const screenX = rect ? rect.left + e.point.x : e.point.x;
             const screenY = rect ? rect.top + e.point.y : e.point.y;
 
-            // Check survol route (priorité haute pour le tooltip)
+            // Survol tronçon multi-modes (priorité)
+            const segLayerId = features.find((f) => f.layer?.id?.startsWith('route-layer-seg-'))?.layer?.id;
+            if (segLayerId && hasSegmentRoutes) {
+                const m = /^route-layer-seg-(\d+)$/.exec(segLayerId);
+                if (m) {
+                    const idx = parseInt(m[1], 10);
+                    const seg = routeSegments[idx];
+                    if (seg) {
+                        setHoveredRoute({
+                            profile: routeProfileLabels[seg.profile] ?? seg.profile,
+                            duration: seg.durationSec,
+                            x: screenX,
+                            y: screenY,
+                        });
+                        setCursor('pointer');
+                        onPoiLeave?.();
+                        return;
+                    }
+                }
+            }
+
+            // Survol route « un seul profil » (routeData)
             const routeLayerId = features.find((f) =>
-                f.layer?.id?.startsWith('route-layer-')
+                f.layer?.id?.startsWith('route-layer-') && !f.layer?.id?.startsWith('route-layer-seg-')
             )?.layer?.id;
             if (routeLayerId && routeData) {
                 const profile = routeLayerId.replace('route-layer-', '') as 'driving' | 'walking' | 'cycling';
@@ -495,7 +539,7 @@ export const WorldMap: React.FC<MapProps> = ({
             setHoveredRoute(null);
             onPoiLeave?.();
         }
-    }, [onPoiHover, onPoiLeave, routeData, routeProfileLabels]);
+    }, [onPoiHover, onPoiLeave, routeData, routeProfileLabels, routeSegments, hasSegmentRoutes]);
 
     const locationsGeoJson = React.useMemo(() => {
         if (!locations || locations.length === 0) return null;
@@ -560,7 +604,9 @@ export const WorldMap: React.FC<MapProps> = ({
                 mapboxAccessToken={accessToken}
                 attributionControl={showAttribution}
                 interactiveLayerIds={
-                    onPoiClick || Object.keys(routeData || {}).length > 0
+                    onPoiClick ||
+                    Object.keys(routeData || {}).length > 0 ||
+                    (routeSegments && routeSegments.length > 0)
                         ? undefined
                         : ['airports-layer']
                 }
@@ -628,46 +674,119 @@ export const WorldMap: React.FC<MapProps> = ({
                         />
                     </Source>
                 )}
-                {isMapLoaded && isStyleReady && routeData && Object.entries(routeData).map(([profile, { geometry }]) => {
-                    const colors: Record<string, string> = {
-                        driving: '#f97316',
-                        walking: '#22d3ee',
-                        cycling: '#84cc16',
-                    };
-                    return (
-                        <Source
-                            key={`route-${profile}`}
-                            id={`route-source-${profile}`}
-                            type="geojson"
-                            data={{
-                                type: 'Feature',
-                                geometry,
-                                properties: {},
-                            }}
-                        >
-                            <Layer
-                                id={`route-layer-${profile}`}
-                                type="line"
-                                layout={{
-                                    'line-join': 'round',
-                                    'line-cap': 'round',
+                {isMapLoaded &&
+                    isStyleReady &&
+                    hasSegmentRoutes &&
+                    routeSegments.map((seg, idx) => {
+                        const colors: Record<string, string> = {
+                            driving: '#f97316',
+                            walking: '#22d3ee',
+                            cycling: '#84cc16',
+                        };
+                        return (
+                            <Source
+                                key={`route-seg-${seg.id}-${idx}`}
+                                id={`route-source-seg-${idx}`}
+                                type="geojson"
+                                data={{
+                                    type: 'Feature',
+                                    geometry: seg.geometry,
+                                    properties: { profile: seg.profile, durationSec: seg.durationSec },
                                 }}
-                                paint={{
-                                    'line-color': colors[profile] ?? '#22d3ee',
-                                    'line-width': 5,
-                                    'line-opacity': 0.85,
+                            >
+                                <Layer
+                                    id={`route-layer-seg-${idx}`}
+                                    type="line"
+                                    layout={{
+                                        'line-join': 'round',
+                                        'line-cap': 'round',
+                                    }}
+                                    paint={{
+                                        'line-color': colors[seg.profile] ?? '#22d3ee',
+                                        'line-width': 5,
+                                        'line-opacity': 0.88,
+                                    }}
+                                />
+                            </Source>
+                        );
+                    })}
+                {isMapLoaded &&
+                    isStyleReady &&
+                    !hasSegmentRoutes &&
+                    routeData &&
+                    Object.entries(routeData).map(([profile, { geometry }]) => {
+                        const colors: Record<string, string> = {
+                            driving: '#f97316',
+                            walking: '#22d3ee',
+                            cycling: '#84cc16',
+                        };
+                        return (
+                            <Source
+                                key={`route-${profile}`}
+                                id={`route-source-${profile}`}
+                                type="geojson"
+                                data={{
+                                    type: 'Feature',
+                                    geometry,
+                                    properties: {},
                                 }}
-                            />
-                        </Source>
-                    );
-                })}
+                            >
+                                <Layer
+                                    id={`route-layer-${profile}`}
+                                    type="line"
+                                    layout={{
+                                        'line-join': 'round',
+                                        'line-cap': 'round',
+                                    }}
+                                    paint={{
+                                        'line-color': colors[profile] ?? '#22d3ee',
+                                        'line-width': 5,
+                                        'line-opacity': 0.85,
+                                    }}
+                                />
+                            </Source>
+                        );
+                    })}
             </Map>
 
-            {routeData && Object.keys(routeData).length > 0 && (
+            {hasSegmentRoutes && (
+                <div className="absolute bottom-4 left-4 z-10 max-w-[min(100vw-2rem,420px)] rounded-2xl border border-white/15 bg-slate-900/95 px-4 py-2.5 shadow-lg backdrop-blur-md">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Itinéraire du jour</div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium text-slate-100">
+                        {routeSegments.map((s, i) => {
+                            const colors: Record<string, string> = {
+                                driving: '#f97316',
+                                walking: '#22d3ee',
+                                cycling: '#84cc16',
+                            };
+                            return (
+                                <span key={`${s.id}-${i}`} className="inline-flex items-center gap-1.5">
+                                    <span
+                                        className="h-2 w-2 shrink-0 rounded-full"
+                                        style={{ backgroundColor: colors[s.profile] ?? '#22d3ee' }}
+                                    />
+                                    {routeProfileLabels[s.profile]}
+                                    <span className="tabular-nums text-slate-300">
+                                        {s.durationSec > 0 ? `${Math.round(s.durationSec / 60)} min` : '—'}
+                                    </span>
+                                    {i < routeSegments.length - 1 ? <span className="text-slate-500">·</span> : null}
+                                </span>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-1 text-[12px] text-slate-400">
+                        Total{' '}
+                        <span className="font-medium text-slate-200">
+                            {Math.round(routeSegments.reduce((acc, s) => acc + s.durationSec, 0) / 60)} min
+                        </span>
+                    </div>
+                </div>
+            )}
+            {!hasSegmentRoutes && routeData && Object.keys(routeData).length > 0 && (
                 <div className="absolute bottom-4 left-4 z-10 rounded-full border border-white/15 bg-slate-900/95 px-4 py-2 shadow-lg backdrop-blur-md">
                     <span className="flex items-center gap-2 text-[13px] font-medium text-slate-100">
                         <span
-                            className="h-2 w-2 rounded-full shrink-0"
+                            className="h-2 w-2 shrink-0 rounded-full"
                             style={{
                                 backgroundColor:
                                     Object.keys(routeData)[0] === 'driving'
