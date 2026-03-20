@@ -231,7 +231,7 @@ networks:
   # Attach the service to the 'laravel' network.
   # -----------------------------------------------------------
   # This custom network allows all services within it to communicate using their service names as hostnames.
-  # For example, 'php-fpm' can connect to 'mysql' by using 'mysql' as the hostname.
+  # For example, 'php-fpm' can connect to 'pgsql' by using 'tri-postgres' as the hostname.
   # -----------------------------------------------------------
   triply-development:
 
