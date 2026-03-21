@@ -6,6 +6,8 @@ export interface MultiSelectProps {
     onChange?: (selected: string[]) => void;
     placeholder?: string;
     className?: string;
+    /** Même look que les inputs du formulaire voyage (bordure, fond, hauteur) */
+    variant?: 'default' | 'tripForm';
 }
 
 export const MultiSelect: FC<MultiSelectProps> = ({
@@ -14,6 +16,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
     onChange,
     placeholder = 'Sélectionner...',
     className = '',
+    variant = 'default',
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState<string[]>(selectedValues);
@@ -52,32 +55,49 @@ export const MultiSelect: FC<MultiSelectProps> = ({
     const ChevronIcon = (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            className={`h-5 w-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            className={`shrink-0 transition-transform duration-200 ${variant === 'tripForm' ? 'h-4 w-4 text-slate-400' : 'h-5 w-5'} ${isOpen ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
-            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            style={variant === 'default' ? { color: 'rgba(255, 255, 255, 0.7)' } : undefined}
         >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
     );
+
+    const tripFormButtonCls =
+        'flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 text-left text-[13px] text-slate-100 outline-none transition-colors focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30';
+    const tripFormOpenBorder = isOpen ? 'border-cyan-500/60 ring-1 ring-cyan-500/30' : '';
 
     return (
         <div className={`relative min-w-0 w-full ${className}`} ref={containerRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between rounded-lg py-2.5 px-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 cursor-pointer"
-                style={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    border: `1px solid ${isOpen ? 'rgba(0, 150, 199, 0.5)' : 'rgba(255, 255, 255, 0.2)'}`,
-                    color: 'var(--foreground, #ededed)',
-                }}
+                className={
+                    variant === 'tripForm'
+                        ? `${tripFormButtonCls} ${tripFormOpenBorder}`
+                        : 'w-full flex items-center justify-between rounded-lg py-2.5 px-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 cursor-pointer'
+                }
+                style={
+                    variant === 'default'
+                        ? {
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                              border: `1px solid ${isOpen ? 'rgba(0, 150, 199, 0.5)' : 'rgba(255, 255, 255, 0.2)'}`,
+                              color: 'var(--foreground, #ededed)',
+                          }
+                        : undefined
+                }
             >
-                <div className="flex-1 flex flex-wrap gap-2 items-center min-h-[24px]">
+                <div className={`flex min-h-[24px] flex-1 flex-wrap items-center gap-2 ${variant === 'tripForm' ? 'min-h-0' : ''}`}>
                     {selected.length === 0 ? (
-                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>{placeholder}</span>
+                        <span
+                            className={variant === 'tripForm' ? 'text-[13px] text-slate-600' : 'text-sm'}
+                            style={variant === 'default' ? { color: 'rgba(255, 255, 255, 0.5)' } : undefined}
+                        >
+                            {placeholder}
+                        </span>
                     ) : (
                         <>
                             {selected.slice(0, 2).map((option) => (
@@ -148,7 +168,10 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                                         backgroundColor: isSelected ? 'rgba(0, 150, 199, 0.15)' : 'transparent',
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor =
+                                                variant === 'tripForm' ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.05)';
+                                        }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';

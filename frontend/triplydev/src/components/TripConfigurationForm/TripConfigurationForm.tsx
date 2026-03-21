@@ -34,6 +34,10 @@ interface TripConfigurationFormProps {
     selectedOptions: string[];
     setSelectedOptions: (o: string[]) => void;
     multiSelectOptions: string[];
+    /** Type d'alimentation (optionnel) */
+    dietaryMultiSelectOptions: string[];
+    dietarySelections: string[];
+    setDietarySelections: (o: string[]) => void;
     onOpenFlightSearch: () => void;
     onCloseFlightSearch?: () => void;
     flightSearchChecked?: boolean;
@@ -73,6 +77,11 @@ const iconUser = (
     </>
 );
 
+/** Même étoile que « Budget & style » */
+const iconSparkle = (
+    <path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
+);
+
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (props) => {
     const {
         departureCity, setDepartureCity, arrivalCity, setArrivalCity,
@@ -81,6 +90,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         arrivalDate, setArrivalDate, departureDate, setDepartureDate,
         arrivalTime, setArrivalTime, departureTime, setDepartureTime,
         selectedOptions, setSelectedOptions, multiSelectOptions,
+        dietaryMultiSelectOptions, dietarySelections, setDietarySelections,
         onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
         onFlightCardClick, onRemoveFlight, setArrivalCityName,
         onOpenHotelSearch, selectedHotel, onHotelCardClick, onRemoveHotel,
@@ -159,9 +169,9 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     )}
                 </Section>
 
-                {/* 6 - Budget & préférences */}
-                <Section icon={svg("M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z")} title="Budget & style" tag="optionnel">
-                    <div className="mb-2.5 grid grid-cols-2 gap-2">
+                {/* 6 - Budget & style */}
+                <Section icon={svg(iconSparkle)} title="Budget & style" tag="optionnel">
+                    <div className="grid grid-cols-2 gap-2">
                         <div className="min-w-0">
                             <label className="mb-1 block text-[12px] font-medium text-slate-300">Budget</label>
                             <div className={inputCls}>
@@ -177,7 +187,30 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             </div>
                         </div>
                     </div>
-                    <MultiSelect options={multiSelectOptions} selectedValues={selectedOptions} onChange={setSelectedOptions} placeholder="Préférences de voyage..." className="w-full" />
+                </Section>
+
+                {/* 7 - Type d'alimentation */}
+                <Section icon={svg(iconSparkle)} title={"Type d'alimentation"} tag="optionnel">
+                    <MultiSelect
+                        variant="tripForm"
+                        options={dietaryMultiSelectOptions}
+                        selectedValues={dietarySelections}
+                        onChange={setDietarySelections}
+                        placeholder="Ex. végétarien, sans gluten…"
+                        className="w-full"
+                    />
+                </Section>
+
+                {/* 8 - Préférences de voyage */}
+                <Section icon={svg(iconSparkle)} title="Préférences de voyage" tag="optionnel">
+                    <MultiSelect
+                        variant="tripForm"
+                        options={multiSelectOptions}
+                        selectedValues={selectedOptions}
+                        onChange={setSelectedOptions}
+                        placeholder="Préférences de voyage…"
+                        className="w-full"
+                    />
                 </Section>
 
             </div>

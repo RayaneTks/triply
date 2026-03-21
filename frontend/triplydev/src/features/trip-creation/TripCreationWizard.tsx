@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon, BanknotesIcon, ExclamationTriangleIcon, ArrowLongDownIcon } from '@heroicons/react/24/outline';
 import { Bike } from 'lucide-react';
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
@@ -115,14 +115,46 @@ export function getEstimatedDurationHours(layerId?: string): number {
     return 1;
 }
 
+export type DayActivityRouteLeg = { duration: number; distance: number; geometry?: GeoJSON.LineString };
+
+export type DayActivityRouteInfo = {
+    geometry: GeoJSON.LineString;
+    duration: number;
+    legs: DayActivityRouteLeg[];
+};
+
+export type ActivityRouteProfile = 'driving' | 'walking' | 'cycling';
+
+function formatLegDuration(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds <= 0) return '—';
+    if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h} h ${m} min` : `${h} h`;
+}
+
 function ActivityCard({
     poi,
     index: _index,
     onRemove,
+    isTimeAlert = false,
+    legFromPrevious,
 }: {
     poi: DayActivityPoi;
     index: number;
     onRemove?: () => void;
+    /** Dernière activité ajoutée si le total dépasse le temps max du jour */
+    isTimeAlert?: boolean;
+    /** Trajet depuis l’activité précédente : choix du mode + durée Mapbox */
+    legFromPrevious?: {
+        legSegmentIndex: number;
+        activeMode: ActivityRouteProfile;
+        durationSec: number;
+        dayRoutes: Partial<Record<ActivityRouteProfile, DayActivityRouteInfo>>;
+        onModeChange?: (mode: ActivityRouteProfile) => void;
+    } | null;
 }) {
     const name = poi.properties?.name ?? poi.properties?.name_en ?? poi.layer?.id ?? 'Lieu';
     const [address, setAddress] = useState<string | null>(null);
@@ -150,15 +182,85 @@ function ActivityCard({
 
     const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${poi.lngLat.lat},${poi.lngLat.lng}`;
 
+    const legsModeLabels: Record<ActivityRouteProfile, string> = {
+        driving: 'en voiture',
+        walking: 'à pied',
+        cycling: 'à vélo',
+    };
+
+    const profileTypes: ActivityRouteProfile[] = ['driving', 'walking', 'cycling'];
+
     return (
         <Reorder.Item
             value={poi}
             id={poi._dragId ?? `${poi.lngLat.lng}-${poi.lngLat.lat}-${String(name)}`}
             dragListener={false}
             dragControls={dragControls}
-            className="rounded-xl border border-white/10 bg-white/[0.06] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.08] list-none"
-            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+            className={`list-none rounded-xl border p-4 transition-colors ${
+                isTimeAlert
+                    ? 'border-red-500/70 bg-red-950/25 shadow-[0_0_0_1px_rgba(239,68,68,0.35)] hover:border-red-400/80 hover:bg-red-950/35'
+                    : 'border-white/10 bg-white/[0.06] hover:border-white/20 hover:bg-white/[0.08]'
+            }`}
+            style={{ boxShadow: isTimeAlert ? '0 2px 16px rgba(239,68,68,0.15)' : '0 2px 8px rgba(0,0,0,0.15)' }}
         >
+            {legFromPrevious && (
+                <div
+                    className="-mx-1 -mt-1 mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-[11px] text-cyan-200"
+                    role="group"
+                    aria-label="Trajet depuis l’activité précédente"
+                >
+                    <ArrowLongDownIcon className="h-4 w-4 shrink-0 text-cyan-400" aria-hidden />
+                    <span className="font-medium text-cyan-100">Trajet</span>
+                    <div
+                        className="flex shrink-0 items-center gap-0.5 rounded-lg border border-cyan-500/30 bg-black/20 p-0.5"
+                        role="toolbar"
+                        aria-label="Mode de transport pour ce trajet"
+                    >
+                        {profileTypes.map((type) => {
+                            const leg = legFromPrevious.dayRoutes[type]?.legs?.[legFromPrevious.legSegmentIndex];
+                            const available = !!leg && leg.duration > 0;
+                            const active = legFromPrevious.activeMode === type;
+                            const canSelect = available && legFromPrevious.onModeChange;
+                            const label =
+                                type === 'driving' ? 'Voiture' : type === 'walking' ? 'À pied' : 'Vélo';
+                            return (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    disabled={!canSelect}
+                                    onClick={() => legFromPrevious.onModeChange?.(type)}
+                                    title={
+                                        !available
+                                            ? `${label} (indisponible)`
+                                            : !legFromPrevious.onModeChange
+                                              ? label
+                                              : `${label} — ${formatLegDuration(leg.duration)}`
+                                    }
+                                    aria-pressed={active}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                                        !canSelect
+                                            ? 'cursor-not-allowed text-slate-600 opacity-40'
+                                            : active
+                                              ? 'bg-cyan-500/40 text-cyan-50 ring-1 ring-cyan-400/60'
+                                              : 'text-cyan-300/80 hover:bg-white/10 hover:text-cyan-100'
+                                    }`}
+                                >
+                                    {type === 'driving' && <TruckIcon className="h-4 w-4" aria-hidden />}
+                                    {type === 'walking' && <UserIcon className="h-4 w-4" aria-hidden />}
+                                    {type === 'cycling' && <Bike className="h-4 w-4" aria-hidden />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <span className="tabular-nums font-medium text-cyan-50">
+                        {legFromPrevious.durationSec > 0
+                            ? formatLegDuration(legFromPrevious.durationSec)
+                            : '—'}
+                    </span>
+                    <span className="text-cyan-400/90">·</span>
+                    <span className="text-cyan-300/90">{legsModeLabels[legFromPrevious.activeMode]}</span>
+                </div>
+            )}
             <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                     <div
@@ -171,15 +273,30 @@ function ActivityCard({
                         <Bars3Icon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <h4 className="mb-1.5 text-[14px] font-semibold text-slate-100 truncate">
-                            {String(name)}
-                        </h4>
-                    <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-cyan-400">
-                        <span className="flex items-center gap-1.5">
+                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                            <h4
+                                className={`text-[14px] font-semibold truncate ${isTimeAlert ? 'text-red-100' : 'text-slate-100'}`}
+                            >
+                                {String(name)}
+                            </h4>
+                            {isTimeAlert && (
+                                <span
+                                    className="inline-flex items-center gap-1 rounded-md border border-red-500/50 bg-red-950/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-300"
+                                    role="alert"
+                                >
+                                    <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                    Alerte temps
+                                </span>
+                            )}
+                        </div>
+                    <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+                        <span
+                            className={`flex items-center gap-1.5 ${isTimeAlert ? 'font-medium text-red-300' : 'text-cyan-400'}`}
+                        >
                             <ClockIcon className="h-3.5 w-3.5" />
                             Temps moyen : {duration}
                         </span>
-                        <span className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1.5 text-cyan-400">
                             <BanknotesIcon className="h-3.5 w-3.5" />
                             Coût moyen : {cost}
                         </span>
@@ -226,6 +343,7 @@ function ActivityCard({
 interface TripCreationWizardProps {
     state: UseTripConfigurationResult;
     multiSelectOptions: string[];
+    dietaryMultiSelectOptions: string[];
     selectedFlight: FlightOffer | null;
     selectedFlightCarrierName: string;
     selectedHotel: HotelOffer | null;
@@ -243,17 +361,23 @@ interface TripCreationWizardProps {
     onSelectedDayChange?: (day: number) => void;
     travelDays?: number;
     dayActivities?: DayActivityPoi[];
+    /** `_dragId` de la dernière activité ajoutée si dépassement du temps max du jour */
+    activityTimeAlertDragId?: string | null;
     onRemoveDayActivity?: (index: number) => void;
     onReorderDayActivities?: (reordered: DayActivityPoi[]) => void;
-    dayRoutes?: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number }>>;
+    dayRoutes?: Partial<Record<'driving' | 'walking' | 'cycling', DayActivityRouteInfo>>;
     selectedRouteType?: 'driving' | 'walking' | 'cycling' | null;
     onSelectRouteType?: (type: 'driving' | 'walking' | 'cycling' | null) => void;
+    /** Mode par tronçon (index 0 = entre activité 0 et 1), pour les bandeaux « Trajet » */
+    legTransportModes?: ActivityRouteProfile[];
+    onLegTransportChange?: (legIndex: number, mode: ActivityRouteProfile) => void;
     onComplete?: () => void;
 }
 
 export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     state,
     multiSelectOptions,
+    dietaryMultiSelectOptions,
     selectedFlight,
     selectedFlightCarrierName,
     selectedHotel,
@@ -271,11 +395,14 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onSelectedDayChange,
     travelDays = 1,
     dayActivities = [],
+    activityTimeAlertDragId = null,
     onRemoveDayActivity,
     onReorderDayActivities,
     dayRoutes = {},
     selectedRouteType = null,
     onSelectRouteType,
+    legTransportModes = [],
+    onLegTransportChange,
     onComplete,
 }) => {
     const filledFields = useMemo(() => {
@@ -352,6 +479,9 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             selectedOptions={state.selectedOptions}
                             setSelectedOptions={state.setSelectedOptions}
                             multiSelectOptions={multiSelectOptions}
+                            dietaryMultiSelectOptions={dietaryMultiSelectOptions}
+                            dietarySelections={state.dietarySelections}
+                            setDietarySelections={state.setDietarySelections}
                             onOpenFlightSearch={onOpenFlightSearch}
                             onCloseFlightSearch={onCloseFlightSearch}
                             flightSearchChecked={isFlightModalOpen}
@@ -413,7 +543,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                         {dayActivities.length >= 2 && Object.keys(dayRoutes).length > 0 && onSelectRouteType && (
                             <div className="mb-4">
                                 <p className="mb-2 text-[11px] font-medium text-slate-500">
-                                    Choisir un itinéraire
+                                    Itinéraire sur la carte selon le mode choisi ici — chaque bandeau « Trajet » permet un autre mode pour la durée affichée.
                                 </p>
                                 <div className="flex w-full gap-2">
                                     {(['driving', 'walking', 'cycling'] as const).map((type) => {
@@ -458,21 +588,51 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 Aucune activité ajoutée.
                             </p>
                         ) : (
+                            (() => (
                             <Reorder.Group
                                 axis="y"
                                 values={dayActivities}
                                 onReorder={onReorderDayActivities ?? (() => {})}
                                 className="flex flex-col gap-3"
                             >
-                                {dayActivities.map((poi, index) => (
+                                {dayActivities.map((poi, index) => {
+                                    const legIdx = index - 1;
+                                    const hasRouteData = Object.keys(dayRoutes).length > 0;
+                                    const prevLeg =
+                                        index > 0 && hasRouteData
+                                            ? (() => {
+                                                  const activeMode =
+                                                      legTransportModes[legIdx] ?? 'driving';
+                                                  const dur =
+                                                      dayRoutes[activeMode]?.legs?.[legIdx]?.duration ?? 0;
+                                                  return {
+                                                      legSegmentIndex: legIdx,
+                                                      activeMode,
+                                                      durationSec: dur,
+                                                      dayRoutes,
+                                                      onModeChange: onLegTransportChange
+                                                          ? (mode: ActivityRouteProfile) =>
+                                                                onLegTransportChange(legIdx, mode)
+                                                          : undefined,
+                                                  };
+                                              })()
+                                            : null;
+                                    return (
                                     <ActivityCard
                                         key={poi._dragId ?? `${poi.lngLat.lng.toFixed(6)}-${poi.lngLat.lat.toFixed(6)}-${index}`}
                                         poi={poi}
                                         index={index}
+                                        legFromPrevious={prevLeg}
+                                        isTimeAlert={
+                                            activityTimeAlertDragId != null &&
+                                            poi._dragId === activityTimeAlertDragId
+                                        }
                                         onRemove={onRemoveDayActivity ? () => onRemoveDayActivity(index) : undefined}
                                     />
-                                ))}
+                                    );
+                                })}
                             </Reorder.Group>
+                            ))()
                         )}
                     </div>
                 </div>
