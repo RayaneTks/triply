@@ -12,12 +12,14 @@ const nextConfig: NextConfig = {
       || 'http://tri-api'
     ).replace(/\/$/, '');
 
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${backendProxyTarget}/api/v1/:path*`,
-      },
-    ];
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${backendProxyTarget}/api/:path*`,
+        },
+      ],
+    };
   },
   images: {
     remotePatterns: [
