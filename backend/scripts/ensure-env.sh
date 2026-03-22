@@ -22,7 +22,7 @@ upsert() {
 upsert APP_NAME Triply
 upsert APP_ENV local
 upsert APP_DEBUG false
-upsert APP_URL http://127.0.0.1:8000
+upsert APP_URL http://localhost:5173
 
 upsert CACHE_STORE array
 upsert SESSION_DRIVER array
@@ -31,8 +31,9 @@ upsert QUEUE_CONNECTION sync
 upsert APP_KEY base64:C8W1u5eXUoFtljES8Tu38jm84bSgDckZnjE61lzrX/c=
 
 upsert DB_CONNECTION pgsql
-upsert DB_HOST db
+upsert DB_HOST tri-postgres
 upsert DB_PORT 5432
 upsert DB_DATABASE TriplyDB
-upsert DB_USERNAME backend
-upsert DB_PASSWORD backend
+upsert DB_USERNAME laravel
+upsert DB_PASSWORD api_password
+upsert DB_ROOT_PASSWORD api_root_password

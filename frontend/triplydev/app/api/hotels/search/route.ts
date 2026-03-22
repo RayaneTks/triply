@@ -87,7 +87,16 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { cityCode, checkInDate, checkOutDate, adults = 1, roomQuantity = 1, maxPrice, preferences = [] } = body;
+        const {
+            cityCode,
+            checkInDate,
+            checkOutDate,
+            adults = 1,
+            roomQuantity = 1,
+            maxPrice,
+            preferences = [],
+            boardType: boardTypeFromBody,
+        } = body;
 
         if (!cityCode || !checkInDate || !checkOutDate) {
             return NextResponse.json(
@@ -189,7 +198,20 @@ export async function POST(request: Request) {
         if (maxPrice && maxPrice > 0) {
             params.set('priceRange', `0-${maxPrice}`);
         }
-        if (prefSet.has('petit déjeuner inclus')) {
+        const allowedBoardTypes = new Set([
+            'ROOM_ONLY',
+            'BREAKFAST',
+            'HALF_BOARD',
+            'FULL_BOARD',
+            'ALL_INCLUSIVE',
+        ]);
+        const boardFromRequest =
+            typeof boardTypeFromBody === 'string' && allowedBoardTypes.has(boardTypeFromBody.trim())
+                ? boardTypeFromBody.trim()
+                : '';
+        if (boardFromRequest) {
+            params.set('boardType', boardFromRequest);
+        } else if (prefSet.has('petit déjeuner inclus')) {
             params.set('boardType', 'BREAKFAST');
         }
 

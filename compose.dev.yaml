@@ -2,20 +2,20 @@ services:
   # ========================================
   # Development Frontend Service
   # ========================================
-  tri-app-dev:
+  tri-app:
     build:
       context: ./frontend/triplydev
       dockerfile: ./docker/development/Dockerfile
       target: development
-    container_name: tri-app-dev
+    container_name: tri-app
     ports:
       - "5173:3000"
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
       NEXT_PUBLIC_BACKEND_API_URL: /api/v1
-      BACKEND_API_BASE_URL: http://tri-api-dev/api/v1
-      BACKEND_PROXY_TARGET: http://tri-api-dev
+      BACKEND_API_BASE_URL: http://tri-api/api/v1
+      BACKEND_PROXY_TARGET: http://tri-api
     user: "0:0"
     command: npm run dev -- --webpack --hostname 0.0.0.0 --port 3000
     networks:
@@ -31,8 +31,8 @@ services:
   # Development Backend Service
   # ========================================
   # Backend - Nginx ========================
-  tri-api-dev:
-    container_name: tri-api-dev
+  tri-api:
+    container_name: tri-api
     image: nginx:latest
     volumes:
       # Mount the application code for live updates
@@ -50,58 +50,6 @@ services:
     depends_on:
       tri-php-fpm:
         condition: service_started # Wait for php-fpm to start
-
-  tri-vendor-init:
-    image: alpine:3.22
-    container_name: tri-vendor-init
-    user: "0:0"
-    command: >
-      sh -lc "mkdir -p /var/www/vendor &&
-              chown -R ${UID:-1000}:${GID:-1000} /var/www/vendor &&
-              chmod -R 775 /var/www/vendor &&
-              ls -la /var/www/"
-    volumes:
-      - tri-backend-vendor:/var/www/vendor
-    networks:
-      - triply-development
-    restart: "no"
-
-  tri-composer-init:
-    build:
-      context: ./backend
-      dockerfile: ./docker/development/workspace/Dockerfile
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
-        XDEBUG_MODE: develop,coverage,debug,profile
-        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
-        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
-        XDEBUG_LOG: /dev/stdout
-        XDEBUG_LOG_LEVEL: 0
-    container_name: tri-composer-init
-    env_file:
-      - ./backend/.env
-    command: >
-      sh -lc "if [ ! -f /var/www/vendor/autoload.php ]; then
-                echo '[composer-init] vendor missing, running composer install';
-                composer install --no-interaction --prefer-dist;
-              else
-                echo '[composer-init] vendor already present, skipping composer install';
-              fi"
-    volumes:
-      - ./backend:/var/www
-      - type: volume
-        source: tri-backend-vendor
-        target: /var/www/vendor
-        volume:
-          nocopy: true
-    networks:
-      - triply-development
-    depends_on:
-      tri-vendor-init:
-        condition: service_completed_successfully
-    restart: "no"
 
   # Backend - PHP-FPM ======================
   tri-php-fpm:
@@ -139,10 +87,6 @@ services:
     depends_on:
       tri-postgres:
         condition: service_healthy # Wait for postgres to be healthy
-      tri-vendor-init:
-        condition: service_completed_successfully # Wait for vendor initialization to complete successfully
-      tri-composer-init:
-        condition: service_completed_successfully # Ensure dependencies are installed before php-fpm starts
 
   # Backend - Workspace ====================
   tri-workspace:
@@ -172,11 +116,6 @@ services:
           nocopy: true
     networks:
       - triply-development
-    depends_on:
-      tri-vendor-init:
-        condition: service_completed_successfully # Wait for vendor initialization to complete successfully
-      tri-composer-init:
-        condition: service_completed_successfully # Ensure dependencies are installed before interactive workspace use
 
   # Backend - Database =====================
   tri-postgres:
@@ -223,8 +162,8 @@ services:
     networks:
       - triply-development
     depends_on:
-      tri-api-dev:
-        condition: service_started # Wait for tri-api-dev to start
+      tri-api:
+        condition: service_started # Wait for tri-api to start
 
 
 networks:

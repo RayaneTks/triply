@@ -1,6 +1,7 @@
 .PHONY: help \
 	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
 	pgadmin-reset \
+	vendor-init composer-init \
 	verify test-auth test-feature test-unit \
 	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
@@ -49,10 +50,18 @@ help:
 init:
 	$(COMPOSE) -f compose.dev.yaml down --remove-orphans
 	$(COMPOSE) -f compose.dev.yaml up -d --build --remove-orphans
+	$(MAKE) vendor-init
+	$(MAKE) composer-init
+	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan key:generate --force
 	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan optimize:clear
 	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 	-$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan l5-swagger:generate
-	-$(COMPOSE) -f compose.dev.yaml rm -f tri-vendor-init tri-composer-init
+
+vendor-init:
+	$(COMPOSE) -f compose.dev.yaml run --rm --no-deps --user 0:0 tri-workspace sh -lc "mkdir -p /var/www/vendor && chown -R $${UID:-1000}:$${GID:-1000} /var/www/vendor && chmod -R 775 /var/www/vendor"
+
+composer-init:
+	$(COMPOSE) -f compose.dev.yaml run --rm --no-deps tri-workspace sh -lc "if [ ! -f /var/www/vendor/autoload.php ]; then echo '[composer-init] vendor missing, running composer install'; composer install --no-interaction --prefer-dist; else echo '[composer-init] vendor already present, skipping composer install'; fi"
 
 install: init
 

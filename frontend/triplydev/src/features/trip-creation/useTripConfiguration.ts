@@ -22,6 +22,8 @@ export interface TripConfigurationState {
     arrivalTime: string;
     departureTime: string;
     selectedOptions: string[];
+    /** Préférences alimentaires (optionnel) */
+    dietarySelections: string[];
 }
 
 export interface UseTripConfigurationResult extends TripConfigurationState {
@@ -37,6 +39,7 @@ export interface UseTripConfigurationResult extends TripConfigurationState {
     setArrivalTime: (v: string) => void;
     setDepartureTime: (v: string) => void;
     setSelectedOptions: (values: string[]) => void;
+    setDietarySelections: (values: string[]) => void;
 }
 
 export function useTripConfiguration(initial?: Partial<TripConfigurationState>): UseTripConfigurationResult {
@@ -52,6 +55,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [arrivalTime, setArrivalTime] = useState(initial?.arrivalTime ?? '');
     const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
+    const [dietarySelections, setDietarySelections] = useState<string[]>(initial?.dietarySelections ?? []);
 
     const computedDays = daysBetween(outboundDate, returnDate);
     const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
@@ -69,6 +73,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         arrivalTime,
         departureTime,
         selectedOptions,
+        dietarySelections,
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
@@ -81,6 +86,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setArrivalTime,
         setDepartureTime,
         setSelectedOptions,
+        setDietarySelections,
     };
 }
 
