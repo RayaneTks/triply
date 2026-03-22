@@ -367,6 +367,8 @@ export default function Home() {
 
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
+    const [wizardView, setWizardView] = useState<'plan' | 'activity'>('plan');
+    const [launchFlowActive, setLaunchFlowActive] = useState(false);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
     const [hotelModalBudget, setHotelModalBudget] = useState('');
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
@@ -413,6 +415,17 @@ export default function Home() {
         setSelectedFlightCarrierName(carrierName);
         setIsFlightModalOpen(false);
         syncFormFromFlight(offer);
+
+        if (launchFlowActive) {
+            if (!selectedHotelOffer) {
+                setIsHotelModalOpen(true);
+                void handleHotelSearch();
+            } else {
+                setWizardView('activity');
+                setIsAssistantOpen(true);
+                setLaunchFlowActive(false);
+            }
+        }
     };
 
     useEffect(() => {
@@ -427,6 +440,12 @@ export default function Home() {
         tripConfig.setOutboundDate(offer.checkInDate);
         tripConfig.setReturnDate(offer.checkOutDate);
         if (offer.guests?.adults) tripConfig.setTravelerCount(offer.guests.adults);
+
+        if (launchFlowActive) {
+            setWizardView('activity');
+            setIsAssistantOpen(true);
+            setLaunchFlowActive(false);
+        }
     };
 
     // Gestion de la recherche de vol
@@ -523,21 +542,36 @@ export default function Home() {
         'Faible en FODMAP',
     ];
 
-    const handleGenerateTrip = useCallback(() => {
+    const handleGenerateTrip = () => {
         const destination = tripConfig.arrivalCityName || tripConfig.arrivalCity;
-        if (!destination) return;
+        const hasDates = !!tripConfig.outboundDate && !!tripConfig.returnDate;
+        if (!destination || !hasDates) return;
+
+        setLaunchFlowActive(true);
         setIsAssistantOpen(true);
-        console.log('[Triply] Generate trip:', {
-            from: tripConfig.departureCity,
-            to: destination,
-            dates: `${tripConfig.outboundDate} - ${tripConfig.returnDate}`,
-            travelers: tripConfig.travelerCount,
-            budget: tripConfig.budget,
-            dietary: tripConfig.dietarySelections,
-            flight: selectedFlightOffer ? 'selected' : 'none',
-            hotel: selectedHotelOffer ? 'selected' : 'none',
-        });
-    }, [tripConfig, selectedFlightOffer, selectedHotelOffer]);
+
+        // Réutilise le budget principal du formulaire pour les recherches des modales.
+        if (!flightModalBudget && tripConfig.budget) setFlightModalBudget(tripConfig.budget);
+        if (!hotelModalBudget && tripConfig.budget) setHotelModalBudget(tripConfig.budget);
+
+        // Étape 1: si aucun vol n'est sélectionné, on ouvre les vols.
+        if (!selectedFlightOffer && tripConfig.departureCity && tripConfig.arrivalCity) {
+            setIsFlightModalOpen(true);
+            void handleFlightSearch();
+            return;
+        }
+
+        // Étape 2: si vol ok mais pas d'hôtel, on ouvre les hôtels.
+        if (!selectedHotelOffer) {
+            setIsHotelModalOpen(true);
+            void handleHotelSearch();
+            return;
+        }
+
+        // Étape 3: tout est prêt, on bascule sur les activités.
+        setWizardView('activity');
+        setLaunchFlowActive(false);
+    };
 
     // --- Logique Map (POI, Hover, Click) ---
 
@@ -1282,6 +1316,8 @@ export default function Home() {
                                 >
                                     <div className="flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl backdrop-blur-md" style={{ backgroundColor: 'var(--background, #222222)' }}>
                                         <TripCreationWizard
+                                            activeView={wizardView}
+                                            onActiveViewChange={setWizardView}
                                             state={tripConfig}
                                             multiSelectOptions={multiSelectOptions}
                                             dietaryMultiSelectOptions={dietaryMultiSelectOptions}

@@ -371,6 +371,8 @@ interface TripCreationWizardProps {
     /** Mode par tronçon (index 0 = entre activité 0 et 1), pour les bandeaux « Trajet » */
     legTransportModes?: ActivityRouteProfile[];
     onLegTransportChange?: (legIndex: number, mode: ActivityRouteProfile) => void;
+    activeView?: PanelView;
+    onActiveViewChange?: (view: PanelView) => void;
     onComplete?: () => void;
 }
 
@@ -403,6 +405,8 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onSelectRouteType,
     legTransportModes = [],
     onLegTransportChange,
+    activeView,
+    onActiveViewChange,
     onComplete,
 }) => {
     const filledFields = useMemo(() => {
@@ -417,7 +421,15 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     }, [state.arrivalCity, state.outboundDate, state.returnDate, state.travelerCount, selectedFlight, selectedHotel, state.budget]);
 
     const hasMinimum = !!state.arrivalCity && !!state.outboundDate && !!state.returnDate;
-    const [activeView, setActiveView] = useState<PanelView>('plan');
+    const [internalActiveView, setInternalActiveView] = useState<PanelView>('plan');
+    const resolvedActiveView = activeView ?? internalActiveView;
+
+    const setResolvedView = (next: PanelView) => {
+        onActiveViewChange?.(next);
+        if (activeView === undefined) {
+            setInternalActiveView(next);
+        }
+    };
 
     return (
         <div className="flex h-full w-full min-w-0 flex-col overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
@@ -426,9 +438,9 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                 <div className="flex">
                     <button
                         type="button"
-                        onClick={() => setActiveView('plan')}
+                        onClick={() => setResolvedView('plan')}
                         className={`flex-1 px-4 py-3 text-[13px] font-semibold transition-colors ${
-                            activeView === 'plan'
+                            resolvedActiveView === 'plan'
                                 ? 'border-b-2 border-cyan-500 text-cyan-400'
                                 : 'text-slate-400 hover:text-slate-200'
                         }`}
@@ -437,9 +449,9 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => setActiveView('activity')}
+                        onClick={() => setResolvedView('activity')}
                         className={`flex-1 px-4 py-3 text-[13px] font-semibold transition-colors ${
-                            activeView === 'activity'
+                            resolvedActiveView === 'activity'
                                 ? 'border-b-2 border-cyan-500 text-cyan-400'
                                 : 'text-slate-400 hover:text-slate-200'
                         }`}
@@ -450,7 +462,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
             </div>
 
             {/* Contenu selon la vue active */}
-            {activeView === 'plan' ? (
+            {resolvedActiveView === 'plan' ? (
                 <>
                     {/* Form content - scrollable */}
                     <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
@@ -513,10 +525,11 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                         <button
                             type="button"
                             onClick={onComplete}
+                            disabled={!hasMinimum || !onComplete}
                             className={`w-full rounded-xl py-2.5 text-[13px] font-semibold transition-all ${
                                 hasMinimum
                                     ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 active:scale-[0.98]'
-                                    : 'bg-white/[0.06] text-slate-400 hover:bg-white/10'
+                                    : 'cursor-not-allowed bg-white/6 text-slate-400'
                             }`}
                         >
                             {hasMinimum ? 'Lancer Triply' : 'Renseignez au moins une destination et des dates'}
