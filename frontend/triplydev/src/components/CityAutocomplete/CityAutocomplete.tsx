@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useState, useRef, useEffect } from 'react';
+import { FC, useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 
 // Interface pour la réponse d'Amadeus
@@ -41,11 +41,16 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     const [suggestions, setSuggestions] = useState<AmadeusLocation[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(-1);
 
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const requestRef = useRef(0);
+    const abortRef = useRef<AbortController | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
+    const listboxId = useId();
 
     const updateDropdownPosition = () => {
         if (containerRef.current) {
@@ -78,6 +83,14 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- On ne veut réagir qu'aux changements de value, pas de displayValue
     }, [value]);
 
+
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            abortRef.current?.abort();
+        };
+    }, []);
+
     // Fermeture au clic dehors (container + dropdown porté)
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -97,6 +110,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
         if (!text.trim() || text.length < 2) {
             setSuggestions([]);
             setIsOpen(false);
+            setActiveIndex(-1);
             return;
         }
 
@@ -106,22 +120,32 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
 
         debounceRef.current = setTimeout(() => {
             setLoading(true);
+            const requestId = ++requestRef.current;
+            abortRef.current?.abort();
+            const controller = new AbortController();
+            abortRef.current = controller;
             const url = `/api/places/search?keyword=${encodeURIComponent(text)}`;
-            fetch(url)
+            fetch(url, { signal: controller.signal })
                 .then((res) => {
                     if (!res.ok) throw new Error('Erreur API');
                     return res.json();
                 })
                 .then((data) => {
+                    if (requestId !== requestRef.current) return;
                     const results = Array.isArray(data) ? data : (data.data || data || []);
                     const filtered = results.filter((r: AmadeusLocation) => r && r.iataCode);
                     setSuggestions(filtered);
+                    setActiveIndex(filtered.length > 0 ? 0 : -1);
                 })
                 .catch((e) => {
+                    if (controller.signal.aborted) return;
                     console.error(e);
                     setSuggestions([]);
+                    setActiveIndex(-1);
                 })
-                .finally(() => setLoading(false));
+                .finally(() => {
+                    if (requestId === requestRef.current) setLoading(false);
+                });
         }, 300);
     };
 
@@ -144,6 +168,32 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
 
         setIsOpen(false);
         setSuggestions([]);
+        setActiveIndex(-1);
+    };
+
+    const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!isOpen || suggestions.length === 0) {
+            if (event.key === 'ArrowDown' && suggestions.length > 0) {
+                setIsOpen(true);
+                setActiveIndex(0);
+            }
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActiveIndex((idx) => (idx + 1) % suggestions.length);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActiveIndex((idx) => (idx <= 0 ? suggestions.length - 1 : idx - 1));
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (activeIndex >= 0) handleSelect(suggestions[activeIndex]);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            setIsOpen(false);
+            setActiveIndex(-1);
+        }
     };
 
     return (
@@ -155,13 +205,20 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
             )}
             <div className="relative input-assistant w-full min-w-0">
                 <input
+                    ref={inputRef}
                     type="text"
                     value={displayValue}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onFocus={() => { if(suggestions.length > 0) setIsOpen(true); }}
+                    onKeyDown={handleInputKeyDown}
                     placeholder={placeholder}
                     className="w-full bg-transparent focus:outline-none text-sm placeholder-normal uppercase"
                     style={{ color: 'var(--foreground, #ededed)' }}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={isOpen}
+                    aria-controls={listboxId}
+                    aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
                 />
 
                 {loading && (
@@ -173,6 +230,8 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 {isOpen && suggestions.length > 0 && dropdownRect && typeof document !== 'undefined' && createPortal(
                     <div ref={dropdownRef} className="fixed z-[99999]" style={{ top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}>
                         <ul
+                            id={listboxId}
+                            role="listbox"
                             className="rounded-lg overflow-hidden max-h-60 overflow-y-auto"
                             style={{
                                 backgroundColor: 'var(--background, #222222)',
@@ -180,11 +239,19 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                             }}
                         >
-                                {suggestions.map((feature) => (
+                                {suggestions.map((feature, index) => (
                                     <li
                                         key={feature.id}
-                                        onClick={() => handleSelect(feature)}
-                                        className="px-4 py-2 text-sm cursor-pointer hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                                        id={`${listboxId}-option-${index}`}
+                                        role="option"
+                                        aria-selected={index === activeIndex}
+                                        onMouseEnter={() => setActiveIndex(index)}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            handleSelect(feature);
+                                            inputRef.current?.focus();
+                                        }}
+                                        className={`px-4 py-2 text-sm cursor-pointer transition-colors border-b border-white/5 last:border-0 ${index === activeIndex ? 'bg-white/10' : 'hover:bg-white/10'}`}
                                         style={{ color: 'var(--foreground, #ededed)' }}
                                     >
                                         <div className="flex justify-between items-center">

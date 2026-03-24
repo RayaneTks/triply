@@ -107,6 +107,6 @@ Route::prefix('v1')->group(function (): void {
 
         Route::post('/trips/{trip}/booking/checkout', [TripBookingController::class, 'checkout']);
 
-        Route::get('/admin/metrics', [AdminMetricsController::class, 'index']);
+        Route::get('/admin/metrics', [AdminMetricsController::class, 'index'])->middleware('admin');
     });
 });

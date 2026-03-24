@@ -186,7 +186,8 @@ function LoginWithMapBackground({
 }
 
 export default function Home() {
-    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVuY2FuZ2F1YmVydCIsImEiOiJjbWs1em50ZjgwaHc3M2VxczYweWR2djBwIn0.pwM2awFdHHSRsQeYiTtkXA';
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
+    const hasMapboxToken = MAPBOX_TOKEN.trim().length > 0;
 
     // Etats Globaux
     // (slides system removed - single panel now)
@@ -889,16 +890,26 @@ export default function Home() {
 
             <div className="relative flex min-w-0 flex-1 overflow-hidden">
                 {currentView === 'login' && (
-                    <LoginWithMapBackground
-                        mapboxToken={MAPBOX_TOKEN}
-                        onLoginSuccess={handleLoginSuccess}
-                        onBack={handleBackToHome}
-                    />
+                    hasMapboxToken ? (
+                        <LoginWithMapBackground
+                            mapboxToken={MAPBOX_TOKEN}
+                            onLoginSuccess={handleLoginSuccess}
+                            onBack={handleBackToHome}
+                        />
+                    ) : (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center p-6 text-center">
+                            <div className="max-w-md rounded-2xl border border-amber-400/40 bg-amber-950/20 p-6 text-amber-100">
+                                <h2 className="mb-2 text-lg font-semibold">Configuration Mapbox manquante</h2>
+                                <p className="text-sm text-amber-200/90">Renseignez NEXT_PUBLIC_MAPBOX_TOKEN pour activer la carte et l&apos;écran de connexion enrichi.</p>
+                            </div>
+                        </div>
+                    )
                 )}
 
                 {currentView === 'home' && (
                     <>
                         <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                            {hasMapboxToken ? (
                             <WorldMap
                                 accessToken={MAPBOX_TOKEN}
                                 initialLatitude={46.6034}
@@ -928,6 +939,14 @@ export default function Home() {
                                           : {}
                                 }
                             />
+                            ) : (
+                                <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+                                    <div className="max-w-lg rounded-2xl border border-amber-400/40 bg-amber-950/20 p-6 text-amber-100">
+                                        <h2 className="mb-2 text-lg font-semibold">Carte indisponible</h2>
+                                        <p className="text-sm text-amber-200/90">Ajoutez NEXT_PUBLIC_MAPBOX_TOKEN dans votre environnement pour utiliser la planification cartographique.</p>
+                                    </div>
+                                </div>
+                            )}
                             <FlightSearchModal
                                 visible={isFlightModalOpen}
                                 onClose={() => {
