@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
@@ -97,6 +97,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
     } = props;
 
     const inputCls = 'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/[0.04] px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     return (
         <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-auto px-3 py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-700/50">
@@ -114,7 +115,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 <Section icon={svg("M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z")} title="Quand partez-vous ?">
                     <DateRangePicker startDate={arrivalDate} endDate={departureDate} onDatesChange={(s, e) => { setArrivalDate(s); setDepartureDate(e); }} className="mb-2.5 w-full" />
                     <div className="grid grid-cols-2 gap-2">
-                        <TimePicker value={arrivalTime} onChange={setArrivalTime} label="Heure départ" />
+                        <TimePicker value={arrivalTime} onChange={setArrivalTime} label="Heure aller" />
                         <TimePicker value={departureTime} onChange={setDepartureTime} label="Heure retour" />
                     </div>
                 </Section>
@@ -135,6 +136,17 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     </div>
                 </Section>
 
+                <button
+                    type="button"
+                    onClick={() => setShowAdvanced((v) => !v)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-left text-[12px] font-semibold text-slate-200 transition-colors hover:bg-white/[0.06]"
+                >
+                    <span>Options avancées (vol, hôtel, budget, préférences)</span>
+                    <span className="text-slate-400">{showAdvanced ? 'Masquer' : 'Afficher'}</span>
+                </button>
+
+                {showAdvanced && (
+                <>
                 {/* 4 - Transport */}
                 <Section icon={svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")} title="Transport" tag="optionnel">
                     {selectedFlight ? (
@@ -212,6 +224,8 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                         className="w-full"
                     />
                 </Section>
+                </>
+                )}
 
             </div>
         </div>
