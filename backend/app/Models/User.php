@@ -34,6 +34,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'est_admin' => 'boolean',
+            'preferences' => UserPreferences::class,
         ];
     }
 

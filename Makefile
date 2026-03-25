@@ -10,8 +10,8 @@
 	bootstrap
 
 BACKEND_DIR := backend
-COMPOSE := docker compose
-DOCKER_SERVICES := db backend pgadmin
+COMPOSE := docker compose -f compose.dev.yaml
+DOCKER_SERVICES := tri-postgres tri-php-fpm tri-api tri-pgadmin tri-redis tri-workspace tri-app
 
 # -----------------------------------------
 # Help
@@ -48,25 +48,25 @@ help:
 # -----------------------------------------
 
 init:
-	$(COMPOSE) -f compose.dev.yaml down --remove-orphans
-	$(COMPOSE) -f compose.dev.yaml up -d --build --remove-orphans
+	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) up -d --build --remove-orphans
 	$(MAKE) vendor-init
 	$(MAKE) composer-init
-	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan key:generate --force
-	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan optimize:clear
-	$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
-	-$(COMPOSE) -f compose.dev.yaml exec -T tri-php-fpm php artisan l5-swagger:generate
+	$(COMPOSE) exec -T tri-php-fpm php artisan key:generate --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan optimize:clear
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	-$(COMPOSE) exec -T tri-php-fpm php artisan l5-swagger:generate
 
 vendor-init:
-	$(COMPOSE) -f compose.dev.yaml run --rm --no-deps --user 0:0 tri-workspace sh -lc "mkdir -p /var/www/vendor && chown -R $${UID:-1000}:$${GID:-1000} /var/www/vendor && chmod -R 775 /var/www/vendor"
+	$(COMPOSE) run --rm --no-deps --user 0:0 tri-workspace sh -lc "mkdir -p /var/www/vendor && chown -R $${UID:-1000}:$${GID:-1000} /var/www/vendor && chmod -R 775 /var/www/vendor"
 
 composer-init:
-	$(COMPOSE) -f compose.dev.yaml run --rm --no-deps tri-workspace sh -lc "if [ ! -f /var/www/vendor/autoload.php ]; then echo '[composer-init] vendor missing, running composer install'; composer install --no-interaction --prefer-dist; else echo '[composer-init] vendor already present, skipping composer install'; fi"
+	$(COMPOSE) run --rm --no-deps tri-workspace sh -lc "if [ ! -f /var/www/vendor/autoload.php ]; then echo '[composer-init] vendor missing, running composer install'; composer install --no-interaction --prefer-dist; else echo '[composer-init] vendor already present, skipping composer install'; fi"
 
 install: init
 
 migrate:
-	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 	$(MAKE) verify
 
 up:
@@ -76,9 +76,9 @@ run: up
 
 reload:
 	$(MAKE) env-sync
-	$(COMPOSE) exec -T backend php artisan optimize:clear
-	$(COMPOSE) exec -T backend sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
-	-$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+	$(COMPOSE) exec -T tri-php-fpm php artisan optimize:clear
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	-$(COMPOSE) exec -T tri-php-fpm php artisan l5-swagger:generate
 	$(MAKE) verify
 
 down:
@@ -98,50 +98,50 @@ logs:
 	$(COMPOSE) logs -f
 
 logs-back:
-	$(COMPOSE) logs -f backend
+	$(COMPOSE) logs -f tri-php-fpm tri-api
 
 shell:
-	$(COMPOSE) exec backend bash
+	$(COMPOSE) exec tri-php-fpm bash
 
 routes:
-	$(COMPOSE) exec -T backend php artisan route:list --path=api
+	$(COMPOSE) exec -T tri-php-fpm php artisan route:list --path=api
 
 swagger:
-	$(COMPOSE) exec -T backend php artisan l5-swagger:generate
+	$(COMPOSE) exec -T tri-php-fpm php artisan l5-swagger:generate
 
 verify:
-	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
 	$(MAKE) test
 
 test:
-	$(COMPOSE) exec -T backend php artisan test
+	$(COMPOSE) exec -T tri-php-fpm php artisan test
 
 test-auth:
-	$(COMPOSE) exec -T backend php artisan test tests/Feature/AuthEndpointsTest.php
+	$(COMPOSE) exec -T tri-php-fpm php artisan test tests/Feature/AuthEndpointsTest.php
 
 test-feature:
-	$(COMPOSE) exec -T backend php artisan test tests/Feature
+	$(COMPOSE) exec -T tri-php-fpm php artisan test tests/Feature
 
 test-unit:
-	$(COMPOSE) exec -T backend php artisan test tests/Unit
+	$(COMPOSE) exec -T tri-php-fpm php artisan test tests/Unit
 
 composer-install:
-	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader"
 
 composer-install-dev:
-	$(COMPOSE) exec -T backend sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader"
 
 env-sync:
-	$(COMPOSE) up -d db backend
-	$(COMPOSE) exec -T backend sh /app/scripts/ensure-env.sh
+	$(COMPOSE) up -d tri-postgres tri-php-fpm
+	$(COMPOSE) exec -T tri-php-fpm sh -lc "mkdir -p /app && ln -sfn /var/www /app && sh /var/www/scripts/ensure-env.sh"
 
 db-ensure:
-	$(COMPOSE) up -d db
-	$(COMPOSE) exec -T db sh -lc 'set -eu; ADMIN_USER=""; for u in backend postgres; do if psql -U "$$u" -d postgres -tAc "select 1" >/dev/null 2>&1; then ADMIN_USER="$$u"; break; fi; done; if [ -z "$$ADMIN_USER" ]; then echo "No PostgreSQL admin user found (backend/postgres)."; exit 1; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='\''backend'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE ROLE backend WITH LOGIN PASSWORD '\''backend'\''"; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='\''TriplyDB'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE DATABASE \"TriplyDB\" OWNER backend"; fi; psql -U "$$ADMIN_USER" -d postgres -c "ALTER DATABASE \"TriplyDB\" OWNER TO backend"; psql -U "$$ADMIN_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"TriplyDB\" TO backend";'
+	$(COMPOSE) up -d tri-postgres
+	$(COMPOSE) exec -T tri-postgres sh -lc 'set -eu; ADMIN_USER=""; for u in "$${POSTGRES_USER:-postgres}" postgres; do if psql -U "$$u" -d postgres -tAc "select 1" >/dev/null 2>&1; then ADMIN_USER="$$u"; break; fi; done; if [ -z "$$ADMIN_USER" ]; then echo "No PostgreSQL admin user found."; exit 1; fi; DB_USER="$${POSTGRES_USER:-laravel}"; DB_PASS="$${POSTGRES_PASSWORD:-api_password}"; DB_NAME="$${POSTGRES_DB:-TriplyDB}"; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='\''$$DB_USER'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE ROLE \"$$DB_USER\" WITH LOGIN PASSWORD '\''$$DB_PASS'\''"; fi; if ! psql -U "$$ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='\''$$DB_NAME'\''" | grep -q 1; then psql -U "$$ADMIN_USER" -d postgres -c "CREATE DATABASE \"$$DB_NAME\" OWNER \"$$DB_USER\""; fi; psql -U "$$ADMIN_USER" -d postgres -c "ALTER DATABASE \"$$DB_NAME\" OWNER TO \"$$DB_USER\""; psql -U "$$ADMIN_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$$DB_NAME\" TO \"$$DB_USER\"";'
 
 pgadmin-reset:
-	$(COMPOSE) rm -sfv pgadmin
-	$(COMPOSE) up -d db pgadmin
+	$(COMPOSE) rm -sfv tri-pgadmin
+	$(COMPOSE) up -d tri-postgres tri-pgadmin
 
 clean:
 	$(COMPOSE) down -v --remove-orphans
@@ -220,17 +220,17 @@ docker-routes: routes
 docker-clean: clean
 
 docker-setup:
-	$(COMPOSE) exec -T backend php artisan key:generate --force
-	$(COMPOSE) exec -T backend php artisan migrate --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan key:generate --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan migrate --force
 
 docker-migrate:
-	$(COMPOSE) exec -T backend php artisan migrate --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan migrate --force
 
 docker-fresh:
-	$(COMPOSE) exec -T backend php artisan migrate:fresh --seed --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan migrate:fresh --seed --force
 
 docker-seed:
-	$(COMPOSE) exec -T backend php artisan db:seed --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan db:seed --force
 
 docker-key:
-	$(COMPOSE) exec -T backend php artisan key:generate --force
+	$(COMPOSE) exec -T tri-php-fpm php artisan key:generate --force

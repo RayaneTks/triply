@@ -5,8 +5,7 @@ import { v4 as uuid } from 'uuid';
 import MessageList from '@/src/components/Messages/MessageList';
 import { SearchBar } from '@/src/components/Searchbar/Searchbar';
 import { Button } from '@/src/components/Button/Button';
-import { getStoredSession } from '@/src/lib/auth-client';
-import { PREFERENCES_STORAGE_KEY } from '@/src/components/TuPreferes/TuPreferes';
+import { fetchPreferences, getStoredSession, type UserPreferences } from '@/src/lib/auth-client';
 
 const CHAT_STORAGE_KEY = 'triply-assistant-chat';
 
@@ -59,6 +58,20 @@ function saveMessages(messages: ChatMessage[]) {
     } catch {
         // ignore
     }
+}
+
+function toAssistantPreferences(preferences: UserPreferences): string[] {
+    const values = [
+        ...(preferences.environments ?? []),
+        ...(preferences.interests ?? []),
+        ...(preferences.diet ?? []),
+        ...(preferences.visited_cities ?? []),
+        preferences.traveler_profile,
+        preferences.pace,
+        preferences.food_preference,
+    ];
+
+    return [...new Set(values.filter((value): value is string => typeof value === 'string' && value.trim() !== ''))];
 }
 
 export default function Assistant({ onUpdateLocations, destination, onClearChat }: AssistantProps) {
@@ -127,17 +140,14 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
 
         try {
             const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
+            let prefs: string[] = [];
 
-            const prefs: string[] = (() => {
-                try {
-                    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFERENCES_STORAGE_KEY) : null;
-                    if (!raw) return [];
-                    const parsed = JSON.parse(raw);
-                    return Array.isArray(parsed) ? parsed : [];
-                } catch {
-                    return [];
-                }
-            })();
+            try {
+                const savedPreferences = await fetchPreferences(session.token);
+                prefs = toAssistantPreferences(savedPreferences);
+            } catch {
+                // If preferences cannot be loaded, continue without personalization.
+            }
 
             const res = await fetch('/api/assistant', {
                 method: 'POST',
