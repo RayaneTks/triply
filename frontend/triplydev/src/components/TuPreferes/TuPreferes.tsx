@@ -307,16 +307,56 @@ const SLIDES: Slide[] = [
     },
 ];
 
-export interface TuPreferesProps {
-    visible: boolean;
-    onComplete: (tags: string[]) => void;
-    onSkip: () => void;
+export interface PreferencesPayload {
+    environments: string[];
+    traveler_profile: string | null;
+    interests: string[];
+    pace: string | null;
+    food_preference: string | null;
 }
 
-export function TuPreferes({ visible, onComplete, onSkip }: TuPreferesProps) {
+export interface TuPreferesProps {
+    visible: boolean;
+    onComplete: (preferences: PreferencesPayload) => void;
+    onSkip: () => void;
+    initialValues?: Partial<PreferencesPayload>;
+}
+
+function tagsToValues(slideId: string, tags: string[]): string[] {
+    const slideData = SLIDES.find((s) => s.id === slideId);
+    if (!slideData) return [];
+    return tags
+        .map((tag) => slideData.options.find((o) => o.tag === tag)?.value)
+        .filter((v): v is string => !!v);
+}
+
+function buildInitialSelections(values?: Partial<PreferencesPayload>): Record<string, string[]> {
+    if (!values) return {};
+    const result: Record<string, string[]> = {};
+
+    if (values.environments?.length) {
+        result.environment = tagsToValues('environment', values.environments);
+    }
+    if (values.traveler_profile) {
+        result.profile = tagsToValues('profile', [values.traveler_profile]);
+    }
+    if (values.interests?.length) {
+        result.activities = tagsToValues('activities', values.interests);
+    }
+    if (values.pace) {
+        result.pace = tagsToValues('pace', [values.pace]);
+    }
+    if (values.food_preference) {
+        result.food = tagsToValues('food', [values.food_preference]);
+    }
+
+    return result;
+}
+
+export function TuPreferes({ visible, onComplete, onSkip, initialValues }: TuPreferesProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [direction, setDirection] = useState(1);
-    const [selections, setSelections] = useState<Record<string, string[]>>({});
+    const [selections, setSelections] = useState<Record<string, string[]>>(buildInitialSelections(initialValues));
 
     const slide = SLIDES[currentSlide];
     const totalSlides = SLIDES.length;
@@ -342,24 +382,34 @@ export function TuPreferes({ visible, onComplete, onSkip }: TuPreferesProps) {
         [slide.id, slide.mode, slide.maxSelect],
     );
 
-    const buildTags = useCallback((): string[] => {
-        const tags: string[] = [];
-        SLIDES.forEach((s) => {
-            const selected = selections[s.id] || [];
-            selected.forEach((val) => {
-                const opt = s.options.find((o) => o.value === val);
-                if (opt) tags.push(opt.tag);
-            });
-        });
-        return tags;
-    }, [selections]);
+    const getTagsForSlide = useCallback(
+        (slideId: string): string[] => {
+            const selected = selections[slideId] || [];
+            const slideData = SLIDES.find((s) => s.id === slideId);
+            if (!slideData) return [];
+            return selected
+                .map((val) => slideData.options.find((o) => o.value === val)?.tag)
+                .filter((t): t is string => !!t);
+        },
+        [selections],
+    );
+
+    const buildPayload = useCallback((): PreferencesPayload => {
+        return {
+            environments: getTagsForSlide('environment'),
+            traveler_profile: getTagsForSlide('profile')[0] ?? null,
+            interests: getTagsForSlide('activities'),
+            pace: getTagsForSlide('pace')[0] ?? null,
+            food_preference: getTagsForSlide('food')[0] ?? null,
+        };
+    }, [getTagsForSlide]);
 
     const handleNext = () => {
         if (currentSlide < totalSlides - 1) {
             setDirection(1);
             setCurrentSlide((p) => p + 1);
         } else {
-            onComplete(buildTags());
+            onComplete(buildPayload());
         }
     };
 
@@ -371,7 +421,7 @@ export function TuPreferes({ visible, onComplete, onSkip }: TuPreferesProps) {
     };
 
     const handleSkipAll = () => {
-        onComplete(buildTags());
+        onComplete(buildPayload());
     };
 
     const handleSkipSlide = () => {
