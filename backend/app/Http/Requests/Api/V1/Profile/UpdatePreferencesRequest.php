@@ -17,4 +17,5 @@ class UpdatePreferencesRequest extends BaseApiRequest
             'visited_cities' => ['sometimes', 'array'],
         ];
     }
+
 }
