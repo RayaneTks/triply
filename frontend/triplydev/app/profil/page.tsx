@@ -57,6 +57,7 @@ function Tag({ value }: { value: string }) {
     );
 }
 
+
 function PreferenceRow({ label, values }: { label: string; values: string[] }) {
     if (!values.length) return null;
     return (
