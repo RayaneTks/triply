@@ -9,6 +9,8 @@ export interface LocationPoint {
     title: string;
     coordinates: { latitude: number; longitude: number };
     type?: string;
+    /** Niveau de zoom pour flyTo (carte) lorsqu’un seul point est affiché */
+    zoom?: number;
 }
 
 /** Distance minimale en degrés (~11m à l'équateur) pour considérer 2 points comme distincts */

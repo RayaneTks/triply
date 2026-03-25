@@ -15,6 +15,8 @@ interface TripConfigurationFormProps {
     arrivalCity: string;
     setArrivalCity: (v: string) => void;
     setArrivalCityName?: (v: string) => void;
+    /** Coordonnées de la destination (Amadeus) au moment du choix dans l’autocomplete */
+    onArrivalGeoSelect?: (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => void;
     travelDays: number;
     setTravelDays: (v: number) => void;
     travelerCount: number;
@@ -92,7 +94,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         selectedOptions, setSelectedOptions, multiSelectOptions,
         dietaryMultiSelectOptions, dietarySelections, setDietarySelections,
         onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
-        onFlightCardClick, onRemoveFlight, setArrivalCityName,
+        onFlightCardClick, onRemoveFlight, setArrivalCityName, onArrivalGeoSelect,
         onOpenHotelSearch, selectedHotel, onHotelCardClick, onRemoveHotel,
     } = props;
 
@@ -107,7 +109,14 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 <Section icon={svg("M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z")} title="Où allez-vous ?">
                     <div className="space-y-2.5">
                         <CityAutocomplete value={departureCity} onChange={setDepartureCity} label="Ville de départ" placeholder="Ex. Paris, Lyon..." />
-                        <CityAutocomplete value={arrivalCity} onChange={setArrivalCity} onSelectName={(n) => setArrivalCityName?.(n)} label="Destination" placeholder="Ex. Barcelone, Tokyo..." />
+                        <CityAutocomplete
+                            value={arrivalCity}
+                            onChange={setArrivalCity}
+                            onSelectName={(n) => setArrivalCityName?.(n)}
+                            onSelectGeo={onArrivalGeoSelect}
+                            label="Destination"
+                            placeholder="Ex. Barcelone, Tokyo..."
+                        />
                     </div>
                 </Section>
 

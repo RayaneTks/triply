@@ -374,6 +374,9 @@ interface TripCreationWizardProps {
     activeView?: PanelView;
     onActiveViewChange?: (view: PanelView) => void;
     onComplete?: () => void;
+    /** Recentrage carte sur la destination sans changer d’étape */
+    onValidateChoices?: () => void;
+    onDestinationGeoSelect?: (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => void;
 }
 
 export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
@@ -408,6 +411,8 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     activeView,
     onActiveViewChange,
     onComplete,
+    onValidateChoices,
+    onDestinationGeoSelect,
 }) => {
     const requiredChecklist = useMemo(
         () => [
@@ -475,6 +480,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             arrivalCity={state.arrivalCity}
                             setArrivalCity={state.setArrivalCity}
                             setArrivalCityName={state.setArrivalCityName}
+                            onArrivalGeoSelect={onDestinationGeoSelect}
                             travelDays={state.travelDays}
                             setTravelDays={state.setTravelDays}
                             travelerCount={state.travelerCount}
@@ -531,18 +537,32 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                         <p className="mb-2 text-[11px] text-slate-500">
                             Commencez simple : destination, dates et voyageurs. Les options avancées restent facultatives.
                         </p>
-                        <button
-                            type="button"
-                            onClick={onComplete}
-                            disabled={!hasMinimum || !onComplete}
-                            className={`w-full rounded-xl py-2.5 text-[13px] font-semibold transition-all ${
-                                hasMinimum
-                                    ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 active:scale-[0.98]'
-                                    : 'cursor-not-allowed bg-white/6 text-slate-400'
-                            }`}
-                        >
-                            {hasMinimum ? 'Générer mon itinéraire de base' : 'Complétez départ, destination, dates et voyageurs'}
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={onValidateChoices}
+                                disabled={!state.arrivalCity.trim() || !onValidateChoices}
+                                className={`min-w-0 flex-1 rounded-xl py-2.5 text-[12px] font-semibold transition-all sm:text-[13px] ${
+                                    state.arrivalCity.trim() && onValidateChoices
+                                        ? 'border border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 active:scale-[0.98]'
+                                        : 'cursor-not-allowed border border-transparent bg-white/6 text-slate-500'
+                                }`}
+                            >
+                                Valider mes choix
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onComplete}
+                                disabled={!hasMinimum || !onComplete}
+                                className={`min-w-0 flex-1 rounded-xl py-2.5 text-[12px] font-semibold transition-all sm:text-[13px] ${
+                                    hasMinimum
+                                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 active:scale-[0.98]'
+                                        : 'cursor-not-allowed bg-white/6 text-slate-400'
+                                }`}
+                            >
+                                {hasMinimum ? 'Générer mon itinéraire de base' : 'Complétez départ, destination, dates et voyageurs'}
+                            </button>
+                        </div>
                     </div>
                 </>
             ) : (

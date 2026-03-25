@@ -369,7 +369,8 @@ export default function Home() {
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
     const [wizardView, setWizardView] = useState<'plan' | 'activity'>('plan');
-    const [launchFlowActive, setLaunchFlowActive] = useState(false);
+    /** Dernières coordonnées connues pour le code IATA d’arrivée (sélection autocomplete) */
+    const [destinationGeo, setDestinationGeo] = useState<{ lat: number; lng: number; iataCode: string } | null>(null);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
     const [hotelModalBudget, setHotelModalBudget] = useState('');
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
@@ -416,17 +417,6 @@ export default function Home() {
         setSelectedFlightCarrierName(carrierName);
         setIsFlightModalOpen(false);
         syncFormFromFlight(offer);
-
-        if (launchFlowActive) {
-            if (!selectedHotelOffer) {
-                setIsHotelModalOpen(true);
-                void handleHotelSearch();
-            } else {
-                setWizardView('activity');
-                setIsAssistantOpen(true);
-                setLaunchFlowActive(false);
-            }
-        }
     };
 
     useEffect(() => {
@@ -441,12 +431,6 @@ export default function Home() {
         tripConfig.setOutboundDate(offer.checkInDate);
         tripConfig.setReturnDate(offer.checkOutDate);
         if (offer.guests?.adults) tripConfig.setTravelerCount(offer.guests.adults);
-
-        if (launchFlowActive) {
-            setWizardView('activity');
-            setIsAssistantOpen(true);
-            setLaunchFlowActive(false);
-        }
     };
 
     // Gestion de la recherche de vol
@@ -543,35 +527,84 @@ export default function Home() {
         'Faible en FODMAP',
     ];
 
+    const handleDestinationGeoSelect = useCallback(
+        (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => {
+            setDestinationGeo({
+                lat: payload.latitude,
+                lng: payload.longitude,
+                iataCode: payload.iataCode,
+            });
+        },
+        []
+    );
+
+    const focusMapOnDestination = useCallback(async () => {
+        const iata = tripConfig.arrivalCity.trim();
+        const displayTitle = (tripConfig.arrivalCityName || tripConfig.arrivalCity || 'Destination').trim();
+        if (!iata && !displayTitle) {
+            console.warn("Triply: pas de destination pour centrer la carte.");
+            return;
+        }
+
+        let latitude: number;
+        let longitude: number;
+
+        if (destinationGeo && destinationGeo.iataCode === iata) {
+            latitude = destinationGeo.lat;
+            longitude = destinationGeo.lng;
+        } else {
+            const keyword = (tripConfig.arrivalCityName || tripConfig.arrivalCity).trim();
+            if (keyword.length < 2) {
+                console.warn('Triply: mot-clé destination trop court pour la géolocalisation.');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(keyword)}`);
+                const data: unknown = await res.json();
+                const list = Array.isArray(data) ? data : [];
+                const first = list[0] as
+                    | { geoCode?: { latitude?: number; longitude?: number }; iataCode?: string }
+                    | undefined;
+                const geo = first?.geoCode;
+                const latN = geo?.latitude != null ? Number(geo.latitude) : NaN;
+                const lngN = geo?.longitude != null ? Number(geo.longitude) : NaN;
+                if (!Number.isFinite(latN) || !Number.isFinite(lngN)) {
+                    console.warn('Triply: aucune coordonnée trouvée pour la destination.');
+                    return;
+                }
+                latitude = latN;
+                longitude = lngN;
+                if (first?.iataCode) {
+                    setDestinationGeo({ lat: latitude, lng: longitude, iataCode: first.iataCode });
+                }
+            } catch (e) {
+                console.warn('Triply: échec géolocalisation destination', e);
+                return;
+            }
+        }
+
+        const point: LocationPoint = {
+            id: 'city-center',
+            title: displayTitle || iata,
+            coordinates: { latitude, longitude },
+            type: 'city-center',
+            zoom: 11,
+        };
+        setMapLocations([point]);
+    }, [destinationGeo, tripConfig.arrivalCity, tripConfig.arrivalCityName]);
+
+    const handleValidateChoices = useCallback(() => {
+        void focusMapOnDestination();
+    }, [focusMapOnDestination]);
+
     const handleGenerateTrip = () => {
         const destination = tripConfig.arrivalCityName || tripConfig.arrivalCity;
         const hasDates = !!tripConfig.outboundDate && !!tripConfig.returnDate;
         if (!destination || !hasDates) return;
 
-        setLaunchFlowActive(true);
-        setIsAssistantOpen(true);
-
-        // Réutilise le budget principal du formulaire pour les recherches des modales.
-        if (!flightModalBudget && tripConfig.budget) setFlightModalBudget(tripConfig.budget);
-        if (!hotelModalBudget && tripConfig.budget) setHotelModalBudget(tripConfig.budget);
-
-        // Étape 1: si aucun vol n'est sélectionné, on ouvre les vols.
-        if (!selectedFlightOffer && tripConfig.departureCity && tripConfig.arrivalCity) {
-            setIsFlightModalOpen(true);
-            void handleFlightSearch();
-            return;
-        }
-
-        // Étape 2: si vol ok mais pas d'hôtel, on ouvre les hôtels.
-        if (!selectedHotelOffer) {
-            setIsHotelModalOpen(true);
-            void handleHotelSearch();
-            return;
-        }
-
-        // Étape 3: tout est prêt, on bascule sur les activités.
+        void focusMapOnDestination();
         setWizardView('activity');
-        setLaunchFlowActive(false);
+        setIsAssistantOpen(true);
     };
 
     // --- Logique Map (POI, Hover, Click) ---
@@ -1373,6 +1406,8 @@ export default function Home() {
                                             legTransportModes={legTransportByDay[selectedDay] ?? []}
                                             onLegTransportChange={handleLegTransportChange}
                                             onComplete={handleGenerateTrip}
+                                            onValidateChoices={handleValidateChoices}
+                                            onDestinationGeoSelect={handleDestinationGeoSelect}
                                         />
                                     </div>
                                 </motion.div>
