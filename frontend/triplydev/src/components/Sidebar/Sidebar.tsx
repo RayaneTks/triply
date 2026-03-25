@@ -66,6 +66,22 @@ const PricingIcon = () => (
     </svg>
 );
 
+const LogInIcon = () => (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <polyline points="10 17 15 12 10 7" />
+        <line x1="15" y1="12" x2="3" y2="12" />
+    </svg>
+);
+
+const LogOutIcon = () => (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <polyline points="16 17 21 12 16 7" />
+        <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+);
+
 const NAV_ITEMS = [
     { label: 'Accueil', Icon: HomeIcon, path: '/' },
     { label: 'Profil', Icon: UserIcon, path: '/profil' },
@@ -120,9 +136,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
             {/* Header avec logo + toggle */}
             <div
-                className={`flex items-center border-b border-white/10 ${isCollapsed ? 'justify-center p-3' : 'justify-between p-4'}`}
+                className={`flex border-b border-white/10 ${
+                    isCollapsed ? 'flex-col items-center gap-2 py-3' : 'items-center justify-between p-4'
+                }`}
             >
-                {!isCollapsed && (
+                {!isCollapsed ? (
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="flex-shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
                             <Image
@@ -133,7 +151,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 className="object-contain"
                             />
                         </div>
-
+                    </div>
+                ) : (
+                    <div className="flex flex-shrink-0 items-center justify-center" aria-hidden>
+                        <Image src="/Logo-triply.svg" alt="" width={28} height={28} className="object-contain opacity-90" />
                     </div>
                 )}
                 <button
@@ -150,43 +171,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
             </div>
 
-            <motion.div
-                className="flex min-h-0 flex-1 flex-col overflow-hidden"
-                animate={{ opacity: isCollapsed ? 0 : 1 }}
-                transition={{ duration: 0.2, delay: isCollapsed ? 0 : 0.05 }}
-            >
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 {children || (
                     <>
-                        <nav className="flex-1 px-4 py-6">
-                            <ul className="space-y-1">
+                        <nav className={`flex-1 py-4 ${isCollapsed ? 'px-1.5' : 'px-4'}`}>
+                            <ul className={isCollapsed ? 'flex flex-col items-center gap-0.5' : 'space-y-1'}>
                                 {navItems.map((item) => {
                                     const isActive = item.path ? pathname === item.path : false;
                                     const Icon = item.Icon;
+                                    const itemBase =
+                                        'rounded-xl text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 flex items-center text-slate-200';
+                                    const itemExpanded = 'w-full px-4 py-3 text-left gap-3';
+                                    const itemCollapsed =
+                                        'w-full justify-center px-0 py-2.5 min-h-[44px] min-w-[44px] max-w-[48px] mx-auto';
+                                    const itemClass = `${itemBase} ${isCollapsed ? itemCollapsed : itemExpanded} ${
+                                        isActive ? 'text-[var(--primary)]' : ''
+                                    }`;
                                     const content = (
                                         <>
-                                            <span className="flex-shrink-0 opacity-80">
+                                            <span className={`flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
                                                 <Icon />
                                             </span>
-                                            <span className="font-medium">{item.label}</span>
+                                            <span className={isCollapsed ? 'sr-only' : 'font-medium'}>{item.label}</span>
                                         </>
                                     );
                                     return (
-                                        <li key={item.label}>
+                                        <li key={item.label} className={isCollapsed ? 'flex justify-center w-full' : ''}>
                                             {item.path ? (
                                                 <Link
                                                     href={item.path}
-                                                    className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                                                        isActive ? 'text-[var(--primary)]' : 'text-slate-200'
-                                                    } flex items-center gap-3`}
+                                                    title={item.label}
+                                                    aria-label={item.label}
+                                                    className={`block ${itemClass}`}
                                                     style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' } : undefined}
                                                 >
                                                     {content}
                                                 </Link>
                                             ) : (
-                                                <button
-                                                    type="button"
-                                                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-                                                >
+                                                <button type="button" title={item.label} aria-label={item.label} className={itemClass}>
                                                     {content}
                                                 </button>
                                             )}
@@ -196,18 +218,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </ul>
                         </nav>
 
-                        <div className="border-t border-white/10 p-4">
-                            <Button
-                                label={isConnected ? 'Déconnexion' : 'Connexion'}
-                                onClick={isConnected ? onLogoutClick : onLoginClick}
-                                variant="dark"
-                                tone="tone1"
-                                className="w-full"
-                            />
+                        <div className={`border-t border-white/10 ${isCollapsed ? 'flex justify-center p-2' : 'p-4'}`}>
+                            {isCollapsed ? (
+                                <button
+                                    type="button"
+                                    onClick={isConnected ? onLogoutClick : onLoginClick}
+                                    title={isConnected ? 'Déconnexion' : 'Connexion'}
+                                    aria-label={isConnected ? 'Déconnexion' : 'Connexion'}
+                                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                    style={{ color: 'var(--primary, #0096c7)' }}
+                                >
+                                    {isConnected ? <LogOutIcon /> : <LogInIcon />}
+                                </button>
+                            ) : (
+                                <Button
+                                    label={isConnected ? 'Déconnexion' : 'Connexion'}
+                                    onClick={isConnected ? onLogoutClick : onLoginClick}
+                                    variant="dark"
+                                    tone="tone1"
+                                    className="w-full"
+                                />
+                            )}
                         </div>
                     </>
                 )}
-            </motion.div>
+            </div>
         </motion.aside>
         </>
     );
