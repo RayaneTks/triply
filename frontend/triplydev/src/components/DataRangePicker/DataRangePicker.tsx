@@ -1,6 +1,7 @@
 import { FC, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getLocalIsoDate } from '@/src/utils/date';
 
 export interface DateRangePickerProps {
     startDate?: string;
@@ -127,7 +128,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
 
     const handleStartDateSelect = (day: number) => {
         const selectedDate = `${startCalendarYear}-${String(startCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalIsoDate();
         if (selectedDate >= today) {
             handleChange('start', selectedDate);
             setIsStartCalendarOpen(false);
@@ -136,7 +137,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
 
     const handleEndDateSelect = (day: number) => {
         const selectedDate = `${endCalendarYear}-${String(endCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalIsoDate();
         if (selectedDate >= today && (!startDate || selectedDate >= startDate)) {
             handleChange('end', selectedDate);
             setIsEndCalendarOpen(false);
@@ -163,7 +164,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
 
     const isDateDisabled = (day: number, year: number, month: number, isEndCalendar: boolean): boolean => {
         const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalIsoDate();
         if (date < today) return true;
         if (isEndCalendar && startDate && date < startDate) return true;
         return false;

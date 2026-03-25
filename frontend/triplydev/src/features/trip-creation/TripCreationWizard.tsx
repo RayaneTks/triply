@@ -409,18 +409,18 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onActiveViewChange,
     onComplete,
 }) => {
-    const filledFields = useMemo(() => {
-        return [
-            state.arrivalCity,
-            state.outboundDate && state.returnDate,
-            state.travelerCount > 0,
-            selectedFlight,
-            selectedHotel,
-            state.budget,
-        ].filter(Boolean).length;
-    }, [state.arrivalCity, state.outboundDate, state.returnDate, state.travelerCount, selectedFlight, selectedHotel, state.budget]);
-
-    const hasMinimum = !!state.arrivalCity && !!state.outboundDate && !!state.returnDate;
+    const requiredChecklist = useMemo(
+        () => [
+            { key: 'departure', valid: !!state.departureCity.trim() },
+            { key: 'arrival', valid: !!state.arrivalCity.trim() },
+            { key: 'outbound', valid: !!state.outboundDate },
+            { key: 'return', valid: !!state.returnDate && state.returnDate >= state.outboundDate },
+            { key: 'travelers', valid: state.travelerCount > 0 },
+        ],
+        [state.departureCity, state.arrivalCity, state.outboundDate, state.returnDate, state.travelerCount]
+    );
+    const requiredCompleted = requiredChecklist.filter((item) => item.valid).length;
+    const hasMinimum = requiredCompleted === requiredChecklist.length;
     const [internalActiveView, setInternalActiveView] = useState<PanelView>('plan');
     const resolvedActiveView = activeView ?? internalActiveView;
 
@@ -445,18 +445,21 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 : 'text-slate-400 hover:text-slate-200'
                         }`}
                     >
-                        Planifiez votre voyage
+                        Étape 1 · Informations essentielles
                     </button>
                     <button
                         type="button"
-                        onClick={() => setResolvedView('activity')}
+                        onClick={() => hasMinimum && setResolvedView('activity')}
+                        disabled={!hasMinimum}
                         className={`flex-1 px-4 py-3 text-[13px] font-semibold transition-colors ${
                             resolvedActiveView === 'activity'
                                 ? 'border-b-2 border-cyan-500 text-cyan-400'
-                                : 'text-slate-400 hover:text-slate-200'
+                                : hasMinimum
+                                  ? 'text-slate-400 hover:text-slate-200'
+                                  : 'cursor-not-allowed text-slate-600'
                         }`}
                     >
-                        Activité de la journée
+                        Étape 2 · Plan de journée
                     </button>
                 </div>
             </div>
@@ -512,16 +515,22 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
 
                     {/* CTA Footer - Plan */}
                     <div className="shrink-0 border-t border-white/10 px-3 py-3">
-                        {filledFields > 0 && (
+                        {requiredCompleted > 0 && (
                             <div className="mb-2 flex items-center gap-1.5">
-                                {Array.from({ length: 6 }).map((_, i) => (
+                                {Array.from({ length: requiredChecklist.length }).map((_, i) => (
                                     <div
                                         key={i}
-                                        className={`h-1 flex-1 rounded-full transition-colors ${i < filledFields ? 'bg-cyan-500' : 'bg-white/10'}`}
+                                        className={`h-1 flex-1 rounded-full transition-colors ${i < requiredCompleted ? 'bg-cyan-500' : 'bg-white/10'}`}
                                     />
                                 ))}
                             </div>
                         )}
+                        <p className="mb-1 text-[11px] text-slate-400">
+                            Champs essentiels complétés: {requiredCompleted}/{requiredChecklist.length}
+                        </p>
+                        <p className="mb-2 text-[11px] text-slate-500">
+                            Commencez simple : destination, dates et voyageurs. Les options avancées restent facultatives.
+                        </p>
                         <button
                             type="button"
                             onClick={onComplete}
@@ -532,7 +541,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                     : 'cursor-not-allowed bg-white/6 text-slate-400'
                             }`}
                         >
-                            {hasMinimum ? 'Lancer Triply' : 'Renseignez au moins une destination et des dates'}
+                            {hasMinimum ? 'Générer mon itinéraire de base' : 'Complétez départ, destination, dates et voyageurs'}
                         </button>
                     </div>
                 </>

@@ -44,6 +44,14 @@ interface ApiErrorResponse {
 
 const AUTH_STORAGE_KEY = 'triply_auth_session';
 const API_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL || '/api/v1').replace(/\/$/, '');
+const AUTH_STORAGE_MODE = process.env.NEXT_PUBLIC_AUTH_STORAGE_MODE || 'session';
+
+function getStorage(): Storage | null {
+    if (typeof window === 'undefined') return null;
+    // Phase 1 hardening: prefer sessionStorage to reduce token persistence surface.
+    // Next phase should migrate to HttpOnly secure cookies issued by backend.
+    return AUTH_STORAGE_MODE === 'local' ? window.localStorage : window.sessionStorage;
+}
 
 function getApiUrl(path: string): string {
     return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
@@ -84,11 +92,9 @@ async function parseJsonResponse<T>(response: Response, fallback: string): Promi
 }
 
 export function getStoredSession(): AuthSession | null {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    const storage = getStorage();
+    if (!storage) return null;
+    const raw = storage.getItem(AUTH_STORAGE_KEY);
     if (!raw) {
         return null;
     }
@@ -101,19 +107,15 @@ export function getStoredSession(): AuthSession | null {
 }
 
 export function saveSession(session: AuthSession): void {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    const storage = getStorage();
+    if (!storage) return;
+    storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 }
 
 export function clearSession(): void {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    const storage = getStorage();
+    if (!storage) return;
+    storage.removeItem(AUTH_STORAGE_KEY);
 }
 
 export async function login(payload: { email: string; password: string; deviceName?: string }): Promise<AuthSession> {
