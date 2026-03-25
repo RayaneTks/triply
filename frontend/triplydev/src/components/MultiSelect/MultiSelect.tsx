@@ -20,6 +20,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState<string[]>(selectedValues);
+    const [activeIndex, setActiveIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -37,6 +38,12 @@ export const MultiSelect: FC<MultiSelectProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        if (isOpen) {
+            setActiveIndex(0);
+        }
+    }, [isOpen]);
+
     const toggleOption = (option: string) => {
         const newSelected = selected.includes(option)
             ? selected.filter(item => item !== option)
@@ -50,6 +57,32 @@ export const MultiSelect: FC<MultiSelectProps> = ({
         const newSelected = selected.filter(item => item !== option);
         setSelected(newSelected);
         onChange?.(newSelected);
+    };
+
+    const onTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (!isOpen && (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            setIsOpen(true);
+            setActiveIndex(0);
+        }
+    };
+
+    const onListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (!isOpen || options.length === 0) return;
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActiveIndex((idx) => (idx + 1) % options.length);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActiveIndex((idx) => (idx <= 0 ? options.length - 1 : idx - 1));
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const option = options[activeIndex];
+            if (option) toggleOption(option);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            setIsOpen(false);
+        }
     };
 
     const ChevronIcon = (
@@ -75,6 +108,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
+                onKeyDown={onTriggerKeyDown}
                 className={
                     variant === 'tripForm'
                         ? `${tripFormButtonCls} ${tripFormOpenBorder}`
@@ -141,8 +175,12 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                 {ChevronIcon}
             </button>
 
-            {isOpen && (
+                {isOpen && (
                 <div
+                    role="listbox"
+                    aria-multiselectable="true"
+                    tabIndex={0}
+                    onKeyDown={onListKeyDown}
                     className="mt-2 w-full rounded-lg shadow-xl max-h-60 overflow-hidden"
                     style={{
                         backgroundColor: 'var(--background, #222222)',
@@ -157,12 +195,15 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                         <style>{`
                             .multi-select-scroll::-webkit-scrollbar { display: none !important; }
                         `}</style>
-                        {options.map((option) => {
+                        {options.map((option, idx) => {
                             const isSelected = selected.includes(option);
                             return (
-                                <label
+                                <button
                                     key={option}
-                                    className="flex items-center px-4 py-3 cursor-pointer transition-colors duration-150"
+                                    type="button"
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    className={`flex w-full items-center px-4 py-3 cursor-pointer transition-colors duration-150 text-left ${activeIndex === idx ? 'ring-1 ring-cyan-500/40' : ''}`}
                                     style={{
                                         color: 'var(--foreground, #ededed)',
                                         backgroundColor: isSelected ? 'rgba(0, 150, 199, 0.15)' : 'transparent',
@@ -183,13 +224,6 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                                     }}
                                 >
                                     <div className="relative mr-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => toggleOption(option)}
-                                            className="sr-only"
-                                            tabIndex={-1}
-                                        />
                                         <div
                                             className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150"
                                             style={{
@@ -205,7 +239,7 @@ export const MultiSelect: FC<MultiSelectProps> = ({
                                         </div>
                                     </div>
                                     <span className="text-sm flex-1">{option}</span>
-                                </label>
+                                </button>
                             );
                         })}
                     </div>
