@@ -14,6 +14,18 @@ export interface AuthSession {
     user: AuthUser | null;
 }
 
+export interface UserPreferences {
+    environments?: string[];
+    traveler_profile?: string | null;
+    interests?: string[];
+    pace?: string | null;
+    food_preference?: string | null;
+    diet?: string[];
+    breakfast_included?: boolean | null;
+    max_budget?: number | null;
+    visited_cities?: string[];
+}
+
 interface ApiSuccess<T> {
     success: boolean;
     data: T;
@@ -180,5 +192,39 @@ export async function updateProfile(token: string, payload: { name?: string }): 
     if (!response.ok) {
         const errorPayload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
         throw new Error(getErrorMessage(errorPayload, 'Mise a jour du profil impossible.'));
+    }
+}
+
+export async function fetchPreferences(token: string): Promise<UserPreferences> {
+    const response = await fetch(getApiUrl('/profile'), {
+        method: 'GET',
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    const data = await parseJsonResponse<{ attributes: { preferences: UserPreferences } }>(
+        response,
+        'Impossible de charger les preferences.',
+    );
+
+    return data.attributes?.preferences ?? {};
+}
+
+export async function updatePreferences(token: string, payload: UserPreferences): Promise<void> {
+    const response = await fetch(getApiUrl('/profile/preferences'), {
+        method: 'PATCH',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorPayload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+        throw new Error(getErrorMessage(errorPayload, 'Mise a jour des preferences impossible.'));
     }
 }
