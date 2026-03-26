@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
@@ -8,8 +9,12 @@ import { WorldMap, type RouteMapSegment } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { Button } from '@/src/components/Button/Button';
 import { Login } from "@/src/components/Login/Login";
-import { TuPreferes } from "@/src/components/TuPreferes/TuPreferes";
-import Assistant from "@/src/components/Assistant/Assistant";
+import {
+    TuPreferes,
+    PREFERENCES_STORAGE_KEY,
+    preferencesPayloadToAssistantTags,
+} from "@/src/components/TuPreferes/TuPreferes";
+import Assistant, { type AssistantHandle, type SuggestedActivityPin } from '@/src/components/Assistant/Assistant';
 import {
     TripCreationWizard,
     getEstimatedDurationHours,
@@ -41,6 +46,14 @@ import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import type { FlightRequestPayload } from '@/utils/amadeus';
 import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
+import {
+    loadStoredPlanningMode,
+    savePlanningMode,
+    clearPlanningModeStorage,
+    type PlanningMode,
+} from '@/src/features/trip-creation/planning-mode';
+import { createTrip, validateTripApi } from '@/src/lib/trips-client';
+import type { PlanSnapshot } from '@/src/lib/plan-snapshot';
 
 /** Segment / carte en alerte dépassement temps jour */
 const ACTIVITY_TIME_ALERT_COLOR = '#ef4444';
@@ -65,6 +78,26 @@ function getDayActivityLabel(p: {
 }): string {
     const n = p.properties?.name ?? p.properties?.name_en ?? p.layer?.id ?? 'Lieu';
     return String(n);
+}
+
+async function fetchGeocodeFirst(keyword: string): Promise<{ lat: number; lng: number; name: string } | null> {
+    const q = keyword.trim();
+    if (q.length < 2) return null;
+    try {
+        const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(q)}`);
+        const data: unknown = await res.json();
+        const list = Array.isArray(data) ? data : [];
+        const first = list[0] as
+            | { geoCode?: { latitude?: number; longitude?: number }; name?: string }
+            | undefined;
+        const geo = first?.geoCode;
+        const latN = geo?.latitude != null ? Number(geo.latitude) : NaN;
+        const lngN = geo?.longitude != null ? Number(geo.longitude) : NaN;
+        if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return null;
+        return { lat: latN, lng: lngN, name: String(first?.name || q) };
+    } catch {
+        return null;
+    }
 }
 
 function poiStableKeyForLeg(p: DayActivityPoi) {
@@ -186,6 +219,7 @@ function LoginWithMapBackground({
 }
 
 export default function Home() {
+    const router = useRouter();
     const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
     const hasMapboxToken = MAPBOX_TOKEN.trim().length > 0;
 
@@ -218,7 +252,9 @@ export default function Home() {
                 saveSession({ token: session.token, user });
                 setIsConnected(true);
             } catch {
+                const uid = getStoredSession()?.user?.id;
                 clearSession();
+                clearPlanningModeStorage(uid);
                 setIsConnected(false);
             }
         };
@@ -367,9 +403,40 @@ export default function Home() {
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+    const [assistantRequestLoading, setAssistantRequestLoading] = useState(false);
+    const assistantRef = useRef<AssistantHandle>(null);
+    const [planningMode, setPlanningModeState] = useState<PlanningMode | null>(null);
+    useEffect(() => {
+        if (!isConnected) {
+            setPlanningModeState(null);
+            return;
+        }
+        const uid = getStoredSession()?.user?.id ?? null;
+        setPlanningModeState(loadStoredPlanningMode(uid));
+    }, [isConnected]);
+    const handlePlanningModeChange = useCallback((mode: PlanningMode) => {
+        const uid = getStoredSession()?.user?.id;
+        if (uid == null || uid === '') return;
+        setPlanningModeState(mode);
+        savePlanningMode(mode, uid);
+        if (mode === 'full_ai') {
+            setIsAssistantOpen(true);
+        } else if (mode === 'manual') {
+            setIsAssistantOpen(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (planningMode === 'manual') setIsAssistantOpen(false);
+    }, [planningMode]);
+    const [geocodeAppendPending, setGeocodeAppendPending] = useState(false);
+    const [validateTripModalOpen, setValidateTripModalOpen] = useState(false);
+    const [validateTripSubmitting, setValidateTripSubmitting] = useState(false);
+    const [validateTripError, setValidateTripError] = useState('');
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
     const [wizardView, setWizardView] = useState<'plan' | 'activity'>('plan');
-    const [launchFlowActive, setLaunchFlowActive] = useState(false);
+    /** Dernières coordonnées connues pour le code IATA d’arrivée (sélection autocomplete) */
+    const [destinationGeo, setDestinationGeo] = useState<{ lat: number; lng: number; iataCode: string } | null>(null);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
     const [hotelModalBudget, setHotelModalBudget] = useState('');
     const [selectedHotelOffer, setSelectedHotelOffer] = useState<HotelOffer | null>(null);
@@ -392,18 +459,20 @@ export default function Home() {
             const dt = firstSeg.departure.at;
             if (dt) {
                 tripConfig.setOutboundDate(dt.slice(0, 10));
-                tripConfig.setArrivalTime(dt.slice(11, 16));
+                tripConfig.setOutboundDepartureTime(dt.slice(11, 16));
             }
+        }
+        if (lastOutboundSeg?.arrival?.at) {
+            tripConfig.setOutboundArrivalTime(lastOutboundSeg.arrival.at.slice(11, 16));
         }
         if (lastOutboundSeg?.arrival) {
             tripConfig.setArrivalCity(lastOutboundSeg.arrival.iataCode || '');
             if (returnItin && firstReturnSeg?.departure?.at) {
                 tripConfig.setReturnDate(firstReturnSeg.departure.at.slice(0, 10));
-                tripConfig.setDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
-            } else if (returnItin && lastReturnSeg?.arrival?.at) {
-                tripConfig.setDepartureTime(lastReturnSeg.arrival.at.slice(11, 16));
-            } else if (lastOutboundSeg.arrival.at) {
-                tripConfig.setDepartureTime(lastOutboundSeg.arrival.at.slice(11, 16));
+                tripConfig.setReturnDepartureTime(firstReturnSeg.departure.at.slice(11, 16));
+            }
+            if (returnItin && lastReturnSeg?.arrival?.at) {
+                tripConfig.setReturnArrivalTime(lastReturnSeg.arrival.at.slice(11, 16));
             }
         }
         if (offer.travelerPricings?.length) {
@@ -416,17 +485,6 @@ export default function Home() {
         setSelectedFlightCarrierName(carrierName);
         setIsFlightModalOpen(false);
         syncFormFromFlight(offer);
-
-        if (launchFlowActive) {
-            if (!selectedHotelOffer) {
-                setIsHotelModalOpen(true);
-                void handleHotelSearch();
-            } else {
-                setWizardView('activity');
-                setIsAssistantOpen(true);
-                setLaunchFlowActive(false);
-            }
-        }
     };
 
     useEffect(() => {
@@ -441,12 +499,6 @@ export default function Home() {
         tripConfig.setOutboundDate(offer.checkInDate);
         tripConfig.setReturnDate(offer.checkOutDate);
         if (offer.guests?.adults) tripConfig.setTravelerCount(offer.guests.adults);
-
-        if (launchFlowActive) {
-            setWizardView('activity');
-            setIsAssistantOpen(true);
-            setLaunchFlowActive(false);
-        }
     };
 
     // Gestion de la recherche de vol
@@ -460,8 +512,8 @@ export default function Home() {
             tripConfig.returnDate,
             tripConfig.travelerCount,
             flightModalBudget,
-            tripConfig.arrivalTime,
-            tripConfig.departureTime
+            tripConfig.outboundDepartureTime,
+            tripConfig.returnDepartureTime
         );
 
         setLastRequestPayload(payload);
@@ -543,36 +595,300 @@ export default function Home() {
         'Faible en FODMAP',
     ];
 
+    const handleDestinationGeoSelect = useCallback(
+        (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => {
+            setDestinationGeo({
+                lat: payload.latitude,
+                lng: payload.longitude,
+                iataCode: payload.iataCode,
+            });
+        },
+        []
+    );
+
+    const focusMapOnDestination = useCallback(async () => {
+        const iata = tripConfig.arrivalCity.trim();
+        const displayTitle = (tripConfig.arrivalCityName || tripConfig.arrivalCity || 'Destination').trim();
+        if (!iata && !displayTitle) {
+            console.warn("Triply: pas de destination pour centrer la carte.");
+            return;
+        }
+
+        let latitude: number;
+        let longitude: number;
+
+        if (destinationGeo && destinationGeo.iataCode === iata) {
+            latitude = destinationGeo.lat;
+            longitude = destinationGeo.lng;
+        } else {
+            const keyword = (tripConfig.arrivalCityName || tripConfig.arrivalCity).trim();
+            if (keyword.length < 2) {
+                console.warn('Triply: mot-clé destination trop court pour la géolocalisation.');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(keyword)}`);
+                const data: unknown = await res.json();
+                const list = Array.isArray(data) ? data : [];
+                const first = list[0] as
+                    | { geoCode?: { latitude?: number; longitude?: number }; iataCode?: string }
+                    | undefined;
+                const geo = first?.geoCode;
+                const latN = geo?.latitude != null ? Number(geo.latitude) : NaN;
+                const lngN = geo?.longitude != null ? Number(geo.longitude) : NaN;
+                if (!Number.isFinite(latN) || !Number.isFinite(lngN)) {
+                    console.warn('Triply: aucune coordonnée trouvée pour la destination.');
+                    return;
+                }
+                latitude = latN;
+                longitude = lngN;
+                if (first?.iataCode) {
+                    setDestinationGeo({ lat: latitude, lng: longitude, iataCode: first.iataCode });
+                }
+            } catch (e) {
+                console.warn('Triply: échec géolocalisation destination', e);
+                return;
+            }
+        }
+
+        const point: LocationPoint = {
+            id: 'city-center',
+            title: displayTitle || iata,
+            coordinates: { latitude, longitude },
+            type: 'city-center',
+            zoom: 11,
+        };
+        setMapLocations([point]);
+    }, [destinationGeo, tripConfig.arrivalCity, tripConfig.arrivalCityName]);
+
+    const handleValidateChoices = useCallback(() => {
+        void focusMapOnDestination();
+    }, [focusMapOnDestination]);
+
     const handleGenerateTrip = () => {
         const destination = tripConfig.arrivalCityName || tripConfig.arrivalCity;
         const hasDates = !!tripConfig.outboundDate && !!tripConfig.returnDate;
         if (!destination || !hasDates) return;
 
-        setLaunchFlowActive(true);
-        setIsAssistantOpen(true);
-
-        // Réutilise le budget principal du formulaire pour les recherches des modales.
-        if (!flightModalBudget && tripConfig.budget) setFlightModalBudget(tripConfig.budget);
-        if (!hotelModalBudget && tripConfig.budget) setHotelModalBudget(tripConfig.budget);
-
-        // Étape 1: si aucun vol n'est sélectionné, on ouvre les vols.
-        if (!selectedFlightOffer && tripConfig.departureCity && tripConfig.arrivalCity) {
-            setIsFlightModalOpen(true);
-            void handleFlightSearch();
-            return;
-        }
-
-        // Étape 2: si vol ok mais pas d'hôtel, on ouvre les hôtels.
-        if (!selectedHotelOffer) {
-            setIsHotelModalOpen(true);
-            void handleHotelSearch();
-            return;
-        }
-
-        // Étape 3: tout est prêt, on bascule sur les activités.
+        void focusMapOnDestination();
         setWizardView('activity');
-        setLaunchFlowActive(false);
+        if (planningMode === 'full_ai') {
+            setIsAssistantOpen(true);
+        } else if (planningMode === 'manual') {
+            setIsAssistantOpen(false);
+        }
     };
+
+    const appendSyntheticPoi = useCallback(
+        (name: string, lat: number, lng: number, layerId: string) => {
+            setDayActivitiesByDay((prev) => {
+                const prevDay = prev[selectedDay] ?? [];
+                const key = `${name}-${lng.toFixed(5)}-${lat.toFixed(5)}`;
+                const exists = prevDay.some((p) => {
+                    const t = getDayActivityLabel(p);
+                    return `${t}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key;
+                });
+                if (exists) return prev;
+                const _dragId = `syn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                setLastAddedActivityDragIdByDay((m) => ({ ...m, [selectedDay]: _dragId }));
+                const poi: DayActivityPoi = {
+                    layer: { id: layerId },
+                    properties: { name, name_en: name },
+                    lngLat: { lng, lat },
+                    _dragId,
+                };
+                return { ...prev, [selectedDay]: [...prevDay, poi] };
+            });
+        },
+        [selectedDay]
+    );
+
+    const handleAppendHotelToDay = useCallback(async () => {
+        if (!selectedHotelOffer) return;
+        setGeocodeAppendPending(true);
+        try {
+            const kw = `${selectedHotelOffer.hotelName} ${selectedHotelOffer.cityCode}`;
+            const g = await fetchGeocodeFirst(kw);
+            if (!g) {
+                window.alert("Impossible de localiser l'hôtel. Essayez une recherche plus précise.");
+                return;
+            }
+            appendSyntheticPoi(g.name || selectedHotelOffer.hotelName, g.lat, g.lng, 'hotel');
+        } finally {
+            setGeocodeAppendPending(false);
+        }
+    }, [appendSyntheticPoi, selectedHotelOffer]);
+
+    const handleAppendAirportOutbound = useCallback(async () => {
+        if (!selectedFlightOffer) return;
+        const seg = selectedFlightOffer.itineraries?.[0]?.segments?.[0];
+        const iata = seg?.departure?.iataCode;
+        if (!iata) return;
+        setGeocodeAppendPending(true);
+        try {
+            const g = await fetchGeocodeFirst(iata);
+            if (!g) {
+                window.alert("Impossible de localiser l'aéroport.");
+                return;
+            }
+            appendSyntheticPoi(`Aéroport ${iata}`, g.lat, g.lng, 'airport');
+        } finally {
+            setGeocodeAppendPending(false);
+        }
+    }, [appendSyntheticPoi, selectedFlightOffer]);
+
+    const handleAppendAirportReturn = useCallback(async () => {
+        if (!selectedFlightOffer) return;
+        const ret = selectedFlightOffer.itineraries?.[1];
+        const fs = ret?.segments?.[0];
+        const iata = fs?.departure?.iataCode;
+        if (!iata) return;
+        setGeocodeAppendPending(true);
+        try {
+            const g = await fetchGeocodeFirst(iata);
+            if (!g) {
+                window.alert("Impossible de localiser l'aéroport.");
+                return;
+            }
+            appendSyntheticPoi(`Aéroport ${iata} (retour)`, g.lat, g.lng, 'airport');
+        } finally {
+            setGeocodeAppendPending(false);
+        }
+    }, [appendSyntheticPoi, selectedFlightOffer]);
+
+    const handleSuggestedActivitiesFromAssistant = useCallback(
+        (items: SuggestedActivityPin[]) => {
+            setDayActivitiesByDay((prev) => {
+                const list = prev[selectedDay] ?? [];
+                const next = [...list];
+                for (const it of items) {
+                    const title = it.title.trim();
+                    if (!title) continue;
+                    const key = `${title}-${it.lng.toFixed(5)}-${it.lat.toFixed(5)}`;
+                    const exists = next.some((p) => {
+                        const t = getDayActivityLabel(p);
+                        return `${t}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key;
+                    });
+                    if (exists) continue;
+                    const _dragId = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    setLastAddedActivityDragIdByDay((m) => ({ ...m, [selectedDay]: _dragId }));
+                    next.push({
+                        layer: { id: 'poi' },
+                        properties: { name: title, name_en: title },
+                        lngLat: { lng: it.lng, lat: it.lat },
+                        _dragId,
+                    });
+                }
+                return { ...prev, [selectedDay]: next };
+            });
+        },
+        [selectedDay]
+    );
+
+    const buildPlanSnapshot = useCallback((): PlanSnapshot => {
+        const days: PlanSnapshot['days'] = [];
+        const td = tripConfig.travelDays || 1;
+        for (let d = 1; d <= td; d++) {
+            const list = dayActivitiesByDay[d] ?? [];
+            days.push({
+                dayIndex: d,
+                activities: list.map((p) => ({
+                    title: getDayActivityLabel(p),
+                    lng: p.lngLat.lng,
+                    lat: p.lngLat.lat,
+                    layerId: p.layer?.id,
+                    durationHours: getEstimatedDurationHours(p.layer?.id),
+                })),
+            });
+        }
+        return {
+            days,
+            planningMode: planningMode ?? undefined,
+            flightSummary: selectedFlightOffer
+                ? {
+                      carrier: selectedFlightCarrierName || undefined,
+                      price: selectedFlightOffer.price?.grandTotal,
+                      currency: selectedFlightOffer.price?.currency,
+                  }
+                : undefined,
+            hotelSummary: selectedHotelOffer
+                ? { name: selectedHotelOffer.hotelName, cityCode: selectedHotelOffer.cityCode }
+                : undefined,
+        };
+    }, [
+        dayActivitiesByDay,
+        tripConfig.travelDays,
+        planningMode,
+        selectedFlightOffer,
+        selectedFlightCarrierName,
+        selectedHotelOffer,
+    ]);
+
+    const hasAnyPlannedActivity = useMemo(
+        () => Object.values(dayActivitiesByDay).some((list) => list.length > 0),
+        [dayActivitiesByDay]
+    );
+
+    const assistantPlanningContext = useMemo(() => {
+        const perDay = activityHoursByDay[selectedDay];
+        const fromForm = parseFloat(String(tripConfig.activityTime || 0));
+        const maxActivityHoursPerDay =
+            perDay != null && perDay > 0
+                ? perDay
+                : Number.isFinite(fromForm) && fromForm > 0
+                  ? fromForm
+                  : 8;
+        const td = tripConfig.travelDays || 1;
+        return {
+            maxActivityHoursPerDay,
+            selectedDay,
+            travelDays: td,
+            planningMode: planningMode ?? 'semi_ai',
+            currentDayActivityTitles: (dayActivitiesByDay[selectedDay] ?? []).map((p) => getDayActivityLabel(p)),
+        };
+    }, [
+            activityHoursByDay,
+            selectedDay,
+            tripConfig.travelDays,
+            tripConfig.activityTime,
+            planningMode,
+            dayActivitiesByDay,
+        ]);
+
+    const handleRequestAiDaySuggestions = useCallback(() => {
+        setIsAssistantOpen(true);
+        queueMicrotask(() => assistantRef.current?.suggestActivitiesForDay());
+    }, []);
+
+    const handleConfirmValidateTrip = useCallback(async () => {
+        const session = getStoredSession();
+        if (!session?.token) {
+            setValidateTripError('Connectez-vous pour enregistrer le voyage.');
+            return;
+        }
+        setValidateTripSubmitting(true);
+        setValidateTripError('');
+        try {
+            const dest = tripConfig.arrivalCityName || tripConfig.arrivalCity;
+            const snapshot = buildPlanSnapshot();
+            const title = `${dest} · ${tripConfig.outboundDate || ''}`.trim();
+            const created = await createTrip(session.token, {
+                title: title || 'Mon voyage',
+                destination: dest || 'Destination',
+                start_date: tripConfig.outboundDate || undefined,
+                end_date: tripConfig.returnDate || undefined,
+                travelers_count: tripConfig.travelerCount,
+                plan_snapshot: snapshot,
+            });
+            await validateTripApi(session.token, created.id);
+            setValidateTripModalOpen(false);
+            router.push(`/voyages/${created.id}?validated=1`);
+        } catch (e) {
+            setValidateTripError(e instanceof Error ? e.message : "Erreur lors de l'enregistrement.");
+        } finally {
+            setValidateTripSubmitting(false);
+        }
+    }, [buildPlanSnapshot, router, tripConfig]);
 
     // --- Logique Map (POI, Hover, Click) ---
 
@@ -866,12 +1182,18 @@ export default function Home() {
             }
         }
 
+        const uid = session?.user?.id;
         clearSession();
+        clearPlanningModeStorage(uid);
         setIsConnected(false);
         setCurrentView('home');
     };
 
     const handleLoginSuccess = (_user: AuthUser, isNewUser?: boolean) => {
+        if (isNewUser) {
+            clearPlanningModeStorage(_user.id);
+            setPlanningModeState(null);
+        }
         setIsConnected(true);
         setCurrentView('home');
         if (isNewUser) setShowTuPreferes(true);
@@ -960,10 +1282,14 @@ export default function Home() {
                                 setArrivalDate={tripConfig.setOutboundDate}
                                 departureDate={tripConfig.returnDate}
                                 setDepartureDate={tripConfig.setReturnDate}
-                                arrivalTime={tripConfig.arrivalTime}
-                                setArrivalTime={tripConfig.setArrivalTime}
-                                departureTime={tripConfig.departureTime}
-                                setDepartureTime={tripConfig.setDepartureTime}
+                                outboundDepartureTime={tripConfig.outboundDepartureTime}
+                                setOutboundDepartureTime={tripConfig.setOutboundDepartureTime}
+                                outboundArrivalTime={tripConfig.outboundArrivalTime}
+                                setOutboundArrivalTime={tripConfig.setOutboundArrivalTime}
+                                returnDepartureTime={tripConfig.returnDepartureTime}
+                                setReturnDepartureTime={tripConfig.setReturnDepartureTime}
+                                returnArrivalTime={tripConfig.returnArrivalTime}
+                                setReturnArrivalTime={tripConfig.setReturnArrivalTime}
                                 travelerCount={tripConfig.travelerCount}
                                 setTravelerCount={tripConfig.setTravelerCount}
                                 budget={flightModalBudget}
@@ -1178,6 +1504,7 @@ export default function Home() {
 
                             {/* Boutons Assistant + Filtre + Vue - ancres en bas a droite */}
                             <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
+                                {planningMode != null && planningMode !== 'manual' && (
                                 <button
                                     type="button"
                                     onClick={() => setIsAssistantOpen((o) => !o)}
@@ -1189,6 +1516,7 @@ export default function Home() {
                                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                                     </svg>
                                 </button>
+                                )}
                                 <div className="relative" ref={hotelFilterMenuRef}>
                                     <button
                                         type="button"
@@ -1307,8 +1635,12 @@ export default function Home() {
                                         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                                             {isConnected ? (
                                                 <Assistant
+                                                    ref={assistantRef}
                                                     onUpdateLocations={handleAssistantUpdate}
                                                     destination={tripConfig.arrivalCityName || tripConfig.arrivalCity}
+                                                    planningContext={assistantPlanningContext}
+                                                    onSuggestedActivities={handleSuggestedActivitiesFromAssistant}
+                                                    onLoadingChange={setAssistantRequestLoading}
                                                 />
                                             ) : (
                                                 <div className="overflow-y-auto p-6">
@@ -1373,6 +1705,27 @@ export default function Home() {
                                             legTransportModes={legTransportByDay[selectedDay] ?? []}
                                             onLegTransportChange={handleLegTransportChange}
                                             onComplete={handleGenerateTrip}
+                                            onValidateChoices={handleValidateChoices}
+                                            onDestinationGeoSelect={handleDestinationGeoSelect}
+                                            planningMode={planningMode}
+                                            onPlanningModeChange={handlePlanningModeChange}
+                                            isConnected={isConnected}
+                                            onLoginClick={handleLoginClick}
+                                            onAppendHotelToDay={handleAppendHotelToDay}
+                                            onAppendAirportOutbound={handleAppendAirportOutbound}
+                                            onAppendAirportReturn={handleAppendAirportReturn}
+                                            canAppendReturnAirport={Boolean(selectedFlightOffer?.itineraries?.[1])}
+                                            onRequestAiDaySuggestions={handleRequestAiDaySuggestions}
+                                            showAiSuggestionButton={
+                                                planningMode === 'full_ai' || planningMode === 'semi_ai'
+                                            }
+                                            aiSuggestionsLoading={assistantRequestLoading}
+                                            onOpenValidateTrip={() => {
+                                                setValidateTripError('');
+                                                setValidateTripModalOpen(true);
+                                            }}
+                                            validateTripDisabled={!hasAnyPlannedActivity}
+                                            geocodeAppendPending={geocodeAppendPending}
                                         />
                                     </div>
                                 </motion.div>
@@ -1382,9 +1735,75 @@ export default function Home() {
                 )}
             </div>
 
+            <AnimatePresence>
+                {validateTripModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="validate-trip-title"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.96, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.96, opacity: 0 }}
+                            className="w-full max-w-md rounded-2xl border border-white/15 p-6 shadow-2xl"
+                            style={{ backgroundColor: 'var(--background, #222222)' }}
+                        >
+                            <h2 id="validate-trip-title" className="text-lg font-semibold text-slate-100">
+                                Confirmer votre voyage
+                            </h2>
+                            <p className="mt-2 text-sm text-slate-400">
+                                Votre itinéraire sera enregistré dans Mes voyages. Vous pourrez le consulter avec les
+                                trajets et activités par jour.
+                            </p>
+                            {!hasAnyPlannedActivity && (
+                                <p className="mt-3 text-sm text-amber-400">
+                                    Aucune activité sur la carte : ajoutez au moins un lieu pour valider.
+                                </p>
+                            )}
+                            {validateTripError && (
+                                <p className="mt-3 text-sm text-red-400">{validateTripError}</p>
+                            )}
+                            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setValidateTripModalOpen(false)}
+                                    disabled={validateTripSubmitting}
+                                    className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/5 disabled:opacity-50"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleConfirmValidateTrip()}
+                                    disabled={validateTripSubmitting || !hasAnyPlannedActivity}
+                                    className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {validateTripSubmitting ? 'Enregistrement…' : 'Confirmer et enregistrer'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <TuPreferes
                 visible={showTuPreferes}
-                onComplete={() => setShowTuPreferes(false)}
+                onComplete={(prefs) => {
+                    try {
+                        window.localStorage.setItem(
+                            PREFERENCES_STORAGE_KEY,
+                            JSON.stringify(preferencesPayloadToAssistantTags(prefs)),
+                        );
+                    } catch {
+                        /* ignore */
+                    }
+                    setShowTuPreferes(false);
+                }}
                 onSkip={() => setShowTuPreferes(false)}
             />
         </div>

@@ -142,11 +142,41 @@ Format JSON STRICT attendu (sans markdown, sans texte autour) :
   "reply": "Ta réponse conversationnelle...",
   "targetLocation": "Nom du lieu ou null",
   "coordinates": { "lat": number, "lng": number } ou null,
-  "suggestedZoom": number (ex: 5 ou 12)
+  "suggestedZoom": number (ex: 5 ou 12),
+  "suggestedActivities": [
+    { "title": string, "lat": number, "lng": number, "durationHours": number optionnel }
+  ]
 }
+
+Règles pour suggestedActivities :
+- Tableau de lieux concrets (monuments, musées, quartiers, parcs, etc.) dans la zone de la destination ou null si hors sujet.
+- Coordonnées GPS plausibles (pas 0,0). Maximum 8 entrées. Si la question ne demande pas d'idées d'activités pour le voyage, renvoie [].
+- durationHours optionnel (ex. 1.5). La somme des durées suggérées ne doit pas dépasser le budget horaire du jour indiqué dans le contexte planificateur quand il est fourni.
 
 Si la demande est hors périmètre, réponds avec reply contenant EXACTEMENT ce message de refus :
 "${REFUSAL_TEXT}"
+`;
+}
+
+export function getTripPlanningAssistantContext(p: {
+    destinationContext: string;
+    maxActivityHoursPerDay: number;
+    selectedDay: number;
+    travelDays: number;
+    planningMode: string;
+    currentDayActivityTitles: string[];
+}): string {
+    const titles =
+        p.currentDayActivityTitles.length > 0 ? p.currentDayActivityTitles.join(', ') : 'aucune activité encore';
+    return `
+
+CONTEXTE PLANIFICATEUR (session courante) :
+- Destination : "${p.destinationContext || 'non spécifiée'}"
+- Jour planifié : ${p.selectedDay} / ${p.travelDays}
+- Budget temps activités ce jour : environ ${p.maxActivityHoursPerDay} h
+- Mode utilisateur : ${p.planningMode}
+- Activités déjà ajoutées ce jour : ${titles}
+- Pour suggestedActivities : propose des lieux complémentaires, sans dupliquer les titres déjà listés.
 `;
 }
 

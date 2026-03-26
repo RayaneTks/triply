@@ -15,6 +15,8 @@ interface TripConfigurationFormProps {
     arrivalCity: string;
     setArrivalCity: (v: string) => void;
     setArrivalCityName?: (v: string) => void;
+    /** Coordonnées de la destination (Amadeus) au moment du choix dans l’autocomplete */
+    onArrivalGeoSelect?: (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => void;
     travelDays: number;
     setTravelDays: (v: number) => void;
     travelerCount: number;
@@ -27,10 +29,14 @@ interface TripConfigurationFormProps {
     setArrivalDate: (v: string) => void;
     departureDate: string;
     setDepartureDate: (v: string) => void;
-    arrivalTime: string;
-    setArrivalTime: (v: string) => void;
-    departureTime: string;
-    setDepartureTime: (v: string) => void;
+    outboundDepartureTime: string;
+    setOutboundDepartureTime: (v: string) => void;
+    outboundArrivalTime: string;
+    setOutboundArrivalTime: (v: string) => void;
+    returnDepartureTime: string;
+    setReturnDepartureTime: (v: string) => void;
+    returnArrivalTime: string;
+    setReturnArrivalTime: (v: string) => void;
     selectedOptions: string[];
     setSelectedOptions: (o: string[]) => void;
     multiSelectOptions: string[];
@@ -88,11 +94,14 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         travelDays, setTravelDays, travelerCount, setTravelerCount,
         budget, setBudget, activityTime, setActivityTime,
         arrivalDate, setArrivalDate, departureDate, setDepartureDate,
-        arrivalTime, setArrivalTime, departureTime, setDepartureTime,
+        outboundDepartureTime, setOutboundDepartureTime,
+        outboundArrivalTime, setOutboundArrivalTime,
+        returnDepartureTime, setReturnDepartureTime,
+        returnArrivalTime, setReturnArrivalTime,
         selectedOptions, setSelectedOptions, multiSelectOptions,
         dietaryMultiSelectOptions, dietarySelections, setDietarySelections,
         onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
-        onFlightCardClick, onRemoveFlight, setArrivalCityName,
+        onFlightCardClick, onRemoveFlight, setArrivalCityName, onArrivalGeoSelect,
         onOpenHotelSearch, selectedHotel, onHotelCardClick, onRemoveHotel,
     } = props;
 
@@ -107,16 +116,29 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 <Section icon={svg("M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z")} title="Où allez-vous ?">
                     <div className="space-y-2.5">
                         <CityAutocomplete value={departureCity} onChange={setDepartureCity} label="Ville de départ" placeholder="Ex. Paris, Lyon..." />
-                        <CityAutocomplete value={arrivalCity} onChange={setArrivalCity} onSelectName={(n) => setArrivalCityName?.(n)} label="Destination" placeholder="Ex. Barcelone, Tokyo..." />
+                        <CityAutocomplete
+                            value={arrivalCity}
+                            onChange={setArrivalCity}
+                            onSelectName={(n) => setArrivalCityName?.(n)}
+                            onSelectGeo={onArrivalGeoSelect}
+                            label="Destination"
+                            placeholder="Ex. Barcelone, Tokyo..."
+                        />
                     </div>
                 </Section>
 
                 {/* 2 - Dates */}
                 <Section icon={svg("M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z")} title="Quand partez-vous ?">
                     <DateRangePicker startDate={arrivalDate} endDate={departureDate} onDatesChange={(s, e) => { setArrivalDate(s); setDepartureDate(e); }} className="mb-2.5 w-full" />
+                    <p className="mb-1.5 text-[11px] font-medium text-slate-500">Vol aller</p>
+                    <div className="mb-3 grid grid-cols-2 gap-2">
+                        <TimePicker value={outboundDepartureTime} onChange={setOutboundDepartureTime} label="Décollage" />
+                        <TimePicker value={outboundArrivalTime} onChange={setOutboundArrivalTime} label="Atterrissage" />
+                    </div>
+                    <p className="mb-1.5 text-[11px] font-medium text-slate-500">Vol retour</p>
                     <div className="grid grid-cols-2 gap-2">
-                        <TimePicker value={arrivalTime} onChange={setArrivalTime} label="Heure aller" />
-                        <TimePicker value={departureTime} onChange={setDepartureTime} label="Heure retour" />
+                        <TimePicker value={returnDepartureTime} onChange={setReturnDepartureTime} label="Décollage" />
+                        <TimePicker value={returnArrivalTime} onChange={setReturnArrivalTime} label="Atterrissage" />
                     </div>
                 </Section>
 

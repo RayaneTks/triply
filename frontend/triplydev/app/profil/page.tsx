@@ -16,7 +16,12 @@ import {
     updatePreferences,
     UserPreferences,
 } from '@/src/lib/auth-client';
-import { TuPreferes, PreferencesPayload } from '@/src/components/TuPreferes/TuPreferes';
+import {
+    TuPreferes,
+    PreferencesPayload,
+    PREFERENCES_STORAGE_KEY,
+    preferencesPayloadToAssistantTags,
+} from '@/src/components/TuPreferes/TuPreferes';
 
 const LABEL_MAP: Record<string, string> = {
     plage: 'Plage',
@@ -208,6 +213,14 @@ export default function ProfilPage() {
         try {
             await updatePreferences(session.token, prefs);
             setUserPreferences(prefs);
+            try {
+                window.localStorage.setItem(
+                    PREFERENCES_STORAGE_KEY,
+                    JSON.stringify(preferencesPayloadToAssistantTags(prefs)),
+                );
+            } catch {
+                /* ignore */
+            }
             setSuccess('Préférences mises à jour.');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Impossible de sauvegarder les préférences.');

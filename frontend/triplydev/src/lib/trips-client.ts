@@ -1,5 +1,7 @@
 'use client';
 
+import type { PlanSnapshot } from '@/src/lib/plan-snapshot';
+
 export interface TripSummary {
     id: string;
     title: string;
@@ -15,7 +17,17 @@ export interface TripSummary {
         carrier?: string | null;
         price?: number | null;
     };
+    plan_snapshot?: PlanSnapshot | null;
 }
+
+export type CreateTripPayload = {
+    title: string;
+    destination: string;
+    start_date?: string;
+    end_date?: string;
+    travelers_count?: number;
+    plan_snapshot?: PlanSnapshot;
+};
 
 interface ApiSuccess<T> {
     success: boolean;
@@ -91,4 +103,76 @@ export async function getTrip(token: string, tripId: string): Promise<TripSummar
     }
 
     return data.data;
+}
+
+export async function createTrip(token: string, body: CreateTripPayload): Promise<TripSummary> {
+    const response = await fetch(getApiUrl('/trips'), {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccess<TripSummary> | ApiError | null;
+    if (!response.ok) {
+        throw new Error(getErrorMessage(payload as ApiError | null, 'Impossible de creer le voyage.'));
+    }
+
+    const data = payload as ApiSuccess<TripSummary> | null;
+    if (!data?.success || !data.data) {
+        throw new Error('Impossible de creer le voyage.');
+    }
+
+    return data.data;
+}
+
+export async function updateTrip(
+    token: string,
+    tripId: string,
+    body: Partial<CreateTripPayload> & { plan_snapshot?: PlanSnapshot | null }
+): Promise<TripSummary> {
+    const response = await fetch(getApiUrl(`/trips/${tripId}`), {
+        method: 'PATCH',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccess<TripSummary> | ApiError | null;
+    if (!response.ok) {
+        throw new Error(getErrorMessage(payload as ApiError | null, 'Impossible de mettre a jour le voyage.'));
+    }
+
+    const data = payload as ApiSuccess<TripSummary> | null;
+    if (!data?.success || !data.data) {
+        throw new Error('Impossible de mettre a jour le voyage.');
+    }
+
+    return data.data;
+}
+
+export async function validateTripApi(token: string, tripId: string): Promise<void> {
+    const response = await fetch(getApiUrl(`/trips/${tripId}/validate`), {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccess<unknown> | ApiError | null;
+    if (!response.ok) {
+        throw new Error(getErrorMessage(payload as ApiError | null, 'Impossible de valider le voyage.'));
+    }
+
+    const data = payload as ApiSuccess<unknown> | null;
+    if (!data?.success) {
+        throw new Error('Impossible de valider le voyage.');
+    }
 }

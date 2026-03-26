@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { TRIPLY_SYSTEM_PROMPT, quickGate, getGeoInstructions, getPreferencesInstructions } from '@/src/lib/triply';
+import {
+    TRIPLY_SYSTEM_PROMPT,
+    quickGate,
+    getGeoInstructions,
+    getPreferencesInstructions,
+    getTripPlanningAssistantContext,
+} from '@/src/lib/triply';
 
 const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
@@ -22,6 +28,30 @@ async function getAmadeusToken() {
     if (!res.ok) throw new Error('Auth Amadeus Failed');
     const data = await res.json();
     return data.access_token;
+}
+
+function normalizeSuggestedActivities(raw: unknown): Array<{ title: string; lat: number; lng: number; durationHours?: number }> {
+    if (!Array.isArray(raw)) return [];
+    const out: Array<{ title: string; lat: number; lng: number; durationHours?: number }> = [];
+    for (const item of raw) {
+        if (!item || typeof item !== 'object') continue;
+        const o = item as Record<string, unknown>;
+        const title = typeof o.title === 'string' ? o.title.trim() : '';
+        const lat = typeof o.lat === 'number' ? o.lat : Number(o.lat);
+        const lng = typeof o.lng === 'number' ? o.lng : Number(o.lng);
+        if (!title || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+        const dh = o.durationHours;
+        let durationHours: number | undefined;
+        if (typeof dh === 'number' && dh > 0) durationHours = dh;
+        else if (typeof dh === 'string') {
+            const p = parseFloat(dh);
+            if (p > 0) durationHours = p;
+        }
+        out.push({ title, lat, lng, ...(durationHours != null ? { durationHours } : {}) });
+        if (out.length >= 8) break;
+    }
+    return out;
 }
 
 export async function POST(req: Request) {
@@ -53,16 +83,45 @@ export async function POST(req: Request) {
         const messages = body.messages || [];
         const destinationContext = body.destinationContext || '';
         const userPreferences: string[] = body.userPreferences || [];
+        const maxActivityHoursRaw = body.maxActivityHoursPerDay;
+        const maxActivityHoursPerDay =
+            typeof maxActivityHoursRaw === 'number' && Number.isFinite(maxActivityHoursRaw)
+                ? maxActivityHoursRaw
+                : parseFloat(String(maxActivityHoursRaw ?? '')) || 0;
+        const selectedDay =
+            typeof body.selectedDay === 'number' ? body.selectedDay : parseInt(String(body.selectedDay || 1), 10) || 1;
+        const travelDays =
+            typeof body.travelDays === 'number' ? body.travelDays : parseInt(String(body.travelDays || 1), 10) || 1;
+        const planningMode = String(body.planningMode || 'semi_ai');
+        const currentDayActivityTitles: string[] = Array.isArray(body.currentDayActivityTitles)
+            ? body.currentDayActivityTitles.filter((x: unknown) => typeof x === 'string')
+            : [];
 
         const lastUserMessage = messages.filter((m: { role: string }) => m.role === 'user').pop();
         const userText = lastUserMessage?.content ?? '';
 
         const gate = quickGate(userText);
         if (!gate.allow) {
-            return NextResponse.json({ reply: gate.response, locations: [] });
+            return NextResponse.json({ reply: gate.response, locations: [], suggestedActivities: [] });
         }
 
-        const systemContent = TRIPLY_SYSTEM_PROMPT + getGeoInstructions(destinationContext) + getPreferencesInstructions(userPreferences);
+        const planningBlock =
+            destinationContext.trim().length > 0 || maxActivityHoursPerDay > 0
+                ? getTripPlanningAssistantContext({
+                      destinationContext,
+                      maxActivityHoursPerDay: maxActivityHoursPerDay > 0 ? maxActivityHoursPerDay : 8,
+                      selectedDay,
+                      travelDays,
+                      planningMode,
+                      currentDayActivityTitles,
+                  })
+                : '';
+
+        const systemContent =
+            TRIPLY_SYSTEM_PROMPT +
+            planningBlock +
+            getGeoInstructions(destinationContext) +
+            getPreferencesInstructions(userPreferences);
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -121,9 +180,12 @@ export async function POST(req: Request) {
             });
         }
 
+        const suggestedActivities = normalizeSuggestedActivities(parsedAI.suggestedActivities);
+
         return NextResponse.json({
             reply: parsedAI.reply,
-            locations: finalLocations
+            locations: finalLocations,
+            suggestedActivities,
         });
 
     } catch (error: unknown) {

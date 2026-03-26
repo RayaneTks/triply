@@ -17,11 +17,13 @@ class Voyage extends Model
         'nb_voyageurs',
         'description',
         'user_id',
+        'plan_snapshot',
     ];
 
     protected $casts = [
         'date_debut' => 'date',
         'date_fin' => 'date',
+        'plan_snapshot' => 'array',
     ];
 
     public function user(): BelongsTo
