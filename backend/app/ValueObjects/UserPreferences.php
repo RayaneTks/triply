@@ -10,6 +10,7 @@ class UserPreferences implements Castable
 {
     public function __construct(
         public array $environments = [],
+        public ?string $planning_mode = null,
         public ?string $traveler_profile = null,
         public array $interests = [],
         public ?string $pace = null,
@@ -24,6 +25,7 @@ class UserPreferences implements Castable
     {
         return array_filter([
             'environments' => $this->environments,
+            'planning_mode' => $this->planning_mode,
             'traveler_profile' => $this->traveler_profile,
             'interests' => $this->interests,
             'pace' => $this->pace,
@@ -39,6 +41,7 @@ class UserPreferences implements Castable
     {
         return new self(
             environments: $data['environments'] ?? $this->environments,
+            planning_mode: $data['planning_mode'] ?? $this->planning_mode,
             traveler_profile: $data['traveler_profile'] ?? $this->traveler_profile,
             interests: $data['interests'] ?? $this->interests,
             pace: $data['pace'] ?? $this->pace,
@@ -89,6 +92,7 @@ class UserPreferences implements Castable
 
                 return new UserPreferences(
                     environments: $data['environments'] ?? [],
+                    planning_mode: $data['planning_mode'] ?? null,
                     traveler_profile: $data['traveler_profile'] ?? null,
                     interests: $data['interests'] ?? [],
                     pace: $data['pace'] ?? null,

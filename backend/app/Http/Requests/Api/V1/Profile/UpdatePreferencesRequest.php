@@ -11,6 +11,7 @@ class UpdatePreferencesRequest extends BaseApiRequest
         return [
             'environments' => ['sometimes', 'array'],
             'environments.*' => ['string'],
+            'planning_mode' => ['sometimes', 'nullable', 'string', 'in:full_ai,semi_ai,manual'],
             'traveler_profile' => ['sometimes', 'nullable', 'string'],
             'diet' => ['sometimes', 'array'],
             'diet.*' => ['string'],

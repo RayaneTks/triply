@@ -45,7 +45,7 @@ import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResul
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import type { FlightRequestPayload } from '@/utils/amadeus';
-import { clearSession, getStoredSession, logout, me, saveSession, type AuthUser } from '@/src/lib/auth-client';
+import { clearSession, fetchPreferences, getStoredSession, logout, me, saveSession, updatePreferences, type AuthUser } from '@/src/lib/auth-client';
 import {
     loadStoredPlanningMode,
     savePlanningMode,
@@ -250,6 +250,16 @@ export default function Home() {
             try {
                 const user = await me(session.token);
                 saveSession({ token: session.token, user });
+
+                try {
+                    const prefs = await fetchPreferences(session.token);
+                    if (prefs.planning_mode === 'full_ai' || prefs.planning_mode === 'semi_ai' || prefs.planning_mode === 'manual') {
+                        savePlanningMode(prefs.planning_mode, user.id);
+                    }
+                } catch {
+                    // Fallback silencieux: on garde le mode local en session si l'API profil échoue.
+                }
+
                 setIsConnected(true);
             } catch {
                 const uid = getStoredSession()?.user?.id;
@@ -419,6 +429,14 @@ export default function Home() {
         if (uid == null || uid === '') return;
         setPlanningModeState(mode);
         savePlanningMode(mode, uid);
+
+        const session = getStoredSession();
+        if (session?.token) {
+            void updatePreferences(session.token, { planning_mode: mode }).catch(() => {
+                // On ne bloque pas l'UX en cas d'échec réseau, le mode reste au moins en session locale.
+            });
+        }
+
         if (mode === 'full_ai') {
             setIsAssistantOpen(true);
         } else if (mode === 'manual') {
