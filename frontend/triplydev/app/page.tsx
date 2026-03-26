@@ -502,8 +502,10 @@ export default function Home() {
     };
 
     // Gestion de la recherche de vol
-    const handleFlightSearch = async () => {
+    const handleFlightSearch = async (options?: { autoSelect?: boolean }) => {
         setIsLoading(true);
+
+        const effectiveFlightBudget = (flightModalBudget || tripConfig.budget || '').trim();
 
         const payload = generateFlightRequest(
             tripConfig.departureCity,
@@ -511,7 +513,7 @@ export default function Home() {
             tripConfig.outboundDate,
             tripConfig.returnDate,
             tripConfig.travelerCount,
-            flightModalBudget,
+            effectiveFlightBudget,
             tripConfig.outboundDepartureTime,
             tripConfig.returnDepartureTime
         );
@@ -531,6 +533,28 @@ export default function Home() {
             // 4. On sauvegarde la réponse (affichée dans la modal)
             setApiResponse(data);
 
+            if (options?.autoSelect && data && typeof data === 'object' && 'data' in data) {
+                const response = data as AmadeusResponse;
+                const offers = Array.isArray(response.data) ? response.data : [];
+
+                if (offers.length > 0) {
+                    const getOfferPrice = (offer: FlightOffer): number => {
+                        const raw = offer.price?.grandTotal ?? offer.price?.total ?? '';
+                        const n = Number.parseFloat(raw);
+                        return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+                    };
+
+                    const bestOffer = offers.reduce((best, current) =>
+                        getOfferPrice(current) < getOfferPrice(best) ? current : best,
+                    offers[0]);
+
+                    const carrierCode = bestOffer.validatingAirlineCodes?.[0] ?? '';
+                    const carrierName = response.dictionaries?.carriers?.[carrierCode] || carrierCode || 'Compagnie';
+
+                    handleFlightSelect(bestOffer, carrierName);
+                }
+            }
+
         } catch (error) {
             console.error("Erreur critique:", error);
             setApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
@@ -539,12 +563,13 @@ export default function Home() {
         }
     };
 
-    const handleHotelSearch = async () => {
+    const handleHotelSearch = async (options?: { autoSelect?: boolean }) => {
         const city = tripConfig.arrivalCity || tripConfig.departureCity;
         if (!city) {
             setHotelApiResponse({ error: 'Veuillez sélectionner une ville de destination.' });
             return;
         }
+        const effectiveHotelBudget = (hotelModalBudget || tripConfig.budget || '').trim();
         const today = new Date().toISOString().slice(0, 10);
         const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
         const checkIn = tripConfig.outboundDate || today;
@@ -561,13 +586,56 @@ export default function Home() {
                     checkOutDate: checkOut,
                     adults: tripConfig.travelerCount,
                     roomQuantity: 1,
-                    maxPrice: hotelModalBudget ? parseInt(hotelModalBudget, 10) : undefined,
+                    maxPrice: effectiveHotelBudget ? parseInt(effectiveHotelBudget, 10) : undefined,
                     preferences: hotelSelectedOptions,
                     ...(hotelMealRegime.trim() ? { boardType: hotelMealRegime.trim() } : {}),
                 }),
             });
             const data = await res.json();
             setHotelApiResponse(data);
+
+            if (options?.autoSelect && data && typeof data === 'object' && 'data' in data) {
+                const response = data as AmadeusHotelResponse;
+                const items = Array.isArray(response.data) ? response.data : [];
+                let bestOffer: HotelOffer | null = null;
+                let bestPrice = Number.POSITIVE_INFINITY;
+
+                for (const item of items) {
+                    const hotel = item.hotel;
+                    const offers = item.offers || [];
+
+                    for (const off of offers) {
+                        const offer: HotelOffer = {
+                            id: off.id || `${hotel?.hotelId}-${off.checkInDate}-${off.checkOutDate}`,
+                            hotelId: hotel?.hotelId || '',
+                            hotelName: hotel?.name || 'Hotel',
+                            cityCode: hotel?.cityCode || city,
+                            checkInDate: off.checkInDate || checkIn,
+                            checkOutDate: off.checkOutDate || checkOut,
+                            roomCategory: off.room?.typeEstimated?.category,
+                            roomDescription: off.room?.description?.text,
+                            price: {
+                                total: off.price?.total || '0',
+                                currency: off.price?.currency || 'EUR',
+                                base: off.price?.base,
+                            },
+                            guests: off.guests ? { adults: off.guests.adults || tripConfig.travelerCount } : undefined,
+                        };
+
+                        const price = Number.parseFloat(offer.price.total);
+                        const score = Number.isFinite(price) ? price : Number.POSITIVE_INFINITY;
+
+                        if (bestOffer === null || score < bestPrice) {
+                            bestOffer = offer;
+                            bestPrice = score;
+                        }
+                    }
+                }
+
+                if (bestOffer) {
+                    handleHotelSelect(bestOffer);
+                }
+            }
         } catch (error) {
             console.error('Erreur recherche hôtels:', error);
             setHotelApiResponse({ error: "Erreur lors de l'appel API", details: String(error) });
@@ -671,6 +739,15 @@ export default function Home() {
         if (!destination || !hasDates) return;
 
         void focusMapOnDestination();
+
+        // Au clic sur "Générer mon itinéraire de base", lancer les recherches automatiques.
+        if (tripConfig.departureCity && tripConfig.arrivalCity) {
+            void handleFlightSearch({ autoSelect: true });
+        }
+        if (tripConfig.arrivalCity || tripConfig.departureCity) {
+            void handleHotelSearch({ autoSelect: true });
+        }
+
         setWizardView('activity');
         if (planningMode === 'full_ai') {
             setIsAssistantOpen(true);
