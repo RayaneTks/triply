@@ -252,8 +252,9 @@ export default function Home() {
                 saveSession({ token: session.token, user });
                 setIsConnected(true);
             } catch {
+                const uid = getStoredSession()?.user?.id;
                 clearSession();
-                clearPlanningModeStorage();
+                clearPlanningModeStorage(uid);
                 setIsConnected(false);
             }
         };
@@ -406,15 +407,18 @@ export default function Home() {
     const assistantRef = useRef<AssistantHandle>(null);
     const [planningMode, setPlanningModeState] = useState<PlanningMode | null>(null);
     useEffect(() => {
-        if (isConnected) {
-            setPlanningModeState(loadStoredPlanningMode());
-        } else {
+        if (!isConnected) {
             setPlanningModeState(null);
+            return;
         }
+        const uid = getStoredSession()?.user?.id ?? null;
+        setPlanningModeState(loadStoredPlanningMode(uid));
     }, [isConnected]);
     const handlePlanningModeChange = useCallback((mode: PlanningMode) => {
+        const uid = getStoredSession()?.user?.id;
+        if (uid == null || uid === '') return;
         setPlanningModeState(mode);
-        savePlanningMode(mode);
+        savePlanningMode(mode, uid);
         if (mode === 'full_ai') {
             setIsAssistantOpen(true);
         } else if (mode === 'manual') {
@@ -1178,13 +1182,18 @@ export default function Home() {
             }
         }
 
+        const uid = session?.user?.id;
         clearSession();
-        clearPlanningModeStorage();
+        clearPlanningModeStorage(uid);
         setIsConnected(false);
         setCurrentView('home');
     };
 
     const handleLoginSuccess = (_user: AuthUser, isNewUser?: boolean) => {
+        if (isNewUser) {
+            clearPlanningModeStorage(_user.id);
+            setPlanningModeState(null);
+        }
         setIsConnected(true);
         setCurrentView('home');
         if (isNewUser) setShowTuPreferes(true);
