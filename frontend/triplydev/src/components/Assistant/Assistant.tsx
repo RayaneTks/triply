@@ -186,11 +186,11 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         messages: apiMessages,
                         destinationContext: destination,
                         userPreferences: prefs,
-                        maxActivityHoursPerDay: ctx?.maxActivityHoursPerDay,
-                        selectedDay: ctx?.selectedDay,
-                        travelDays: ctx?.travelDays,
-                        planningMode: ctx?.planningMode,
-                        currentDayActivityTitles: ctx?.currentDayActivityTitles,
+                        maxActivityHoursPerDay: planningContextRef.current?.maxActivityHoursPerDay,
+                        selectedDay: planningContextRef.current?.selectedDay,
+                        travelDays: planningContextRef.current?.travelDays,
+                        planningMode: planningContextRef.current?.planningMode,
+                        currentDayActivityTitles: planningContextRef.current?.currentDayActivityTitles,
                     }),
                 });
 
