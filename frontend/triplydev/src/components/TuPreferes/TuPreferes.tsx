@@ -315,6 +315,17 @@ export interface PreferencesPayload {
     food_preference: string | null;
 }
 
+export { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
+
+export function preferencesPayloadToAssistantTags(p: PreferencesPayload): string[] {
+    const out: string[] = [...(p.environments ?? [])];
+    if (p.traveler_profile) out.push(p.traveler_profile);
+    out.push(...(p.interests ?? []));
+    if (p.pace) out.push(p.pace);
+    if (p.food_preference) out.push(p.food_preference);
+    return out;
+}
+
 export interface TuPreferesProps {
     visible: boolean;
     onComplete: (preferences: PreferencesPayload) => void;

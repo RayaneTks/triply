@@ -29,10 +29,14 @@ interface TripConfigurationFormProps {
     setArrivalDate: (v: string) => void;
     departureDate: string;
     setDepartureDate: (v: string) => void;
-    arrivalTime: string;
-    setArrivalTime: (v: string) => void;
-    departureTime: string;
-    setDepartureTime: (v: string) => void;
+    outboundDepartureTime: string;
+    setOutboundDepartureTime: (v: string) => void;
+    outboundArrivalTime: string;
+    setOutboundArrivalTime: (v: string) => void;
+    returnDepartureTime: string;
+    setReturnDepartureTime: (v: string) => void;
+    returnArrivalTime: string;
+    setReturnArrivalTime: (v: string) => void;
     selectedOptions: string[];
     setSelectedOptions: (o: string[]) => void;
     multiSelectOptions: string[];
@@ -90,7 +94,10 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         travelDays, setTravelDays, travelerCount, setTravelerCount,
         budget, setBudget, activityTime, setActivityTime,
         arrivalDate, setArrivalDate, departureDate, setDepartureDate,
-        arrivalTime, setArrivalTime, departureTime, setDepartureTime,
+        outboundDepartureTime, setOutboundDepartureTime,
+        outboundArrivalTime, setOutboundArrivalTime,
+        returnDepartureTime, setReturnDepartureTime,
+        returnArrivalTime, setReturnArrivalTime,
         selectedOptions, setSelectedOptions, multiSelectOptions,
         dietaryMultiSelectOptions, dietarySelections, setDietarySelections,
         onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
@@ -123,9 +130,15 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 {/* 2 - Dates */}
                 <Section icon={svg("M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z")} title="Quand partez-vous ?">
                     <DateRangePicker startDate={arrivalDate} endDate={departureDate} onDatesChange={(s, e) => { setArrivalDate(s); setDepartureDate(e); }} className="mb-2.5 w-full" />
+                    <p className="mb-1.5 text-[11px] font-medium text-slate-500">Vol aller</p>
+                    <div className="mb-3 grid grid-cols-2 gap-2">
+                        <TimePicker value={outboundDepartureTime} onChange={setOutboundDepartureTime} label="Décollage" />
+                        <TimePicker value={outboundArrivalTime} onChange={setOutboundArrivalTime} label="Atterrissage" />
+                    </div>
+                    <p className="mb-1.5 text-[11px] font-medium text-slate-500">Vol retour</p>
                     <div className="grid grid-cols-2 gap-2">
-                        <TimePicker value={arrivalTime} onChange={setArrivalTime} label="Heure aller" />
-                        <TimePicker value={departureTime} onChange={setDepartureTime} label="Heure retour" />
+                        <TimePicker value={returnDepartureTime} onChange={setReturnDepartureTime} label="Décollage" />
+                        <TimePicker value={returnArrivalTime} onChange={setReturnArrivalTime} label="Atterrissage" />
                     </div>
                 </Section>
 

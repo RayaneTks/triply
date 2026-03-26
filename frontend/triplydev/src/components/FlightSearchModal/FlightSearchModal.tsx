@@ -23,10 +23,14 @@ export interface FlightSearchModalProps {
     setArrivalDate: (value: string) => void;
     departureDate: string;
     setDepartureDate: (value: string) => void;
-    arrivalTime: string;
-    setArrivalTime: (value: string) => void;
-    departureTime: string;
-    setDepartureTime: (value: string) => void;
+    outboundDepartureTime: string;
+    setOutboundDepartureTime: (value: string) => void;
+    outboundArrivalTime: string;
+    setOutboundArrivalTime: (value: string) => void;
+    returnDepartureTime: string;
+    setReturnDepartureTime: (value: string) => void;
+    returnArrivalTime: string;
+    setReturnArrivalTime: (value: string) => void;
     travelerCount: number;
     setTravelerCount: (value: number) => void;
     budget: string;
@@ -57,10 +61,14 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
     setArrivalDate,
     departureDate,
     setDepartureDate,
-    arrivalTime,
-    setArrivalTime,
-    departureTime,
-    setDepartureTime,
+    outboundDepartureTime,
+    setOutboundDepartureTime,
+    outboundArrivalTime,
+    setOutboundArrivalTime,
+    returnDepartureTime,
+    setReturnDepartureTime,
+    returnArrivalTime,
+    setReturnArrivalTime,
     travelerCount,
     setTravelerCount,
     budget,
@@ -230,19 +238,37 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                                 {errors.dates}
                                             </p>
                                         )}
-                                        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                        <p className="mt-2 text-[11px] font-medium text-slate-500">Vol aller</p>
+                                        <div className="mt-1 flex flex-col gap-2 sm:flex-row">
                                             <div className="min-w-0 flex-1">
                                                 <TimePicker
-                                                    value={arrivalTime}
-                                                    onChange={setArrivalTime}
-                                                    label="Heure d'arrivée"
+                                                    value={outboundDepartureTime}
+                                                    onChange={setOutboundDepartureTime}
+                                                    label="Décollage"
                                                 />
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <TimePicker
-                                                    value={departureTime}
-                                                    onChange={setDepartureTime}
-                                                    label="Heure de départ"
+                                                    value={outboundArrivalTime}
+                                                    onChange={setOutboundArrivalTime}
+                                                    label="Atterrissage"
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="mt-2 text-[11px] font-medium text-slate-500">Vol retour</p>
+                                        <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                                            <div className="min-w-0 flex-1">
+                                                <TimePicker
+                                                    value={returnDepartureTime}
+                                                    onChange={setReturnDepartureTime}
+                                                    label="Décollage"
+                                                />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <TimePicker
+                                                    value={returnArrivalTime}
+                                                    onChange={setReturnArrivalTime}
+                                                    label="Atterrissage"
                                                 />
                                             </div>
                                         </div>

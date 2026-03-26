@@ -19,8 +19,14 @@ export interface TripConfigurationState {
     activityTime: string;
     outboundDate: string;
     returnDate: string;
-    arrivalTime: string;
-    departureTime: string;
+    /** Décollage vol aller */
+    outboundDepartureTime: string;
+    /** Atterrissage vol aller */
+    outboundArrivalTime: string;
+    /** Décollage vol retour */
+    returnDepartureTime: string;
+    /** Atterrissage vol retour */
+    returnArrivalTime: string;
     selectedOptions: string[];
     /** Préférences alimentaires (optionnel) */
     dietarySelections: string[];
@@ -36,8 +42,10 @@ export interface UseTripConfigurationResult extends TripConfigurationState {
     setActivityTime: (v: string) => void;
     setOutboundDate: (v: string) => void;
     setReturnDate: (v: string) => void;
-    setArrivalTime: (v: string) => void;
-    setDepartureTime: (v: string) => void;
+    setOutboundDepartureTime: (v: string) => void;
+    setOutboundArrivalTime: (v: string) => void;
+    setReturnDepartureTime: (v: string) => void;
+    setReturnArrivalTime: (v: string) => void;
     setSelectedOptions: (values: string[]) => void;
     setDietarySelections: (values: string[]) => void;
 }
@@ -52,8 +60,12 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [activityTime, setActivityTime] = useState(initial?.activityTime ?? '');
     const [outboundDate, setOutboundDate] = useState(initial?.outboundDate ?? '');
     const [returnDate, setReturnDate] = useState(initial?.returnDate ?? '');
-    const [arrivalTime, setArrivalTime] = useState(initial?.arrivalTime ?? '');
-    const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '');
+    const [outboundDepartureTime, setOutboundDepartureTime] = useState(
+        initial?.outboundDepartureTime ?? ''
+    );
+    const [outboundArrivalTime, setOutboundArrivalTime] = useState(initial?.outboundArrivalTime ?? '');
+    const [returnDepartureTime, setReturnDepartureTime] = useState(initial?.returnDepartureTime ?? '');
+    const [returnArrivalTime, setReturnArrivalTime] = useState(initial?.returnArrivalTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
     const [dietarySelections, setDietarySelections] = useState<string[]>(initial?.dietarySelections ?? []);
 
@@ -70,8 +82,10 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         activityTime,
         outboundDate,
         returnDate,
-        arrivalTime,
-        departureTime,
+        outboundDepartureTime,
+        outboundArrivalTime,
+        returnDepartureTime,
+        returnArrivalTime,
         selectedOptions,
         dietarySelections,
         setDepartureCity,
@@ -83,10 +97,11 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setActivityTime,
         setOutboundDate,
         setReturnDate,
-        setArrivalTime,
-        setDepartureTime,
+        setOutboundDepartureTime,
+        setOutboundArrivalTime,
+        setReturnDepartureTime,
+        setReturnArrivalTime,
         setSelectedOptions,
         setDietarySelections,
     };
 }
-

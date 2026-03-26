@@ -30,6 +30,7 @@ class TripService implements TripServiceInterface
             'nb_voyageurs' => $payload['travelers_count'] ?? 1,
             'description' => null,
             'user_id' => $user->id,
+            'plan_snapshot' => $payload['plan_snapshot'] ?? null,
         ]);
 
         return $this->serializeTrip($voyage->fresh(['transports', 'hebergements']));
@@ -80,6 +81,9 @@ class TripService implements TripServiceInterface
         }
         if (array_key_exists('max_budget', $payload)) {
             $updates['budget_total'] = (int) $payload['max_budget'];
+        }
+        if (array_key_exists('plan_snapshot', $payload)) {
+            $updates['plan_snapshot'] = $payload['plan_snapshot'];
         }
 
         if ($updates !== []) {
@@ -212,6 +216,7 @@ class TripService implements TripServiceInterface
                 'carrier' => $firstTransport?->type,
                 'price' => $firstTransport?->prix,
             ],
+            'plan_snapshot' => $voyage->plan_snapshot,
             'created_at' => $voyage->created_at?->toISOString(),
             'updated_at' => $voyage->updated_at?->toISOString(),
         ];

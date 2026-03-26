@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { v4 as uuid } from 'uuid';
 import MessageList from '@/src/components/Messages/MessageList';
 import { SearchBar } from '@/src/components/Searchbar/Searchbar';
 import { Button } from '@/src/components/Button/Button';
 import { getStoredSession } from '@/src/lib/auth-client';
-import { PREFERENCES_STORAGE_KEY } from '@/src/components/TuPreferes/TuPreferes';
+import { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
 
 const CHAT_STORAGE_KEY = 'triply-assistant-chat';
 
@@ -21,9 +21,17 @@ interface Location {
     coordinates: Coordinates;
 }
 
+export interface SuggestedActivityPin {
+    title: string;
+    lat: number;
+    lng: number;
+    durationHours?: number;
+}
+
 interface AssistantResponse {
     reply: string;
     locations: Location[];
+    suggestedActivities?: SuggestedActivityPin[];
 }
 
 export type Role = 'user' | 'assistant';
@@ -34,10 +42,25 @@ export interface ChatMessage {
     content: string;
 }
 
+export interface AssistantPlanningContext {
+    maxActivityHoursPerDay: number;
+    selectedDay: number;
+    travelDays: number;
+    planningMode: string;
+    currentDayActivityTitles: string[];
+}
+
+export type AssistantHandle = {
+    suggestActivitiesForDay: () => void;
+};
+
 interface AssistantProps {
     onUpdateLocations?: (locations: Location[]) => void;
     destination?: string;
     onClearChat?: () => void;
+    planningContext?: AssistantPlanningContext | null;
+    onSuggestedActivities?: (items: SuggestedActivityPin[]) => void;
+    onLoadingChange?: (loading: boolean) => void;
 }
 
 function loadStoredMessages(): ChatMessage[] {
@@ -61,12 +84,17 @@ function saveMessages(messages: ChatMessage[]) {
     }
 }
 
-export default function Assistant({ onUpdateLocations, destination, onClearChat }: AssistantProps) {
+const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(
+    { onUpdateLocations, destination, onClearChat, planningContext, onSuggestedActivities, onLoadingChange },
+    ref
+) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [pendingAssistantMessage, setPendingAssistantMessage] = useState<string | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const planningContextRef = useRef(planningContext);
+    planningContextRef.current = planningContext;
 
     useEffect(() => {
         setMessages(loadStoredMessages());
@@ -97,99 +125,135 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
         ? `Rechercher des activites a ${destination}...`
         : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
 
+    const postUserMessage = useCallback(
+        async (currentMessageText: string) => {
+            if (!currentMessageText.trim() || loading) return;
+
+            const session = getStoredSession();
+            if (!session?.token) {
+                const authRequired: ChatMessage = {
+                    id: uuid(),
+                    role: 'assistant',
+                    content: "Connexion requise pour utiliser l'assistant.",
+                };
+                setMessages((prev) => [...prev, authRequired]);
+                return;
+            }
+
+            const userMessage: ChatMessage = {
+                id: uuid(),
+                role: 'user',
+                content: currentMessageText.trim(),
+            };
+
+            const newHistory = [...messages, userMessage];
+            setMessages(newHistory);
+            setLoading(true);
+            onLoadingChange?.(true);
+            setPendingAssistantMessage("Triply réfléchit à la meilleure façon d'organiser votre voyage...");
+
+            try {
+                const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
+
+                const prefs: string[] = (() => {
+                    try {
+                        const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFERENCES_STORAGE_KEY) : null;
+                        if (!raw) return [];
+                        const parsed = JSON.parse(raw);
+                        return Array.isArray(parsed) ? parsed : [];
+                    } catch {
+                        return [];
+                    }
+                })();
+
+                const ctx = planningContextRef.current;
+
+                const res = await fetch('/api/assistant', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${session.token}`,
+                    },
+                    body: JSON.stringify({
+                        messages: apiMessages,
+                        destinationContext: destination,
+                        userPreferences: prefs,
+                        maxActivityHoursPerDay: ctx?.maxActivityHoursPerDay,
+                        selectedDay: ctx?.selectedDay,
+                        travelDays: ctx?.travelDays,
+                        planningMode: ctx?.planningMode,
+                        currentDayActivityTitles: ctx?.currentDayActivityTitles,
+                    }),
+                });
+
+                const payload = await res.json().catch(() => null);
+
+                if (!res.ok) {
+                    const errorText =
+                        payload?.error ||
+                        payload?.message ||
+                        'Désolé, une erreur est survenue. Réessaie dans un instant.';
+                    throw new Error(errorText);
+                }
+
+                const data: AssistantResponse = payload;
+
+                const assistantMessage: ChatMessage = {
+                    id: uuid(),
+                    role: 'assistant',
+                    content: data.reply,
+                };
+
+                setMessages((prev) => [...prev, assistantMessage]);
+
+                if (data.locations && data.locations.length > 0 && onUpdateLocations) {
+                    onUpdateLocations(data.locations);
+                }
+
+                if (data.suggestedActivities && data.suggestedActivities.length > 0 && onSuggestedActivities) {
+                    onSuggestedActivities(data.suggestedActivities);
+                }
+            } catch (error) {
+                console.error('Erreur API', error);
+                const errorMessage: ChatMessage = {
+                    id: uuid(),
+                    role: 'assistant',
+                    content:
+                        error instanceof Error
+                            ? error.message
+                            : 'Désolé, une erreur est survenue. Réessaie dans un instant.',
+                };
+                setMessages((prev) => [...prev, errorMessage]);
+            } finally {
+                setLoading(false);
+                onLoadingChange?.(false);
+                setPendingAssistantMessage(null);
+            }
+        },
+        [destination, loading, messages, onLoadingChange, onSuggestedActivities, onUpdateLocations]
+    );
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            suggestActivitiesForDay: () => {
+                const dest = destination?.trim() || 'la destination';
+                const ctx = planningContextRef.current;
+                const day = ctx?.selectedDay ?? 1;
+                const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 8;
+                void postUserMessage(
+                    `Propose-moi jusqu'à 8 activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`
+                );
+            },
+        }),
+        [destination, postUserMessage]
+    );
+
     const sendMessage = async () => {
         if ((!message.trim() && !destination) || loading) return;
-
-        const session = getStoredSession();
-        if (!session?.token) {
-            const authRequired: ChatMessage = {
-                id: uuid(),
-                role: 'assistant',
-                content: "Connexion requise pour utiliser l'assistant.",
-            };
-            setMessages((prev) => [...prev, authRequired]);
-            return;
-        }
-
         const currentMessageText = message.trim() || `Montre-moi les hotels et activites a ${destination}`;
-
-        const userMessage: ChatMessage = {
-            id: uuid(),
-            role: 'user',
-            content: currentMessageText,
-        };
-
-        const newHistory = [...messages, userMessage];
-        setMessages(newHistory);
         setMessage('');
-        setLoading(true);
-        setPendingAssistantMessage("Triply réfléchit à la meilleure façon d'organiser votre voyage...");
-
-        try {
-            const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
-
-            const prefs: string[] = (() => {
-                try {
-                    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFERENCES_STORAGE_KEY) : null;
-                    if (!raw) return [];
-                    const parsed = JSON.parse(raw);
-                    return Array.isArray(parsed) ? parsed : [];
-                } catch {
-                    return [];
-                }
-            })();
-
-            const res = await fetch('/api/assistant', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${session.token}`,
-                },
-                body: JSON.stringify({
-                    messages: apiMessages,
-                    destinationContext: destination,
-                    userPreferences: prefs,
-                }),
-            });
-
-            const payload = await res.json().catch(() => null);
-
-            if (!res.ok) {
-                const errorText =
-                    payload?.error ||
-                    payload?.message ||
-                    'Désolé, une erreur est survenue. Réessaie dans un instant.';
-                throw new Error(errorText);
-            }
-
-            const data: AssistantResponse = payload;
-
-            const assistantMessage: ChatMessage = {
-                id: uuid(),
-                role: 'assistant',
-                content: data.reply,
-            };
-
-            setMessages((prev) => [...prev, assistantMessage]);
-
-            if (data.locations && data.locations.length > 0 && onUpdateLocations) {
-                onUpdateLocations(data.locations);
-            }
-        } catch (error) {
-            console.error('Erreur API', error);
-            const errorMessage: ChatMessage = {
-                id: uuid(),
-                role: 'assistant',
-                content:
-                    error instanceof Error
-                        ? error.message
-                        : 'Désolé, une erreur est survenue. Réessaie dans un instant.',
-            };
-            setMessages((prev) => [...prev, errorMessage]);
-        } finally {
-            setLoading(false);
-            setPendingAssistantMessage(null);
-        }
+        await postUserMessage(currentMessageText);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -234,26 +298,28 @@ export default function Assistant({ onUpdateLocations, destination, onClearChat 
                     </button>
                 </div>
                 <div className="flex gap-2 items-end">
-                <SearchBar
-                    placeholder={placeholderText}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="flex-1"
-                />
-                <Button
-                    label="Envoyer"
-                    onClick={() => {
-                        void sendMessage();
-                    }}
-                    variant="dark"
-                    tone="tone1"
-                    disabled={loading}
-                    loading={loading}
-                    className="h-11 px-4"
-                />
+                    <SearchBar
+                        placeholder={placeholderText}
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="flex-1"
+                    />
+                    <Button
+                        label="Envoyer"
+                        onClick={() => {
+                            void sendMessage();
+                        }}
+                        variant="dark"
+                        tone="tone1"
+                        disabled={loading}
+                        loading={loading}
+                        className="h-11 px-4"
+                    />
                 </div>
             </div>
         </div>
     );
-}
+});
+
+export default Assistant;

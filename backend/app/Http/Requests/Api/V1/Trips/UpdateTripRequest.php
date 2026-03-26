@@ -21,6 +21,7 @@ class UpdateTripRequest extends BaseApiRequest
             'max_budget' => ['sometimes', 'numeric', 'min:0'],
             'budget_breakdown' => ['sometimes', 'array'],
             'breakfast_included' => ['sometimes', 'boolean'],
+            'plan_snapshot' => ['sometimes', 'nullable', 'array'],
         ];
     }
 }

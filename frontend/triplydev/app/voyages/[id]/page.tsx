@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Button } from '@/src/components/Button/Button';
 import { clearSession, getStoredSession } from '@/src/lib/auth-client';
 import { getTrip, type TripSummary } from '@/src/lib/trips-client';
+import { googleMapsDirectionsEmbedUrl, googleMapsDirectionsLink } from '@/src/lib/plan-snapshot';
 
 const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
@@ -21,13 +22,17 @@ const formatDate = (dateStr: string) => {
 export default function VoyageDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = params?.id as string;
+    const justValidated = searchParams.get('validated') === '1';
 
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trip, setTrip] = useState<TripSummary | null>(null);
+
+    const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY;
 
     useEffect(() => {
         let active = true;
@@ -82,7 +87,7 @@ export default function VoyageDetailPage() {
             />
 
             <main className="flex-1 overflow-y-auto min-w-0">
-                <div className="max-w-2xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12">
+                <div className="max-w-3xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12">
                     <div className="flex items-center gap-4 mb-8">
                         <Link
                             href="/voyages"
@@ -117,6 +122,14 @@ export default function VoyageDetailPage() {
 
                     {!loading && !error && trip && (
                         <>
+                            {justValidated && (
+                                <div
+                                    className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
+                                    role="status"
+                                >
+                                    Voyage enregistré avec succès. Retrouvez ci-dessous le détail de votre planning.
+                                </div>
+                            )}
                             <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
                                 {trip.title}
                             </h1>
@@ -193,6 +206,81 @@ export default function VoyageDetailPage() {
                                     </p>
                                 </div>
                             </section>
+
+                            {trip.plan_snapshot?.days && trip.plan_snapshot.days.length > 0 && (
+                                <section className="mb-8">
+                                    <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
+                                        Planning par jour
+                                    </h3>
+                                    <div className="flex flex-col gap-8">
+                                        {trip.plan_snapshot.days.map((day) => {
+                                            const waypoints = day.activities.map((a) => ({ lat: a.lat, lng: a.lng }));
+                                            const embedSrc = googleMapsDirectionsEmbedUrl(waypoints, embedKey);
+                                            const externalLink = googleMapsDirectionsLink(waypoints);
+                                            return (
+                                                <div
+                                                    key={day.dayIndex}
+                                                    className="rounded-2xl p-5"
+                                                    style={{
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                    }}
+                                                >
+                                                    <h4 className="text-base font-semibold text-cyan-400 mb-3">
+                                                        Jour {day.dayIndex}
+                                                    </h4>
+                                                    {day.activities.length === 0 ? (
+                                                        <p className="text-sm text-slate-500">Aucune activité</p>
+                                                    ) : (
+                                                        <ol className="list-decimal list-inside space-y-2 text-sm text-slate-200 mb-4">
+                                                            {day.activities.map((a, i) => (
+                                                                <li key={`${day.dayIndex}-${i}-${a.title}`}>
+                                                                    {a.title}
+                                                                    {a.durationHours != null && (
+                                                                        <span className="text-slate-500">
+                                                                            {' '}
+                                                                            (~{a.durationHours} h)
+                                                                        </span>
+                                                                    )}
+                                                                </li>
+                                                            ))}
+                                                        </ol>
+                                                    )}
+                                                    {waypoints.length >= 2 && (
+                                                        <div className="mt-2">
+                                                            {embedSrc ? (
+                                                                <iframe
+                                                                    title={`Carte jour ${day.dayIndex}`}
+                                                                    src={embedSrc}
+                                                                    className="h-64 w-full rounded-xl border border-white/10"
+                                                                    loading="lazy"
+                                                                    allowFullScreen
+                                                                    referrerPolicy="no-referrer-when-downgrade"
+                                                                />
+                                                            ) : externalLink ? (
+                                                                <a
+                                                                    href={externalLink}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex text-sm font-medium text-cyan-400 hover:underline"
+                                                                >
+                                                                    Ouvrir l&apos;itinéraire dans Google Maps
+                                                                </a>
+                                                            ) : null}
+                                                            {!embedSrc && (
+                                                                <p className="mt-2 text-[11px] text-slate-500">
+                                                                    Pour une carte intégrée, ajoutez NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY
+                                                                    dans l&apos;environnement frontend.
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            )}
 
                             <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
                                 <Link href="/voyages">
