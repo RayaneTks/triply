@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,8 +29,8 @@ const PLANS = [
     id: 'silver',
     name: 'Silver',
     description: 'Pour les voyageurs réguliers qui veulent optimiser chaque détail.',
-    monthlyPrice: 12,
-    annualPrice: 99,
+    monthlyPrice: 18.99,
+    annualPrice: 159.99,
     features: [
       'Itinéraires illimités',
       'Comparaison vols & hôtels avancée',
@@ -47,8 +47,8 @@ const PLANS = [
     id: 'gold',
     name: 'Gold',
     description: 'Pour les équipes et agences qui organisent des voyages à plusieurs.',
-    monthlyPrice: 29,
-    annualPrice: 249,
+    monthlyPrice: 29.99,
+    annualPrice: 251.99,
     features: [
       'Tout Silver inclus',
       'Gestion multi-utilisateurs',
@@ -90,10 +90,15 @@ export default function PricingPage() {
   const router = useRouter();
   const [isAnnual, setIsAnnual] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isConnected, setIsConnected] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !!getStoredSession()?.token;
-  });
+  const isConnected = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined') return () => {};
+      window.addEventListener('storage', onStoreChange);
+      return () => window.removeEventListener('storage', onStoreChange);
+    },
+    () => !!getStoredSession()?.token,
+    () => false,
+  );
   const toggleContainerRef = useRef<HTMLDivElement>(null);
   const btnMensuelRef = useRef<HTMLButtonElement>(null);
   const btnAnnuelRef = useRef<HTMLButtonElement>(null);
@@ -124,6 +129,7 @@ export default function PricingPage() {
     const t = setTimeout(log, 100);
     return () => clearTimeout(t);
   }, [isAnnual]);
+
   // #endregion
 
   return (
@@ -181,7 +187,7 @@ export default function PricingPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="mb-24 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
         >
-          {FEATURES.map((f, i) => (
+          {FEATURES.map((f) => (
             <div
               key={f.title}
               className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-all duration-300 hover:border-[var(--primary)] hover:bg-white/[0.04]"

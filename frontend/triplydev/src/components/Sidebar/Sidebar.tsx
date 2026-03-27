@@ -113,15 +113,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                 }) => {
     const pathname = usePathname();
     const isMobile = useMediaQuery('(max-width: 768px)');
-    const collapsedW = isMobile ? 56 : 80;
-    const expandedW = isMobile ? 280 : 280;
-    const navItems = isConnected
+    const hasHydrated = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false
+    );
+
+    const effectiveIsMobile = hasHydrated ? isMobile : false;
+    const effectiveIsConnected = hasHydrated ? isConnected : false;
+    const collapsedW = effectiveIsMobile ? 56 : 80;
+    const expandedW = effectiveIsMobile ? 280 : 280;
+    const navItems = effectiveIsConnected
         ? NAV_ITEMS
         : NAV_ITEMS.filter((item) => item.path !== '/voyages');
 
     return (
         <>
-            {isMobile && !isCollapsed && (
+            {effectiveIsMobile && !isCollapsed && (
                 <div
                     className="fixed inset-0 bg-black/50 z-20 md:hidden"
                     onClick={onToggle}
@@ -129,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
             )}
         <motion.aside
-            className={`relative z-30 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl md:z-auto ${className}`}
+            className={`relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl md:z-auto ${className}`}
             style={{ backgroundColor: 'var(--background, #222222)' }}
             animate={{ width: isCollapsed ? collapsedW : expandedW }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
@@ -222,18 +230,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {isCollapsed ? (
                                 <button
                                     type="button"
-                                    onClick={isConnected ? onLogoutClick : onLoginClick}
-                                    title={isConnected ? 'Déconnexion' : 'Connexion'}
-                                    aria-label={isConnected ? 'Déconnexion' : 'Connexion'}
-                                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                    onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
+                                    title={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
+                                    aria-label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
+                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                                     style={{ color: 'var(--primary, #0096c7)' }}
                                 >
-                                    {isConnected ? <LogOutIcon /> : <LogInIcon />}
+                                    {effectiveIsConnected ? <LogOutIcon /> : <LogInIcon />}
                                 </button>
                             ) : (
                                 <Button
-                                    label={isConnected ? 'Déconnexion' : 'Connexion'}
-                                    onClick={isConnected ? onLogoutClick : onLoginClick}
+                                    label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
+                                    onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
                                     variant="dark"
                                     tone="tone1"
                                     className="w-full"
