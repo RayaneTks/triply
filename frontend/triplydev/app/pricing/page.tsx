@@ -133,7 +133,7 @@ export default function PricingPage() {
   // #endregion
 
   return (
-    <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
+    <div className="flex h-dvh min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -190,7 +190,7 @@ export default function PricingPage() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-all duration-300 hover:border-[var(--primary)] hover:bg-white/[0.04]"
+              className="group rounded-2xl border border-white/5 bg-white/2 p-6 transition-all duration-300 hover:border-primary hover:bg-white/4"
             >
               <span className="mb-3 block text-2xl">{f.icon}</span>
               <h3 className="mb-2 font-semibold" style={{ color: 'var(--foreground)' }}>{f.title}</h3>
@@ -206,7 +206,7 @@ export default function PricingPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mb-12 flex justify-center"
         >
-          <div ref={toggleContainerRef} className="relative grid min-w-[220px] grid-cols-2 rounded-full border border-white/10 bg-white/5 p-1">
+          <div ref={toggleContainerRef} className="relative grid min-w-55 grid-cols-2 rounded-full border border-white/10 bg-white/5 p-1">
             <motion.div
               ref={pillRef}
               className="absolute inset-y-1 rounded-full"
@@ -263,8 +263,8 @@ export default function PricingPage() {
                 transition={{ duration: 0.4, delay: 0.1 * i }}
                 className={`relative flex flex-col rounded-2xl border p-8 transition-all duration-300 ${
                   plan.popular
-                    ? 'border-[var(--primary)]'
-                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                    ? 'border-primary'
+                    : 'border-white/10 bg-white/2 hover:border-white/20 hover:bg-white/4'
                 }`}
                 style={plan.popular ? { backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)' } : undefined}
               >
@@ -282,7 +282,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mb-6 flex items-baseline gap-1">
-                  <div className="relative min-w-[90px]">
+                  <div className="relative min-w-22.5">
                     <AnimatePresence mode="wait">
                       <motion.span
                         key={`${plan.id}-${displayPrice}-${period}`}

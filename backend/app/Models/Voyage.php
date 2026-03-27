@@ -33,7 +33,7 @@ class Voyage extends Model
 
     public function journees(): HasMany
     {
-        return $this->hasMany(Journee::class);
+        return $this->hasMany(Journee::class)->orderBy('numero_jour');
     }
 
     public function hebergements(): HasMany

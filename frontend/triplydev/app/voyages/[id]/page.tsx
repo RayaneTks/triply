@@ -9,14 +9,50 @@ import { clearSession, getStoredSession } from '@/src/lib/auth-client';
 import { getTrip, type TripSummary } from '@/src/lib/trips-client';
 import { googleMapsDirectionsEmbedUrl, googleMapsDirectionsLink } from '@/src/lib/plan-snapshot';
 
+const parseAmount = (value: unknown): number => {
+    const n = Number.parseFloat(String(value ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+};
+
+const parseTripDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const raw = String(dateStr).trim();
+    if (!raw) return null;
+    const direct = new Date(raw.includes('T') ? raw : `${raw}T12:00:00`);
+    if (!Number.isNaN(direct.getTime())) return direct;
+    const slice10 = raw.slice(0, 10);
+    const fallback = new Date(`${slice10}T12:00:00`);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+};
+
 const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    return new Date(`${dateStr}T12:00:00`).toLocaleDateString('fr-FR', {
+    const parsed = parseTripDate(dateStr);
+    if (!parsed) return '-';
+    return parsed.toLocaleDateString('fr-FR', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
         year: 'numeric',
     });
+};
+
+const getComputedBudget = (trip: TripSummary): { amount: number; currency: string } => {
+    const persisted = parseAmount(trip.budget_total);
+    const snapshot = trip.plan_snapshot;
+    const flight = parseAmount(snapshot?.flightSummary?.price) || parseAmount(trip.flight?.price);
+    const hotel = parseAmount(snapshot?.hotelSummary?.totalPrice);
+    const total = persisted > 0 ? persisted : flight + hotel;
+    const currency = snapshot?.flightSummary?.currency || snapshot?.hotelSummary?.currency || trip.currency || 'EUR';
+    return { amount: total, currency };
+};
+
+const getDisplayDestination = (trip: TripSummary): string => {
+    return (
+        trip.plan_snapshot?.destinationSummary?.cityName ||
+        trip.plan_snapshot?.hotelSummary?.cityName ||
+        trip.destination ||
+        'Destination'
+    );
 };
 
 export default function VoyageDetailPage() {
@@ -33,6 +69,8 @@ export default function VoyageDetailPage() {
     const [trip, setTrip] = useState<TripSummary | null>(null);
 
     const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY;
+    const tripBudget = trip ? getComputedBudget(trip) : null;
+    const tripDestination = trip ? getDisplayDestination(trip) : 'Destination';
 
     useEffect(() => {
         let active = true;
@@ -74,7 +112,7 @@ export default function VoyageDetailPage() {
     }, [id, router]);
 
     return (
-        <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-dvh min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -134,7 +172,7 @@ export default function VoyageDetailPage() {
                                 {trip.title}
                             </h1>
                             <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                Destination: {trip.destination}
+                                Destination: {tripDestination}
                             </p>
 
                             <section className="mb-8">
@@ -181,7 +219,7 @@ export default function VoyageDetailPage() {
                                     <div>
                                         <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Budget</span>
                                         <p className="font-medium" style={{ color: 'var(--primary)' }}>
-                                            {trip.budget_total} {trip.currency}
+                                            {Math.round(tripBudget?.amount ?? 0)} {tripBudget?.currency || trip.currency}
                                         </p>
                                     </div>
                                 </div>

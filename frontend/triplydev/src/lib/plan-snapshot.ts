@@ -16,7 +16,18 @@ export interface PlanSnapshot {
     days: PlanSnapshotDay[];
     planningMode?: string;
     flightSummary?: { carrier?: string; price?: string; currency?: string };
-    hotelSummary?: { name?: string; cityCode?: string };
+    hotelSummary?: {
+        name?: string;
+        cityCode?: string;
+        cityName?: string;
+        totalPrice?: string;
+        currency?: string;
+    };
+    destinationSummary?: {
+        cityName?: string;
+        airportName?: string;
+        iataCode?: string;
+    };
 }
 
 export function googleMapsDirectionsEmbedUrl(

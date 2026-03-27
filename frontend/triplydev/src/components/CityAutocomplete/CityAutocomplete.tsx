@@ -243,7 +243,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 )}
 
                 {isOpen && suggestions.length > 0 && dropdownRect && typeof document !== 'undefined' && createPortal(
-                    <div ref={dropdownRef} className="fixed z-[99999]" style={{ top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}>
+                    <div ref={dropdownRef} className="fixed z-99999" style={{ top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}>
                         <ul
                             id={listboxId}
                             role="listbox"

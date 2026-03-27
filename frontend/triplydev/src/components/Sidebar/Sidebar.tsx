@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
                 {!isCollapsed ? (
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex-shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
+                        <div className="shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
                             <Image
                                 src="/Logo-triply.svg"
                                 alt="Triply"
@@ -161,13 +161,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="flex flex-shrink-0 items-center justify-center" aria-hidden>
+                    <div className="flex shrink-0 items-center justify-center" aria-hidden>
                         <Image src="/Logo-triply.svg" alt="" width={28} height={28} className="object-contain opacity-90" />
                     </div>
                 )}
                 <button
                     onClick={onToggle}
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                     aria-label={isCollapsed ? 'Ouvrir le menu' : 'Fermer le menu'}
                 >
                     <motion.span
@@ -197,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     }`;
                                     const content = (
                                         <>
-                                            <span className={`flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
+                                            <span className={`shrink-0 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
                                                 <Icon />
                                             </span>
                                             <span className={isCollapsed ? 'sr-only' : 'font-medium'}>{item.label}</span>

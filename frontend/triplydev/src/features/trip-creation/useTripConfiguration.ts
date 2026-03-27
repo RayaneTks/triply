@@ -30,6 +30,17 @@ export interface TripConfigurationState {
     selectedOptions: string[];
     /** Préférences alimentaires (optionnel) */
     dietarySelections: string[];
+    /** Saisie vol sans recherche Amadeus */
+    manualFlightEntry: boolean;
+    manualFlightAirline: string;
+    manualFlightNumber: string;
+    manualFlightNumberReturn: string;
+    /** Saisie hôtel sans recherche */
+    manualHotelEntry: boolean;
+    manualHotelName: string;
+    manualHotelAddress: string;
+    manualHotelCheckIn: string;
+    manualHotelCheckOut: string;
 }
 
 export interface UseTripConfigurationResult extends TripConfigurationState {
@@ -48,6 +59,15 @@ export interface UseTripConfigurationResult extends TripConfigurationState {
     setReturnArrivalTime: (v: string) => void;
     setSelectedOptions: (values: string[]) => void;
     setDietarySelections: (values: string[]) => void;
+    setManualFlightEntry: (v: boolean) => void;
+    setManualFlightAirline: (v: string) => void;
+    setManualFlightNumber: (v: string) => void;
+    setManualFlightNumberReturn: (v: string) => void;
+    setManualHotelEntry: (v: boolean) => void;
+    setManualHotelName: (v: string) => void;
+    setManualHotelAddress: (v: string) => void;
+    setManualHotelCheckIn: (v: string) => void;
+    setManualHotelCheckOut: (v: string) => void;
 }
 
 export function useTripConfiguration(initial?: Partial<TripConfigurationState>): UseTripConfigurationResult {
@@ -68,6 +88,15 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [returnArrivalTime, setReturnArrivalTime] = useState(initial?.returnArrivalTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
     const [dietarySelections, setDietarySelections] = useState<string[]>(initial?.dietarySelections ?? []);
+    const [manualFlightEntry, setManualFlightEntry] = useState(initial?.manualFlightEntry ?? false);
+    const [manualFlightAirline, setManualFlightAirline] = useState(initial?.manualFlightAirline ?? '');
+    const [manualFlightNumber, setManualFlightNumber] = useState(initial?.manualFlightNumber ?? '');
+    const [manualFlightNumberReturn, setManualFlightNumberReturn] = useState(initial?.manualFlightNumberReturn ?? '');
+    const [manualHotelEntry, setManualHotelEntry] = useState(initial?.manualHotelEntry ?? false);
+    const [manualHotelName, setManualHotelName] = useState(initial?.manualHotelName ?? '');
+    const [manualHotelAddress, setManualHotelAddress] = useState(initial?.manualHotelAddress ?? '');
+    const [manualHotelCheckIn, setManualHotelCheckIn] = useState(initial?.manualHotelCheckIn ?? '');
+    const [manualHotelCheckOut, setManualHotelCheckOut] = useState(initial?.manualHotelCheckOut ?? '');
 
     const computedDays = daysBetween(outboundDate, returnDate);
     const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
@@ -88,6 +117,15 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         returnArrivalTime,
         selectedOptions,
         dietarySelections,
+        manualFlightEntry,
+        manualFlightAirline,
+        manualFlightNumber,
+        manualFlightNumberReturn,
+        manualHotelEntry,
+        manualHotelName,
+        manualHotelAddress,
+        manualHotelCheckIn,
+        manualHotelCheckOut,
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
@@ -103,5 +141,14 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setReturnArrivalTime,
         setSelectedOptions,
         setDietarySelections,
+        setManualFlightEntry,
+        setManualFlightAirline,
+        setManualFlightNumber,
+        setManualFlightNumberReturn,
+        setManualHotelEntry,
+        setManualHotelName,
+        setManualHotelAddress,
+        setManualHotelCheckIn,
+        setManualHotelCheckOut,
     };
 }

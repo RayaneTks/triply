@@ -145,13 +145,14 @@ Format JSON STRICT attendu (sans markdown, sans texte autour) :
   "suggestedZoom": number (ex: 5 ou 12),
   "suggestedActivities": [
     { "title": string, "lat": number, "lng": number, "durationHours": number optionnel }
-  ]
+  ],
+  "step1FormPatch": null ou objet partiel pour préremplir l'étape 1 (voir bloc FORMULAIRE ÉTAPE 1)
 }
 
 Règles pour suggestedActivities :
 - Tableau de lieux concrets (monuments, musées, quartiers, parcs, etc.) dans la zone de la destination ou null si hors sujet.
-- Coordonnées GPS plausibles (pas 0,0). Maximum 8 entrées. Si la question ne demande pas d'idées d'activités pour le voyage, renvoie [].
-- durationHours optionnel (ex. 1.5). La somme des durées suggérées ne doit pas dépasser le budget horaire du jour indiqué dans le contexte planificateur quand il est fourni.
+- Coordonnées GPS plausibles (pas 0,0). Si la question ne demande pas d'idées d'activités pour le voyage, renvoie [].
+- durationHours optionnel (ex. 1.5). La somme des durées suggérées ne doit pas dépasser le budget horaire du jour indiqué dans le contexte planificateur quand il est fourni. Si le budget horaire n'est pas fourni, base-toi sur 6 heures d'activités.
 
 Si la demande est hors périmètre, réponds avec reply contenant EXACTEMENT ce message de refus :
 "${REFUSAL_TEXT}"
@@ -201,5 +202,85 @@ PRÉFÉRENCES UTILISATEUR (à prendre en compte dans tes recommandations) :
 ${labels}
 - Adapte tes suggestions (destinations, activités, hébergements) en fonction de ces préférences.
 - Tu peux les mentionner naturellement si pertinent, sans les répéter systématiquement.
+`;
+}
+
+/** Contexte + règles pour que le modèle remplisse les champs de l’étape 1 (JSON step1FormPatch). */
+export function getStep1FormAssistantInstructions(p: {
+    snapshot: Record<string, unknown>;
+    hotelPreferenceLabels: string[];
+    dietaryLabels: string[];
+}): string {
+    const snap = JSON.stringify(p.snapshot, null, 0);
+    const hotelOpts = p.hotelPreferenceLabels.map((s) => JSON.stringify(s)).join(', ');
+    const diets = p.dietaryLabels.map((s) => JSON.stringify(s)).join(', ');
+    return `
+
+FORMULAIRE ÉTAPE 1 (Triply) — remplissage assisté :
+- État actuel des champs (JSON) : ${snap}
+- Quand l'utilisateur décrit un voyage, demande de préremplir / compléter le formulaire, ou donne assez d'informations (villes, dates, voyageurs, budget, horaires de vol, préférences hôtel, régime alimentaire), tu complètes "step1FormPatch" avec UNIQUEMENT les champs que tu peux en déduire. Sinon step1FormPatch vaut null.
+- Champs possibles (tous optionnels dans le patch) :
+  - departureCity, arrivalCity : codes IATA à 3 lettres (ex: CDG, ORY, NCE, JFK, NRT) quand tu les connais ; sinon omets.
+  - arrivalCityName : nom affiché de la destination (ville ou aéroport).
+  - travelerCount : entier entre 1 et 50.
+  - budget : texte libre (montant ou fourchette).
+  - activityTime : nombre d'heures d'activités par jour (chaîne numérique, ex: "6" ou "8").
+  - outboundDate, returnDate : dates ISO AAAA-MM-JJ ; returnDate >= outboundDate.
+  - outboundDepartureTime, outboundArrivalTime, returnDepartureTime, returnArrivalTime : format HH:mm (24h).
+  - travelDays : nombre de jours de séjour (1–365) si l'utilisateur ne donne pas les deux dates mais donne une durée.
+  - selectedOptions : sous-ensemble EXACT parmi [${hotelOpts}] (libellés identiques caractère par caractère).
+  - dietarySelections : sous-ensemble EXACT parmi [${diets}].
+- Ne mets pas de valeurs inventées douteuses : mieux vaut omettre un champ que de deviner un mauvais code IATA.
+- Dans "reply", résume ce que tu as rempli ou ce qui manque encore.
+`;
+}
+
+/** Mode Q&A : réponses voyage uniquement, aucun effet sur carte / formulaire / liste d’activités. */
+export function getQaOnlyInstructions(): string {
+    return `
+
+MODE Q&A (strict) :
+- L'utilisateur pose des questions (conseils, culture, logistique, budget, etc.) sans modifier son itinéraire dans l'app.
+- Tu réponds dans "reply" uniquement avec du contenu utile et concis.
+- Tu DOIS renvoyer exactement :
+  - "targetLocation": null
+  - "coordinates": null
+  - "suggestedZoom": null ou omis
+  - "suggestedActivities": [] (tableau vide)
+  - "step1FormPatch": null
+- Ne propose pas d'ajouter des POI ni de remplir le formulaire étape 1 dans ce mode.
+`;
+}
+
+/** Régénération d’une seule activité (alternative au même type de lieu). */
+export function getRegenerateActivityInstructions(p: {
+    title: string;
+    lat: number;
+    lng: number;
+    dayIndex: number;
+    destinationContext: string;
+}): string {
+    return `
+
+TÂCHE : REMPLACER UNE ACTIVITÉ DU VOYAGE
+- Jour : ${p.dayIndex}
+- Destination / contexte : "${p.destinationContext || 'non spécifié'}"
+- Activité actuelle : "${p.title}"
+- Coordonnées actuelles : lat ${p.lat}, lng ${p.lng}
+
+Propose UNE alternative concrète (autre lieu réel à proximité ou même ville, même type d'expérience) avec des coordonnées GPS plausibles (pas 0,0).
+
+Format JSON STRICT (sans markdown) :
+{
+  "reply": "Phrase courte à l'utilisateur (pourquoi cette alternative).",
+  "replacement": {
+    "title": string,
+    "lat": number,
+    "lng": number,
+    "durationHours": number optionnel (> 0)
+  } ou null si impossible
+}
+
+Si tu ne peux pas proposer d'alternative fiable, mets "replacement": null et explique dans "reply".
 `;
 }
