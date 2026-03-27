@@ -26,8 +26,8 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/Gotham-Medium.otf" as="font" type="font/otf" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
       </head>
-      <body className="antialiased overflow-x-hidden min-h-[100dvh]">
-        <main className="flex min-h-[100dvh] flex-col">
+      <body className="antialiased overflow-x-hidden min-h-dvh">
+        <main className="flex min-h-dvh flex-col">
           {children}
         </main>
       </body>

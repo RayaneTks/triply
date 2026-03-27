@@ -84,7 +84,7 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; ch
         <div className="mb-2.5 flex items-center gap-2">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: 'var(--primary, #0096c7)' }}>{icon}</span>
             <legend className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">{title}</legend>
-            {tag && <span className="ml-auto rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] font-medium text-slate-500">{tag}</span>}
+            {tag && <span className="ml-auto rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-500">{tag}</span>}
         </div>
         {children}
     </fieldset>
@@ -148,7 +148,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         setManualHotelCheckOut,
     } = props;
 
-    const inputCls = 'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/[0.04] px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
+    const inputCls = 'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/4 px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     return (
@@ -158,7 +158,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     <button
                         type="button"
                         onClick={onBackToPlanningMode}
-                        className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left text-[12px] font-semibold text-slate-300 transition-colors hover:border-cyan-500/30 hover:bg-white/[0.06] hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background,#222222)]"
+                        className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/3 px-3 py-2.5 text-left text-[12px] font-semibold text-slate-300 transition-colors hover:border-cyan-500/30 hover:bg-white/6 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-(--background,#222222)"
                     >
                         <svg
                             width="16"
@@ -227,7 +227,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 <button
                     type="button"
                     onClick={() => setShowAdvanced((v) => !v)}
-                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-left text-[12px] font-semibold text-slate-200 transition-colors hover:bg-white/[0.06]"
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/3 px-3.5 py-2.5 text-left text-[12px] font-semibold text-slate-200 transition-colors hover:bg-white/6"
                 >
                     <span>Options avancées (vol, hôtel, budget, préférences)</span>
                     <span className="text-slate-400">{showAdvanced ? 'Masquer' : 'Afficher'}</span>
@@ -237,7 +237,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 <>
                 {/* 4 - Transport */}
                 <Section icon={svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")} title="Transport" tag="optionnel">
-                    <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                    <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/3 px-3 py-2.5">
                         <input
                             type="checkbox"
                             checked={manualFlightEntry}
@@ -308,7 +308,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     ) : selectedFlight ? (
                         <SelectedFlightCard offer={selectedFlight} carrierName={selectedFlightCarrierName} onClick={onFlightCardClick || (() => {})} onRemove={onRemoveFlight} />
                     ) : (
-                        <button type="button" onClick={onOpenFlightSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
+                        <button type="button" onClick={onOpenFlightSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/2 px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/4">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 transition-colors group-hover:bg-cyan-500/20" style={{ color: 'var(--primary, #0096c7)' }}>
                                 {svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")}
                             </span>
@@ -322,7 +322,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
 
                 {/* 5 - Hébergement */}
                 <Section icon={svg("M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4M5 21V10.9M19 21V10.9")} title="Hébergement" tag="optionnel">
-                    <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                    <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/3 px-3 py-2.5">
                         <input
                             type="checkbox"
                             checked={manualHotelEntry}
@@ -395,7 +395,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     ) : selectedHotel ? (
                         <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick || (() => {})} onRemove={onRemoveHotel} />
                     ) : (
-                        <button type="button" onClick={onOpenHotelSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
+                        <button type="button" onClick={onOpenHotelSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/2 px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/4">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 transition-colors group-hover:bg-cyan-500/20" style={{ color: 'var(--primary, #0096c7)' }}>
                                 {svg("M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4M5 21V10.9M19 21V10.9")}
                             </span>

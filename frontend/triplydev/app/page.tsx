@@ -287,7 +287,7 @@ export default function Home() {
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
     const [showTuPreferes, setShowTuPreferes] = useState(false);
     const [mapLocations, setMapLocations] = useState<LocationPoint[]>([]);
-    const [isLoadingHotels, setIsLoadingHotels] = useState(false);
+    const [, setIsLoadingHotels] = useState(false);
 
     // AUTO-COLLAPSE SIDEBAR IF CONNECTED
     useEffect(() => {
@@ -322,11 +322,11 @@ export default function Home() {
     // Etats Formulaire Voyage (centralisés dans un hook dédié)
     const tripConfig = useTripConfiguration();
     const [isLoading, setIsLoading] = useState(false);
-    const [lastRequestPayload, setLastRequestPayload] = useState<FlightRequestPayload | null>(null);
+    const [, setLastRequestPayload] = useState<FlightRequestPayload | null>(null);
     const [apiResponse, setApiResponse] = useState<(AmadeusResponse | { error?: string; details?: string }) | null>(null);
 
     // Etats Mapbox
-    const [selectedPoi, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
+    const [, setSelectedPoi] = useState<MapboxPoiFeature | null>(null);
     const [dayActivitiesByDay, setDayActivitiesByDay] = useState<Record<number, DayActivityPoi[]>>({});
     const [legTransportByDay, setLegTransportByDay] = useState<Record<number, ActivityRouteProfile[]>>({});
     const dayActivitiesByDayForMapRef = useRef(dayActivitiesByDay);
@@ -1054,8 +1054,8 @@ export default function Home() {
                       name: effectiveHotelOffer.hotelName,
                       cityCode: effectiveHotelOffer.cityCode,
                       cityName: tripConfig.arrivalCityName || undefined,
-                      totalPrice: selectedHotelOffer.price?.total,
-                      currency: selectedHotelOffer.price?.currency,
+                                            totalPrice: effectiveHotelOffer.price?.total,
+                                            currency: effectiveHotelOffer.price?.currency,
                   }
                 : undefined,
         };
@@ -1102,32 +1102,7 @@ export default function Home() {
 
     const assistantStep1Snapshot = useMemo(
         () => buildStep1FormSnapshotForAssistant(tripConfig),
-        [
-            tripConfig.departureCity,
-            tripConfig.arrivalCity,
-            tripConfig.arrivalCityName,
-            tripConfig.travelDays,
-            tripConfig.travelerCount,
-            tripConfig.budget,
-            tripConfig.activityTime,
-            tripConfig.outboundDate,
-            tripConfig.returnDate,
-            tripConfig.outboundDepartureTime,
-            tripConfig.outboundArrivalTime,
-            tripConfig.returnDepartureTime,
-            tripConfig.returnArrivalTime,
-            tripConfig.selectedOptions,
-            tripConfig.dietarySelections,
-            tripConfig.manualFlightEntry,
-            tripConfig.manualFlightAirline,
-            tripConfig.manualFlightNumber,
-            tripConfig.manualFlightNumberReturn,
-            tripConfig.manualHotelEntry,
-            tripConfig.manualHotelName,
-            tripConfig.manualHotelAddress,
-            tripConfig.manualHotelCheckIn,
-            tripConfig.manualHotelCheckOut,
-        ]
+        [tripConfig]
     );
 
     const handleApplyAssistantStep1Patch = useCallback(
@@ -1759,7 +1734,7 @@ export default function Home() {
                                 return (
                                 <div
                                     ref={activityHoursEditRef}
-                                    className="absolute top-4 right-4 z-20 flex w-[min(92vw,380px)] min-w-[280px] flex-col gap-2 rounded-xl border border-white/15 px-4 py-3 shadow-lg backdrop-blur-sm sm:min-w-[320px]"
+                                    className="absolute top-4 right-4 z-20 flex w-[min(92vw,380px)] min-w-70 flex-col gap-2 rounded-xl border border-white/15 px-4 py-3 shadow-lg backdrop-blur-sm sm:min-w-[320px]"
                                     style={{ backgroundColor: 'var(--background, #222222)' }}
                                 >
                                     <div className="flex items-center justify-between gap-2 text-[12px]">
@@ -1854,7 +1829,7 @@ export default function Home() {
                                             {activitySegments.map((seg) => (
                                                 <span
                                                     key={seg.key}
-                                                    className={`flex max-w-[11rem] items-center gap-1.5 ${seg.isAlert ? 'text-red-300' : 'text-slate-400'}`}
+                                                    className={`flex max-w-44 items-center gap-1.5 ${seg.isAlert ? 'text-red-300' : 'text-slate-400'}`}
                                                     title={
                                                         seg.isAlert
                                                             ? `${seg.label} — ${seg.hours.toFixed(1)} h (alerte)`
@@ -1906,7 +1881,7 @@ export default function Home() {
                                 <button
                                     type="button"
                                     onClick={() => setIsAssistantOpen((o) => !o)}
-                                    className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                                    className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                                     title="Triply Assistant"
                                     aria-label="Ouvrir l'assistant"
                                 >
@@ -1919,7 +1894,7 @@ export default function Home() {
                                     <button
                                         type="button"
                                         onClick={() => setHotelFilterMenuOpen((o) => !o)}
-                                        className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-[var(--background)] shadow-md transition-colors hover:bg-[#333333] ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
+                                        className={`flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-background shadow-md transition-colors hover:bg-[#333333] ${hotelStarsFilter && hotelStarsFilter.length > 0 ? 'ring-2 ring-cyan-500/80' : ''}`}
                                         title="Filtrer les hôtels"
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-100">
@@ -1929,7 +1904,7 @@ export default function Home() {
                                     <AnimatePresence>
                                         {hotelFilterMenuOpen && (
                                                 <div
-                                                className="absolute bottom-full right-0 mb-3 min-w-[200px] overflow-hidden rounded-xl border border-white/15 bg-[var(--background)] shadow-2xl"
+                                                className="absolute bottom-full right-0 mb-3 min-w-50 overflow-hidden rounded-xl border border-white/15 bg-background shadow-2xl"
                                             >
                                                 <div className="border-b border-white/10 px-3 py-2">
                                                     <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Étoiles</span>
@@ -1970,7 +1945,7 @@ export default function Home() {
                                 <AnimatePresence>
                                     {mapViewMenuOpen && (
                                         <div
-                                            className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-[180px]"
+                                            className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-45"
                                             style={{
                                                 backgroundColor: 'var(--background, #222222)',
                                                 border: '1px solid rgba(148, 163, 184, 0.4)',
@@ -2009,10 +1984,10 @@ export default function Home() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 100, scale: 0.95 }}
                                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                        className="fixed bottom-20 left-4 right-4 z-[9999] flex h-[min(80vh,640px)] flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl sm:left-auto sm:right-4 sm:w-full sm:max-w-lg lg:max-w-xl"
+                                        className="fixed bottom-20 left-4 right-4 z-9999 flex h-[min(80vh,640px)] flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl sm:left-auto sm:right-4 sm:w-full sm:max-w-lg lg:max-w-xl"
                                         style={{ backgroundColor: 'var(--background, #222222)' }}
                                     >
-                                        <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+                                        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
                                             <div>
                                                 <h3 className="text-sm font-semibold text-slate-100">Triply Assistant</h3>
                                                 <p className="mt-0.5 text-xs text-slate-400">
@@ -2066,7 +2041,7 @@ export default function Home() {
                                     animate={{ x: 0, opacity: 1 }}
                                     exit={{ x: -24, opacity: 0 }}
                                     transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                                    className="pointer-events-auto absolute left-0 top-0 bottom-0 z-10 w-full max-w-[420px] p-2 sm:p-3"
+                                    className="pointer-events-auto absolute left-0 top-0 bottom-0 z-10 w-full max-w-105 p-2 sm:p-3"
                                 >
                                     <div className="flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl backdrop-blur-md" style={{ backgroundColor: 'var(--background, #222222)' }}>
                                         <TripCreationWizard
@@ -2165,7 +2140,7 @@ export default function Home() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+                        className="fixed inset-0 z-10000 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="validate-trip-title"

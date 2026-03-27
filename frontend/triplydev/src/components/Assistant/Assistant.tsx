@@ -336,6 +336,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
                 void postUserMessage(
                     `Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                    undefined,
                     day
                 );
             },
@@ -351,6 +352,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         chain.then(() =>
                             postUserMessage(
                                 `Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                                undefined,
                                 day
                             )
                         ),
@@ -383,8 +385,8 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
 
     return (
         <div className="flex h-full min-h-0 flex-col" style={{ backgroundColor: 'var(--background, #222222)' }}>
-            <div className="flex-shrink-0 space-y-2 border-b border-white/10 px-4 py-2">
-                <div className="flex gap-1 rounded-lg bg-white/[0.06] p-0.5">
+            <div className="shrink-0 space-y-2 border-b border-white/10 px-4 py-2">
+                <div className="flex gap-1 rounded-lg bg-white/6 p-0.5">
                     <button
                         type="button"
                         onClick={() => setChatMode('itinerary')}
@@ -418,7 +420,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         type="button"
                         onClick={undoLastExchange}
                         disabled={!canUndo}
-                        className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-md border border-white/15 bg-white/4 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Annuler le dernier échange ou arrêter la génération"
                     >
                         Annuler le dernier échange
@@ -451,7 +453,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     </div>
                 )}
             </div>
-            <div className="flex-shrink-0 border-t border-white/10 px-4 pb-4 pt-2 flex flex-col gap-2" style={{ backgroundColor: 'var(--background, #222222)' }}>
+            <div className="shrink-0 border-t border-white/10 px-4 pb-4 pt-2 flex flex-col gap-2" style={{ backgroundColor: 'var(--background, #222222)' }}>
                 <div className="flex justify-between items-center">
                     <button
                         type="button"

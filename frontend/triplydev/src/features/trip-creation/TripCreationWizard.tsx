@@ -223,7 +223,7 @@ function ActivityCard({
             className={`list-none rounded-xl border p-4 transition-colors ${
                 isTimeAlert
                     ? 'border-red-500/70 bg-red-950/25 shadow-[0_0_0_1px_rgba(239,68,68,0.35)] hover:border-red-400/80 hover:bg-red-950/35'
-                    : 'border-white/10 bg-white/[0.06] hover:border-white/20 hover:bg-white/[0.08]'
+                    : 'border-white/10 bg-white/6 hover:border-white/20 hover:bg-white/8'
             }`}
             style={{ boxShadow: isTimeAlert ? '0 2px 16px rgba(239,68,68,0.15)' : '0 2px 8px rgba(0,0,0,0.15)' }}
         >
@@ -366,7 +366,7 @@ function ActivityCard({
                                         const n = parseFloat(v);
                                         if (Number.isFinite(n) && n > 0) onDurationHoursChange(n);
                                     }}
-                                    className="w-20 rounded-lg border border-white/15 bg-white/[0.06] px-2 py-1.5 text-[12px] text-slate-100 outline-none focus:border-cyan-500/50"
+                                    className="w-20 rounded-lg border border-white/15 bg-white/6 px-2 py-1.5 text-[12px] text-slate-100 outline-none focus:border-cyan-500/50"
                                 />
                                 {poi.durationHours != null && (
                                     <button
@@ -421,7 +421,7 @@ function PlanningModeLoginRequired({ onLoginClick }: { onLoginClick: () => void 
                 <button
                     type="button"
                     onClick={onLoginClick}
-                    className="w-full max-w-[220px] rounded-xl border-0 bg-[var(--primary,#0096c7)] px-5 py-3 text-[13px] font-semibold text-white shadow-lg shadow-cyan-900/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background,#222222)] active:scale-[0.98]"
+                    className="w-full max-w-55 rounded-xl border-0 bg-(--primary,#0096c7) px-5 py-3 text-[13px] font-semibold text-white shadow-lg shadow-cyan-900/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-(--background,#222222) active:scale-[0.98]"
                 >
                     Se connecter
                 </button>
@@ -460,7 +460,7 @@ function PlanningModeCards({ onSelect }: { onSelect: (mode: PlanningMode) => voi
                         key={mode}
                         type="button"
                         onClick={() => onSelect(mode)}
-                        className="rounded-2xl border border-white/15 bg-white/[0.04] p-4 text-left transition-all hover:border-cyan-500/50 hover:bg-cyan-500/10 active:scale-[0.99]"
+                        className="rounded-2xl border border-white/15 bg-white/4 p-4 text-left transition-all hover:border-cyan-500/50 hover:bg-cyan-500/10 active:scale-[0.99]"
                     >
                         <span className="block text-[14px] font-semibold text-cyan-400">{title}</span>
                         <span className="mt-1 block text-[12px] leading-snug text-slate-400">{description}</span>

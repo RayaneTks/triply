@@ -141,7 +141,7 @@ export default function VoyagesPage() {
     const hasTrips = useMemo(() => trips.length > 0, [trips]);
 
     return (
-        <div className="flex h-[100dvh] min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-dvh min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -196,7 +196,7 @@ export default function VoyagesPage() {
                             {trips.map((trip) => (
                                 <Link key={trip.id} href={`/voyages/${trip.id}`}>
                                     <article
-                                        className="rounded-2xl p-5 h-full cursor-pointer transition-all hover:border-[var(--primary)] hover:bg-white/5"
+                                        className="rounded-2xl p-5 h-full cursor-pointer transition-all hover:border-primary hover:bg-white/5"
                                         style={{
                                             backgroundColor: 'rgba(255, 255, 255, 0.05)',
                                             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -204,7 +204,7 @@ export default function VoyagesPage() {
                                     >
                                         <div className="flex items-start justify-between gap-3 mb-3">
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <span className="flex-shrink-0" style={{ color: 'var(--primary)' }}>
+                                                <span className="shrink-0" style={{ color: 'var(--primary)' }}>
                                                     <PlaneIcon />
                                                 </span>
                                                 <span className="font-semibold truncate" style={{ color: 'var(--foreground)' }}>
@@ -212,7 +212,7 @@ export default function VoyagesPage() {
                                                 </span>
                                             </div>
                                             <span
-                                                className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
+                                                className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
                                                 style={statusStyle(trip.status)}
                                             >
                                                 {trip.status}
