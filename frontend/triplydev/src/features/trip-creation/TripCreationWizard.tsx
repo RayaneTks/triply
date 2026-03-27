@@ -6,11 +6,17 @@ import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/Tr
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { UseTripConfigurationResult } from './useTripConfiguration';
+import type { PlanningMode } from './planning-mode';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 
 type PanelView = 'plan' | 'activity';
 
-export type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number }; _dragId?: string };
+export type DayActivityPoi = MapboxPoiFeature & {
+    lngLat: { lng: number; lat: number };
+    _dragId?: string;
+    /** Durée en heures (saisie utilisateur) ; sinon estimation selon le layer Mapbox */
+    durationHours?: number;
+};
 
 function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: number; travelDays: number; onSelect: (day: number) => void }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -74,6 +80,8 @@ function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: numbe
 function getEstimatedDuration(layerId?: string): string {
     if (!layerId) return '~1h';
     const id = layerId.toLowerCase();
+    if (id.includes('airport')) return '1h–2h';
+    if (id.includes('hotel')) return '2h–3h';
     if (id.includes('restaurant') || id.includes('food') || id.includes('cafe') || id.includes('bar')) return '1h–2h';
     if (id.includes('museum') || id.includes('gallery') || id.includes('theater')) return '1h30–3h';
     if (id.includes('park') || id.includes('nature') || id.includes('garden')) return '1h–2h';
@@ -115,6 +123,13 @@ export function getEstimatedDurationHours(layerId?: string): number {
     return 1;
 }
 
+/** Durée d’une activité : override utilisateur ou estimation layer. */
+export function getActivityDurationHours(poi: Pick<DayActivityPoi, 'layer' | 'durationHours'>): number {
+    const o = poi.durationHours;
+    if (o != null && Number.isFinite(o) && o > 0) return o;
+    return getEstimatedDurationHours(poi.layer?.id);
+}
+
 export type DayActivityRouteLeg = { duration: number; distance: number; geometry?: GeoJSON.LineString };
 
 export type DayActivityRouteInfo = {
@@ -141,6 +156,9 @@ function ActivityCard({
     onRemove,
     isTimeAlert = false,
     legFromPrevious,
+    onDurationHoursChange,
+    onRegenerateWithAi,
+    regenerateLoading = false,
 }: {
     poi: DayActivityPoi;
     index: number;
@@ -155,11 +173,17 @@ function ActivityCard({
         dayRoutes: Partial<Record<ActivityRouteProfile, DayActivityRouteInfo>>;
         onModeChange?: (mode: ActivityRouteProfile) => void;
     } | null;
+    onDurationHoursChange?: (hours: number | null) => void;
+    onRegenerateWithAi?: () => void;
+    regenerateLoading?: boolean;
 }) {
     const name = poi.properties?.name ?? poi.properties?.name_en ?? poi.layer?.id ?? 'Lieu';
     const [address, setAddress] = useState<string | null>(null);
     const [addressLoading, setAddressLoading] = useState(true);
-    const duration = getEstimatedDuration(poi.layer?.id);
+    const durationLabel =
+        poi.durationHours != null && Number.isFinite(poi.durationHours) && poi.durationHours > 0
+            ? `~${poi.durationHours} h`
+            : getEstimatedDuration(poi.layer?.id);
     const costHint = [poi.properties?.class, name].filter(Boolean).join(' ');
     const cost = getEstimatedCost(poi.layer?.id, costHint);
     const dragControls = useDragControls();
@@ -199,7 +223,7 @@ function ActivityCard({
             className={`list-none rounded-xl border p-4 transition-colors ${
                 isTimeAlert
                     ? 'border-red-500/70 bg-red-950/25 shadow-[0_0_0_1px_rgba(239,68,68,0.35)] hover:border-red-400/80 hover:bg-red-950/35'
-                    : 'border-white/10 bg-white/[0.06] hover:border-white/20 hover:bg-white/[0.08]'
+                    : 'border-white/10 bg-white/6 hover:border-white/20 hover:bg-white/8'
             }`}
             style={{ boxShadow: isTimeAlert ? '0 2px 16px rgba(239,68,68,0.15)' : '0 2px 8px rgba(0,0,0,0.15)' }}
         >
@@ -294,7 +318,7 @@ function ActivityCard({
                             className={`flex items-center gap-1.5 ${isTimeAlert ? 'font-medium text-red-300' : 'text-cyan-400'}`}
                         >
                             <ClockIcon className="h-3.5 w-3.5" />
-                            Temps moyen : {duration}
+                            Temps : {durationLabel}
                         </span>
                         <span className="flex items-center gap-1.5 text-cyan-400">
                             <BanknotesIcon className="h-3.5 w-3.5" />
@@ -320,6 +344,51 @@ function ActivityCard({
                             <ChatBubbleLeftRightIcon className="h-4 w-4" />
                             Laisser un avis
                         </a>
+                        {onDurationHoursChange && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <label className="text-[11px] font-medium text-slate-400" htmlFor={`act-dur-${poi._dragId ?? _index}`}>
+                                    Durée (h)
+                                </label>
+                                <input
+                                    id={`act-dur-${poi._dragId ?? _index}`}
+                                    type="number"
+                                    min={0.25}
+                                    max={24}
+                                    step={0.25}
+                                    value={poi.durationHours ?? ''}
+                                    placeholder="auto"
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v === '') {
+                                            onDurationHoursChange(null);
+                                            return;
+                                        }
+                                        const n = parseFloat(v);
+                                        if (Number.isFinite(n) && n > 0) onDurationHoursChange(n);
+                                    }}
+                                    className="w-20 rounded-lg border border-white/15 bg-white/6 px-2 py-1.5 text-[12px] text-slate-100 outline-none focus:border-cyan-500/50"
+                                />
+                                {poi.durationHours != null && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onDurationHoursChange(null)}
+                                        className="text-[11px] font-medium text-slate-500 underline decoration-slate-600 underline-offset-2 hover:text-cyan-400"
+                                    >
+                                        Auto
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        {onRegenerateWithAi && (
+                            <button
+                                type="button"
+                                onClick={onRegenerateWithAi}
+                                disabled={regenerateLoading}
+                                className="mt-2 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 text-left text-[11px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {regenerateLoading ? 'Régénération…' : 'Régénérer avec l’IA'}
+                            </button>
+                        )}
                     </div>
                 </div>
                 {onRemove && (
@@ -337,6 +406,68 @@ function ActivityCard({
                 )}
             </div>
         </Reorder.Item>
+    );
+}
+
+function PlanningModeLoginRequired({ onLoginClick }: { onLoginClick: () => void }) {
+    return (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="my-auto flex w-full max-w-sm flex-col items-center self-center px-6 py-10 text-center">
+                <h2 className="mb-3 w-full text-[15px] font-semibold text-slate-100">Connexion requise</h2>
+                <p className="mb-6 w-full text-[12px] leading-relaxed text-slate-400">
+                    Connectez-vous pour choisir votre mode de planification (pleine IA, semi-IA ou manuel) et créer un
+                    voyage.
+                </p>
+                <button
+                    type="button"
+                    onClick={onLoginClick}
+                    className="w-full max-w-55 rounded-xl border-0 bg-(--primary,#0096c7) px-5 py-3 text-[13px] font-semibold text-white shadow-lg shadow-cyan-900/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-(--background,#222222) active:scale-[0.98]"
+                >
+                    Se connecter
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function PlanningModeCards({ onSelect }: { onSelect: (mode: PlanningMode) => void }) {
+    const cards: { mode: PlanningMode; title: string; description: string }[] = [
+        {
+            mode: 'full_ai',
+            title: 'Pleine IA',
+            description: 'L’assistant vous accompagne tout au long : suggestions automatiques et chat ouvert en étape 2.',
+        },
+        {
+            mode: 'semi_ai',
+            title: 'Semi-IA',
+            description: 'Vous construisez sur la carte ; l’IA reste disponible sur demande pour proposer des activités.',
+        },
+        {
+            mode: 'manual',
+            title: 'Manuel',
+            description: 'Uniquement carte et liste d’activités, sans assistant (bouton masqué).',
+        },
+    ];
+    return (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
+            <h2 className="mb-1 text-[15px] font-semibold text-slate-100">Mode de planification</h2>
+            <p className="mb-4 text-[12px] leading-relaxed text-slate-400">
+                Avant les informations du voyage, indiquez comment vous souhaitez utiliser l’IA.
+            </p>
+            <div className="flex flex-col gap-3">
+                {cards.map(({ mode, title, description }) => (
+                    <button
+                        key={mode}
+                        type="button"
+                        onClick={() => onSelect(mode)}
+                        className="rounded-2xl border border-white/15 bg-white/4 p-4 text-left transition-all hover:border-cyan-500/50 hover:bg-cyan-500/10 active:scale-[0.99]"
+                    >
+                        <span className="block text-[14px] font-semibold text-cyan-400">{title}</span>
+                        <span className="mt-1 block text-[12px] leading-snug text-slate-400">{description}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -374,6 +505,33 @@ interface TripCreationWizardProps {
     activeView?: PanelView;
     onActiveViewChange?: (view: PanelView) => void;
     onComplete?: () => void;
+    /** Recentrage carte sur la destination sans changer d’étape */
+    onValidateChoices?: () => void;
+    onDestinationGeoSelect?: (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => void;
+    planningMode: PlanningMode | null;
+    onPlanningModeChange: (mode: PlanningMode) => void;
+    /** Réaffiche les cartes pleine IA / semi-IA / manuel et efface le mode mémorisé. */
+    onBackToPlanningMode?: () => void;
+    /** Sans connexion, la sélection du mode est bloquée. */
+    isConnected: boolean;
+    onLoginClick: () => void;
+    onAppendHotelToDay?: () => void;
+    onAppendAirportOutbound?: () => void;
+    onAppendAirportReturn?: () => void;
+    canAppendReturnAirport?: boolean;
+    onRequestAiDaySuggestions?: () => void;
+    onRequestAiAllDaysSuggestions?: () => void;
+    showAiSuggestionButton?: boolean;
+    aiSuggestionsLoading?: boolean;
+    aiAllDaysSuggestionsLoading?: boolean;
+    onOpenValidateTrip?: () => void;
+    validateTripDisabled?: boolean;
+    geocodeAppendPending?: boolean;
+    /** Heures par activité pour le jour affiché (null = estimation auto) */
+    onDayActivityDurationChange?: (activityIndex: number, hours: number | null) => void;
+    onRegenerateDayActivity?: (activityIndex: number) => void | Promise<void>;
+    /** Indique quelle activité du jour courant est en cours de régénération IA */
+    regeneratingActivity?: { day: number; index: number } | null;
 }
 
 export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
@@ -408,6 +566,28 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     activeView,
     onActiveViewChange,
     onComplete,
+    onValidateChoices,
+    onDestinationGeoSelect,
+    planningMode,
+    onPlanningModeChange,
+    onBackToPlanningMode,
+    isConnected,
+    onLoginClick,
+    onAppendHotelToDay,
+    onAppendAirportOutbound,
+    onAppendAirportReturn,
+    canAppendReturnAirport = false,
+    onRequestAiDaySuggestions,
+    onRequestAiAllDaysSuggestions,
+    showAiSuggestionButton = false,
+    aiSuggestionsLoading = false,
+    aiAllDaysSuggestionsLoading = false,
+    onOpenValidateTrip,
+    validateTripDisabled = true,
+    geocodeAppendPending = false,
+    onDayActivityDurationChange,
+    onRegenerateDayActivity,
+    regeneratingActivity = null,
 }) => {
     const requiredChecklist = useMemo(
         () => [
@@ -420,7 +600,11 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
         [state.departureCity, state.arrivalCity, state.outboundDate, state.returnDate, state.travelerCount]
     );
     const requiredCompleted = requiredChecklist.filter((item) => item.valid).length;
-    const hasMinimum = requiredCompleted === requiredChecklist.length;
+    const hasMinimum = planningMode != null && requiredCompleted === requiredChecklist.length;
+    /** En pleine IA, l’étape 2 reste accessible pour construire le plan même sans formulaire complet. */
+    const canAccessStep2 = hasMinimum || planningMode === 'full_ai';
+    const isFirstTripDay = selectedDay === 1;
+    const isLastTripDay = selectedDay === travelDays && travelDays >= 1;
     const [internalActiveView, setInternalActiveView] = useState<PanelView>('plan');
     const resolvedActiveView = activeView ?? internalActiveView;
 
@@ -449,12 +633,12 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => hasMinimum && setResolvedView('activity')}
-                        disabled={!hasMinimum}
+                        onClick={() => canAccessStep2 && setResolvedView('activity')}
+                        disabled={!canAccessStep2}
                         className={`flex-1 px-4 py-3 text-[13px] font-semibold transition-colors ${
                             resolvedActiveView === 'activity'
                                 ? 'border-b-2 border-cyan-500 text-cyan-400'
-                                : hasMinimum
+                                : canAccessStep2
                                   ? 'text-slate-400 hover:text-slate-200'
                                   : 'cursor-not-allowed text-slate-600'
                         }`}
@@ -468,52 +652,87 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
             {resolvedActiveView === 'plan' ? (
                 <>
                     {/* Form content - scrollable */}
-                    <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-                        <TripConfigurationForm
-                            departureCity={state.departureCity}
-                            setDepartureCity={state.setDepartureCity}
-                            arrivalCity={state.arrivalCity}
-                            setArrivalCity={state.setArrivalCity}
-                            setArrivalCityName={state.setArrivalCityName}
-                            travelDays={state.travelDays}
-                            setTravelDays={state.setTravelDays}
-                            travelerCount={state.travelerCount}
-                            setTravelerCount={state.setTravelerCount}
-                            budget={state.budget}
-                            setBudget={state.setBudget}
-                            activityTime={state.activityTime}
-                            setActivityTime={state.setActivityTime}
-                            arrivalDate={state.outboundDate}
-                            setArrivalDate={state.setOutboundDate}
-                            departureDate={state.returnDate}
-                            setDepartureDate={state.setReturnDate}
-                            arrivalTime={state.arrivalTime}
-                            setArrivalTime={state.setArrivalTime}
-                            departureTime={state.departureTime}
-                            setDepartureTime={state.setDepartureTime}
-                            selectedOptions={state.selectedOptions}
-                            setSelectedOptions={state.setSelectedOptions}
-                            multiSelectOptions={multiSelectOptions}
-                            dietaryMultiSelectOptions={dietaryMultiSelectOptions}
-                            dietarySelections={state.dietarySelections}
-                            setDietarySelections={state.setDietarySelections}
-                            onOpenFlightSearch={onOpenFlightSearch}
-                            onCloseFlightSearch={onCloseFlightSearch}
-                            flightSearchChecked={isFlightModalOpen}
-                            selectedFlight={selectedFlight}
-                            selectedFlightCarrierName={selectedFlightCarrierName}
-                            onFlightCardClick={onFlightCardClick}
-                            onRemoveFlight={onRemoveFlight}
-                            onOpenHotelSearch={onOpenHotelSearch}
-                            onCloseHotelSearch={onCloseHotelSearch}
-                            hotelSearchChecked={isHotelModalOpen}
-                            selectedHotel={selectedHotel}
-                            onHotelCardClick={onHotelCardClick}
-                            onRemoveHotel={onRemoveHotel}
-                        />
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                        {planningMode == null ? (
+                            isConnected ? (
+                                <PlanningModeCards onSelect={onPlanningModeChange} />
+                            ) : (
+                                <PlanningModeLoginRequired onLoginClick={onLoginClick} />
+                            )
+                        ) : (
+                            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                            <TripConfigurationForm
+                                departureCity={state.departureCity}
+                                setDepartureCity={state.setDepartureCity}
+                                arrivalCity={state.arrivalCity}
+                                setArrivalCity={state.setArrivalCity}
+                                setArrivalCityName={state.setArrivalCityName}
+                                onArrivalGeoSelect={onDestinationGeoSelect}
+                                travelDays={state.travelDays}
+                                setTravelDays={state.setTravelDays}
+                                travelerCount={state.travelerCount}
+                                setTravelerCount={state.setTravelerCount}
+                                budget={state.budget}
+                                setBudget={state.setBudget}
+                                activityTime={state.activityTime}
+                                setActivityTime={state.setActivityTime}
+                                arrivalDate={state.outboundDate}
+                                setArrivalDate={state.setOutboundDate}
+                                departureDate={state.returnDate}
+                                setDepartureDate={state.setReturnDate}
+                                outboundDepartureTime={state.outboundDepartureTime}
+                                setOutboundDepartureTime={state.setOutboundDepartureTime}
+                                outboundArrivalTime={state.outboundArrivalTime}
+                                setOutboundArrivalTime={state.setOutboundArrivalTime}
+                                returnDepartureTime={state.returnDepartureTime}
+                                setReturnDepartureTime={state.setReturnDepartureTime}
+                                returnArrivalTime={state.returnArrivalTime}
+                                setReturnArrivalTime={state.setReturnArrivalTime}
+                                selectedOptions={state.selectedOptions}
+                                setSelectedOptions={state.setSelectedOptions}
+                                multiSelectOptions={multiSelectOptions}
+                                dietaryMultiSelectOptions={dietaryMultiSelectOptions}
+                                dietarySelections={state.dietarySelections}
+                                setDietarySelections={state.setDietarySelections}
+                                onOpenFlightSearch={onOpenFlightSearch}
+                                onCloseFlightSearch={onCloseFlightSearch}
+                                flightSearchChecked={isFlightModalOpen}
+                                selectedFlight={selectedFlight}
+                                selectedFlightCarrierName={selectedFlightCarrierName}
+                                onFlightCardClick={onFlightCardClick}
+                                onRemoveFlight={onRemoveFlight}
+                                onOpenHotelSearch={onOpenHotelSearch}
+                                onCloseHotelSearch={onCloseHotelSearch}
+                                hotelSearchChecked={isHotelModalOpen}
+                                selectedHotel={selectedHotel}
+                                onHotelCardClick={onHotelCardClick}
+                                onRemoveHotel={onRemoveHotel}
+                                onBackToPlanningMode={onBackToPlanningMode}
+                                manualFlightEntry={state.manualFlightEntry}
+                                setManualFlightEntry={state.setManualFlightEntry}
+                                manualFlightAirline={state.manualFlightAirline}
+                                setManualFlightAirline={state.setManualFlightAirline}
+                                manualFlightNumber={state.manualFlightNumber}
+                                setManualFlightNumber={state.setManualFlightNumber}
+                                manualFlightNumberReturn={state.manualFlightNumberReturn}
+                                setManualFlightNumberReturn={state.setManualFlightNumberReturn}
+                                manualHotelEntry={state.manualHotelEntry}
+                                setManualHotelEntry={state.setManualHotelEntry}
+                                manualHotelName={state.manualHotelName}
+                                setManualHotelName={state.setManualHotelName}
+                                manualHotelAddress={state.manualHotelAddress}
+                                setManualHotelAddress={state.setManualHotelAddress}
+                                manualHotelCheckIn={state.manualHotelCheckIn}
+                                setManualHotelCheckIn={state.setManualHotelCheckIn}
+                                manualHotelCheckOut={state.manualHotelCheckOut}
+                                setManualHotelCheckOut={state.setManualHotelCheckOut}
+                            />
+                            </div>
+                        )}
                     </div>
 
                     {/* CTA Footer - Plan */}
+                    {planningMode != null && (
                     <div className="shrink-0 border-t border-white/10 px-3 py-3">
                         {requiredCompleted > 0 && (
                             <div className="mb-2 flex items-center gap-1.5">
@@ -531,19 +750,34 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                         <p className="mb-2 text-[11px] text-slate-500">
                             Commencez simple : destination, dates et voyageurs. Les options avancées restent facultatives.
                         </p>
-                        <button
-                            type="button"
-                            onClick={onComplete}
-                            disabled={!hasMinimum || !onComplete}
-                            className={`w-full rounded-xl py-2.5 text-[13px] font-semibold transition-all ${
-                                hasMinimum
-                                    ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 active:scale-[0.98]'
-                                    : 'cursor-not-allowed bg-white/6 text-slate-400'
-                            }`}
-                        >
-                            {hasMinimum ? 'Générer mon itinéraire de base' : 'Complétez départ, destination, dates et voyageurs'}
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={onValidateChoices}
+                                disabled={!state.arrivalCity.trim() || !onValidateChoices}
+                                className={`min-w-0 flex-1 rounded-xl py-2.5 text-[12px] font-semibold transition-all sm:text-[13px] ${
+                                    state.arrivalCity.trim() && onValidateChoices
+                                        ? 'border border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 active:scale-[0.98]'
+                                        : 'cursor-not-allowed border border-transparent bg-white/6 text-slate-500'
+                                }`}
+                            >
+                                Valider mes choix
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onComplete}
+                                disabled={!hasMinimum || !onComplete}
+                                className={`min-w-0 flex-1 rounded-xl py-2.5 text-[12px] font-semibold transition-all sm:text-[13px] ${
+                                    hasMinimum
+                                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 active:scale-[0.98]'
+                                        : 'cursor-not-allowed bg-white/6 text-slate-400'
+                                }`}
+                            >
+                                {hasMinimum ? 'Générer mon itinéraire de base' : 'Complétez départ, destination, dates et voyageurs'}
+                            </button>
+                        </div>
                     </div>
+                    )}
                 </>
             ) : (
                 /* Activité de la journée - POIs sélectionnés sur la carte */
@@ -561,6 +795,60 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             <p className="text-[12px] text-slate-400">
                                 Cliquez sur un lieu sur la carte pour l&apos;ajouter à votre journée.
                             </p>
+                            {showAiSuggestionButton && (onRequestAiDaySuggestions || onRequestAiAllDaysSuggestions) && (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {onRequestAiDaySuggestions && (
+                                        <button
+                                            type="button"
+                                            onClick={onRequestAiDaySuggestions}
+                                            disabled={aiSuggestionsLoading}
+                                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-left text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {aiSuggestionsLoading ? 'Suggestions en cours…' : 'Suggestions IA pour ce jour'}
+                                        </button>
+                                    )}
+                                    {onRequestAiAllDaysSuggestions && (
+                                        <button
+                                            type="button"
+                                            onClick={onRequestAiAllDaysSuggestions}
+                                            disabled={aiAllDaysSuggestionsLoading}
+                                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-left text-[12px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {aiAllDaysSuggestionsLoading
+                                                ? 'Génération du séjour en cours…'
+                                                : 'Suggestions IA pour tout le séjour'}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            {(isFirstTripDay || isLastTripDay) && selectedHotel && (
+                                <button
+                                    type="button"
+                                    onClick={() => (onOpenHotelSearch ? onOpenHotelSearch() : onAppendHotelToDay?.())}
+                                    className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-left text-[12px] font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                                >
+                                    Changer d&apos;hôtel
+                                </button>
+                            )}
+                            {isFirstTripDay && selectedFlight && (
+                                <button
+                                    type="button"
+                                    onClick={() => (onOpenFlightSearch ? onOpenFlightSearch() : onAppendAirportOutbound?.())}
+                                    className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-left text-[12px] font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                                >
+                                    Changer de vol (aller)
+                                </button>
+                            )}
+                            {isLastTripDay && selectedFlight && canAppendReturnAirport && onAppendAirportReturn && (
+                                <button
+                                    type="button"
+                                    onClick={onAppendAirportReturn}
+                                    disabled={geocodeAppendPending}
+                                    className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-left text-[12px] font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                                >
+                                    Ajouter l&apos;aéroport (vol retour)
+                                </button>
+                            )}
                         </div>
                         {dayActivities.length >= 2 && Object.keys(dayRoutes).length > 0 && onSelectRouteType && (
                             <div className="mb-4">
@@ -650,6 +938,19 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                             poi._dragId === activityTimeAlertDragId
                                         }
                                         onRemove={onRemoveDayActivity ? () => onRemoveDayActivity(index) : undefined}
+                                        onDurationHoursChange={
+                                            onDayActivityDurationChange
+                                                ? (h) => onDayActivityDurationChange(index, h)
+                                                : undefined
+                                        }
+                                        onRegenerateWithAi={
+                                            onRegenerateDayActivity ? () => void onRegenerateDayActivity(index) : undefined
+                                        }
+                                        regenerateLoading={
+                                            regeneratingActivity != null &&
+                                            regeneratingActivity.day === selectedDay &&
+                                            regeneratingActivity.index === index
+                                        }
                                     />
                                     );
                                 })}
@@ -657,6 +958,25 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             ))()
                         )}
                     </div>
+                    {onOpenValidateTrip && (
+                        <div className="shrink-0 border-t border-white/10 px-3 py-3">
+                            <button
+                                type="button"
+                                onClick={onOpenValidateTrip}
+                                disabled={validateTripDisabled}
+                                className={`w-full rounded-xl py-2.5 text-[13px] font-semibold transition-all ${
+                                    validateTripDisabled
+                                        ? 'cursor-not-allowed bg-white/6 text-slate-500'
+                                        : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500 active:scale-[0.98]'
+                                }`}
+                            >
+                                Valider mon voyage
+                            </button>
+                            <p className="mt-1.5 text-center text-[10px] text-slate-500">
+                                Enregistre votre itinéraire dans Mes voyages après confirmation.
+                            </p>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

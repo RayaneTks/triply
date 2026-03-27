@@ -113,6 +113,7 @@ final class V1ProfileEndpoints
                     'diet' => ['halal'],
                     'breakfast_included' => true,
                     'interests' => ['culture', 'food'],
+                    'planning_mode' => 'semi_ai',
                     'pace' => 'medium',
                     'max_budget' => 1200,
                 ]

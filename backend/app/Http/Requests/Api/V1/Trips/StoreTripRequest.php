@@ -14,6 +14,7 @@ class StoreTripRequest extends BaseApiRequest
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
             'travelers_count' => ['nullable', 'integer', 'min:1'],
+            'plan_snapshot' => ['nullable', 'array'],
         ];
     }
 }

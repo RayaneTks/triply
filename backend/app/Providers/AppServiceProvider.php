@@ -8,6 +8,7 @@ use App\Services\Contracts\AiServiceInterface;
 use App\Services\Contracts\AuthServiceInterface;
 use App\Services\Contracts\BookingServiceInterface;
 use App\Services\Contracts\ConsentServiceInterface;
+use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\ExportServiceInterface;
 use App\Services\Contracts\ObservabilityServiceInterface;
 use App\Services\Contracts\PlacesServiceInterface;
@@ -16,6 +17,8 @@ use App\Services\Contracts\SharingServiceInterface;
 use App\Services\Contracts\TravelServiceInterface;
 use App\Services\Contracts\TripServiceInterface;
 use App\Services\AuthService;
+use App\Services\CurrencyConverterService;
+use App\Services\ProfileService;
 use App\Services\TripService;
 use App\Services\Stubs\ActivityServiceStub;
 use App\Services\Stubs\AiServiceStub;
@@ -37,7 +40,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
-        $this->app->bind(ProfileServiceInterface::class, ProfileServiceStub::class);
+        $this->app->bind(CurrencyConverterInterface::class, CurrencyConverterService::class);
+        $this->app->bind(ProfileServiceInterface::class, ProfileService::class);
         $this->app->bind(TripServiceInterface::class, TripService::class);
         $this->app->bind(ActivityServiceInterface::class, ActivityServiceStub::class);
         $this->app->bind(PlacesServiceInterface::class, PlacesServiceStub::class);

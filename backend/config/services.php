@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'currency_rates' => [
+        'base_url' => env('CURRENCY_RATES_BASE_URL', 'https://api.frankfurter.app'),
+        'cache_ttl_minutes' => (int) env('CURRENCY_RATES_CACHE_TTL_MINUTES', 360),
+        'timeout_seconds' => (int) env('CURRENCY_RATES_TIMEOUT_SECONDS', 4),
+    ],
+
 ];

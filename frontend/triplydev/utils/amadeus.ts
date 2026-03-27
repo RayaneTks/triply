@@ -9,7 +9,7 @@ export interface FlightRequestPayload {
         departureDateTimeRange: { date: string; time?: string };
     }>;
     travelers: Array<{ id: string; travelerType: string }>;
-    sources: string[]; // <--- IMPORTANT : Champ obligatoire ajouté
+    sources: string[];
     searchCriteria?: {
         maxPrice?: number;
         flightFilters?: {
@@ -19,46 +19,43 @@ export interface FlightRequestPayload {
 }
 
 export const generateFlightRequest = (
-    departureCity: string, // Reçoit maintenant "MRS" directement
-    arrivalCity: string,   // Reçoit maintenant "NYC" directement
-    departureDate: string,
-    arrivalDate: string,
+    departureCity: string,
+    arrivalCity: string,
+    outboundDate: string,
+    returnDate: string,
     travelerCount: number,
     budget: string,
-    arrivalTime: string,
-    departureTime: string
+    /** Heure de départ du vol aller (HH:mm) */
+    outboundDepartureTime: string,
+    /** Heure de départ du vol retour (HH:mm) */
+    returnDepartureTime: string
 ): FlightRequestPayload => {
-
-    // Génération des voyageurs
     const travelers = Array.from({ length: travelerCount }, (_, i) => ({
         id: (i + 1).toString(),
-        travelerType: 'ADULT'
+        travelerType: 'ADULT',
     }));
 
-    // Construction du vol Aller
     const originDestinations = [
         {
             id: '1',
-            originLocationCode: departureCity, // Plus de conversion, on utilise la valeur directe
+            originLocationCode: departureCity,
             destinationLocationCode: arrivalCity,
             departureDateTimeRange: {
-                date: departureDate,
-                // On ajoute l'heure seulement si elle est définie
-                ...(departureTime ? { time: departureTime + ':00' } : {})
-            }
-        }
+                date: outboundDate,
+                ...(outboundDepartureTime ? { time: outboundDepartureTime + ':00' } : {}),
+            },
+        },
     ];
 
-    // Construction du vol Retour (si date de retour présente)
-    if (arrivalDate) {
+    if (returnDate) {
         originDestinations.push({
             id: '2',
-            originLocationCode: arrivalCity,      // L'arrivée devient le départ du retour
-            destinationLocationCode: departureCity, // Le départ devient l'arrivée du retour
+            originLocationCode: arrivalCity,
+            destinationLocationCode: departureCity,
             departureDateTimeRange: {
-                date: arrivalDate,
-                ...(arrivalTime ? { time: arrivalTime + ':00' } : {})
-            }
+                date: returnDate,
+                ...(returnDepartureTime ? { time: returnDepartureTime + ':00' } : {}),
+            },
         });
     }
 
@@ -66,14 +63,13 @@ export const generateFlightRequest = (
         currencyCode: 'EUR',
         originDestinations,
         travelers,
-        sources: ['GDS'], // <--- OBLIGATOIRE : Corrige l'erreur "MANDATORY DATA MISSING"
-        searchCriteria: {}
+        sources: ['GDS'],
+        searchCriteria: {},
     };
 
-    // Ajout du budget max s'il est défini
-    if (budget && parseInt(budget) > 0) {
+    if (budget && parseInt(budget, 10) > 0) {
         if (!payload.searchCriteria) payload.searchCriteria = {};
-        payload.searchCriteria.maxPrice = parseInt(budget);
+        payload.searchCriteria.maxPrice = parseInt(budget, 10);
     }
 
     return payload;

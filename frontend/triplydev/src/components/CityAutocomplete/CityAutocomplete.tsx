@@ -13,6 +13,7 @@ interface AmadeusLocation {
         cityName?: string;
         countryName?: string;
     };
+    geoCode?: { latitude: number; longitude: number };
 }
 
 export interface CityAutocompleteProps {
@@ -21,6 +22,9 @@ export interface CityAutocompleteProps {
 
     // La prop magique pour remonter le nom à l'Assistant
     onSelectName?: (cityName: string) => void;
+
+    /** Coordonnées Amadeus (view=FULL) pour recentrer la carte sur la destination */
+    onSelectGeo?: (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => void;
 
     placeholder?: string;
     label?: string;
@@ -32,6 +36,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                                                 value,
                                                                 onChange,
                                                                 onSelectName,
+                                                                onSelectGeo,
                                                                 placeholder = 'Rechercher une ville...',
                                                                 label,
                                                                 className = '',
@@ -166,6 +171,16 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
             onSelectName(cityName);
         }
 
+        const g = feature.geoCode;
+        if (onSelectGeo && g && typeof g.latitude === 'number' && typeof g.longitude === 'number') {
+            onSelectGeo({
+                latitude: g.latitude,
+                longitude: g.longitude,
+                iataCode: feature.iataCode,
+                name: cityName,
+            });
+        }
+
         setIsOpen(false);
         setSuggestions([]);
         setActiveIndex(-1);
@@ -228,7 +243,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 )}
 
                 {isOpen && suggestions.length > 0 && dropdownRect && typeof document !== 'undefined' && createPortal(
-                    <div ref={dropdownRef} className="fixed z-[99999]" style={{ top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}>
+                    <div ref={dropdownRef} className="fixed z-99999" style={{ top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}>
                         <ul
                             id={listboxId}
                             role="listbox"

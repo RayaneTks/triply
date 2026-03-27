@@ -9,12 +9,21 @@ class UpdatePreferencesRequest extends BaseApiRequest
     public function rules(): array
     {
         return [
+            'environments' => ['sometimes', 'array'],
+            'environments.*' => ['string'],
+            'planning_mode' => ['sometimes', 'nullable', 'string', 'in:full_ai,semi_ai,manual'],
+            'traveler_profile' => ['sometimes', 'nullable', 'string'],
             'diet' => ['sometimes', 'array'],
+            'diet.*' => ['string'],
             'breakfast_included' => ['sometimes', 'boolean'],
             'interests' => ['sometimes', 'array'],
-            'pace' => ['sometimes', 'string', 'in:slow,medium,fast'],
+            'interests.*' => ['string'],
+            'pace' => ['sometimes', 'nullable', 'string', 'in:slow,medium,fast,planifie,spontane,flexible'],
+            'food_preference' => ['sometimes', 'nullable', 'string'],
             'max_budget' => ['sometimes', 'numeric', 'min:0'],
             'visited_cities' => ['sometimes', 'array'],
+            'visited_cities.*' => ['string'],
         ];
     }
+
 }

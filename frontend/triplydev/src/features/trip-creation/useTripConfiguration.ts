@@ -19,11 +19,28 @@ export interface TripConfigurationState {
     activityTime: string;
     outboundDate: string;
     returnDate: string;
-    arrivalTime: string;
-    departureTime: string;
+    /** Décollage vol aller */
+    outboundDepartureTime: string;
+    /** Atterrissage vol aller */
+    outboundArrivalTime: string;
+    /** Décollage vol retour */
+    returnDepartureTime: string;
+    /** Atterrissage vol retour */
+    returnArrivalTime: string;
     selectedOptions: string[];
     /** Préférences alimentaires (optionnel) */
     dietarySelections: string[];
+    /** Saisie vol sans recherche Amadeus */
+    manualFlightEntry: boolean;
+    manualFlightAirline: string;
+    manualFlightNumber: string;
+    manualFlightNumberReturn: string;
+    /** Saisie hôtel sans recherche */
+    manualHotelEntry: boolean;
+    manualHotelName: string;
+    manualHotelAddress: string;
+    manualHotelCheckIn: string;
+    manualHotelCheckOut: string;
 }
 
 export interface UseTripConfigurationResult extends TripConfigurationState {
@@ -36,10 +53,21 @@ export interface UseTripConfigurationResult extends TripConfigurationState {
     setActivityTime: (v: string) => void;
     setOutboundDate: (v: string) => void;
     setReturnDate: (v: string) => void;
-    setArrivalTime: (v: string) => void;
-    setDepartureTime: (v: string) => void;
+    setOutboundDepartureTime: (v: string) => void;
+    setOutboundArrivalTime: (v: string) => void;
+    setReturnDepartureTime: (v: string) => void;
+    setReturnArrivalTime: (v: string) => void;
     setSelectedOptions: (values: string[]) => void;
     setDietarySelections: (values: string[]) => void;
+    setManualFlightEntry: (v: boolean) => void;
+    setManualFlightAirline: (v: string) => void;
+    setManualFlightNumber: (v: string) => void;
+    setManualFlightNumberReturn: (v: string) => void;
+    setManualHotelEntry: (v: boolean) => void;
+    setManualHotelName: (v: string) => void;
+    setManualHotelAddress: (v: string) => void;
+    setManualHotelCheckIn: (v: string) => void;
+    setManualHotelCheckOut: (v: string) => void;
 }
 
 export function useTripConfiguration(initial?: Partial<TripConfigurationState>): UseTripConfigurationResult {
@@ -52,10 +80,23 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [activityTime, setActivityTime] = useState(initial?.activityTime ?? '');
     const [outboundDate, setOutboundDate] = useState(initial?.outboundDate ?? '');
     const [returnDate, setReturnDate] = useState(initial?.returnDate ?? '');
-    const [arrivalTime, setArrivalTime] = useState(initial?.arrivalTime ?? '');
-    const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '');
+    const [outboundDepartureTime, setOutboundDepartureTime] = useState(
+        initial?.outboundDepartureTime ?? ''
+    );
+    const [outboundArrivalTime, setOutboundArrivalTime] = useState(initial?.outboundArrivalTime ?? '');
+    const [returnDepartureTime, setReturnDepartureTime] = useState(initial?.returnDepartureTime ?? '');
+    const [returnArrivalTime, setReturnArrivalTime] = useState(initial?.returnArrivalTime ?? '');
     const [selectedOptions, setSelectedOptions] = useState<string[]>(initial?.selectedOptions ?? []);
     const [dietarySelections, setDietarySelections] = useState<string[]>(initial?.dietarySelections ?? []);
+    const [manualFlightEntry, setManualFlightEntry] = useState(initial?.manualFlightEntry ?? false);
+    const [manualFlightAirline, setManualFlightAirline] = useState(initial?.manualFlightAirline ?? '');
+    const [manualFlightNumber, setManualFlightNumber] = useState(initial?.manualFlightNumber ?? '');
+    const [manualFlightNumberReturn, setManualFlightNumberReturn] = useState(initial?.manualFlightNumberReturn ?? '');
+    const [manualHotelEntry, setManualHotelEntry] = useState(initial?.manualHotelEntry ?? false);
+    const [manualHotelName, setManualHotelName] = useState(initial?.manualHotelName ?? '');
+    const [manualHotelAddress, setManualHotelAddress] = useState(initial?.manualHotelAddress ?? '');
+    const [manualHotelCheckIn, setManualHotelCheckIn] = useState(initial?.manualHotelCheckIn ?? '');
+    const [manualHotelCheckOut, setManualHotelCheckOut] = useState(initial?.manualHotelCheckOut ?? '');
 
     const computedDays = daysBetween(outboundDate, returnDate);
     const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
@@ -70,10 +111,21 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         activityTime,
         outboundDate,
         returnDate,
-        arrivalTime,
-        departureTime,
+        outboundDepartureTime,
+        outboundArrivalTime,
+        returnDepartureTime,
+        returnArrivalTime,
         selectedOptions,
         dietarySelections,
+        manualFlightEntry,
+        manualFlightAirline,
+        manualFlightNumber,
+        manualFlightNumberReturn,
+        manualHotelEntry,
+        manualHotelName,
+        manualHotelAddress,
+        manualHotelCheckIn,
+        manualHotelCheckOut,
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
@@ -83,10 +135,20 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setActivityTime,
         setOutboundDate,
         setReturnDate,
-        setArrivalTime,
-        setDepartureTime,
+        setOutboundDepartureTime,
+        setOutboundArrivalTime,
+        setReturnDepartureTime,
+        setReturnArrivalTime,
         setSelectedOptions,
         setDietarySelections,
+        setManualFlightEntry,
+        setManualFlightAirline,
+        setManualFlightNumber,
+        setManualFlightNumberReturn,
+        setManualHotelEntry,
+        setManualHotelName,
+        setManualHotelAddress,
+        setManualHotelCheckIn,
+        setManualHotelCheckOut,
     };
 }
-

@@ -5,7 +5,79 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Button } from '@/src/components/Button/Button';
-import { clearSession, getStoredSession, logout, me, saveSession, updateProfile } from '@/src/lib/auth-client';
+import {
+    clearSession,
+    getStoredSession,
+    logout,
+    me,
+    saveSession,
+    updateProfile,
+    fetchPreferences,
+    updatePreferences,
+    UserPreferences,
+} from '@/src/lib/auth-client';
+import {
+    TuPreferes,
+    PreferencesPayload,
+    PREFERENCES_STORAGE_KEY,
+    preferencesPayloadToAssistantTags,
+} from '@/src/components/TuPreferes/TuPreferes';
+
+const LABEL_MAP: Record<string, string> = {
+    plage: 'Plage',
+    montagne: 'Montagne',
+    ville: 'Ville',
+    campagne: 'Campagne',
+    aventurier: 'Aventurier',
+    epicurien: 'Épicurien',
+    contemplatif: 'Contemplatif',
+    fetard: 'Fêtard',
+    randonnee: 'Randonnée',
+    gastronomie: 'Gastronomie',
+    culture: 'Musées & Culture',
+    nautique: 'Sports nautiques',
+    nightlife: 'Vie nocturne',
+    shopping: 'Shopping',
+    planifie: 'Programme millimétré',
+    spontane: 'Au feeling',
+    flexible: 'Un mix des deux',
+    streetfood: 'Street food locale',
+    gastro: 'Restaurants gastro',
+    homecook: 'Je cuisine sur place',
+    adaptable: 'Je m\'adapte',
+};
+
+function Tag({ value }: { value: string }) {
+    return (
+        <span
+            className="inline-block px-3 py-1 rounded-full text-xs font-medium"
+            style={{
+                backgroundColor: 'rgba(0, 150, 199, 0.15)',
+                color: '#0096c7',
+                border: '1px solid rgba(0, 150, 199, 0.3)',
+            }}
+        >
+            {LABEL_MAP[value] ?? value}
+        </span>
+    );
+}
+
+
+function PreferenceRow({ label, values }: { label: string; values: string[] }) {
+    if (!values.length) return null;
+    return (
+        <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                {label}
+            </span>
+            <div className="flex flex-wrap gap-2">
+                {values.map((v) => (
+                    <Tag key={v} value={v} />
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default function ProfilPage() {
     const router = useRouter();
@@ -15,6 +87,8 @@ export default function ProfilPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [showPrefsModal, setShowPrefsModal] = useState(false);
+    const [userPreferences, setUserPreferences] = useState<UserPreferences>({});
 
     const [profile, setProfile] = useState({
         firstName: '',
@@ -51,6 +125,13 @@ export default function ProfilPage() {
 
                 saveSession({ token: session.token, user });
                 setIsConnected(true);
+
+                try {
+                    const prefs = await fetchPreferences(session.token);
+                    setUserPreferences(prefs);
+                } catch {
+                    setError('Profil chargé, mais les préférences n\'ont pas pu être récupérées.');
+                }
             } catch {
                 clearSession();
                 setIsConnected(false);
@@ -69,9 +150,16 @@ export default function ProfilPage() {
         return `${first}${last}`.trim() || (profile.email?.[0] || 'U');
     }, [profile.firstName, profile.lastName, profile.email]);
 
+    const hasPreferences = !!(
+        userPreferences.environments?.length ||
+        userPreferences.traveler_profile ||
+        userPreferences.interests?.length ||
+        userPreferences.pace ||
+        userPreferences.food_preference
+    );
+
     const handleLogout = async () => {
         const session = getStoredSession();
-
         if (session?.token) {
             try {
                 await logout(session.token);
@@ -79,7 +167,6 @@ export default function ProfilPage() {
                 // no-op
             }
         }
-
         clearSession();
         setIsConnected(false);
         router.push('/');
@@ -109,11 +196,34 @@ export default function ProfilPage() {
                 });
             }
 
-            setSuccess('Profil mis a jour.');
+            setSuccess('Profil mis à jour.');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Impossible de mettre a jour le profil.');
+            setError(err instanceof Error ? err.message : 'Impossible de mettre à jour le profil.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handlePreferencesComplete = async (prefs: PreferencesPayload) => {
+        setShowPrefsModal(false);
+
+        const session = getStoredSession();
+        if (!session?.token) return;
+
+        try {
+            await updatePreferences(session.token, prefs);
+            setUserPreferences(prefs);
+            try {
+                window.localStorage.setItem(
+                    PREFERENCES_STORAGE_KEY,
+                    JSON.stringify(preferencesPayloadToAssistantTags(prefs)),
+                );
+            } catch {
+                /* ignore */
+            }
+            setSuccess('Préférences mises à jour.');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Impossible de sauvegarder les préférences.');
         }
     };
 
@@ -143,7 +253,7 @@ export default function ProfilPage() {
                             className="text-sm font-medium hover:underline"
                             style={{ color: 'rgba(255, 255, 255, 0.7)' }}
                         >
-                            {'<- Retour a l\'application'}
+                            {'<- Retour à l\'application'}
                         </Link>
                     </div>
 
@@ -151,12 +261,12 @@ export default function ProfilPage() {
                         Mon profil
                     </h1>
                     <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                        Gere tes informations personnelles
+                        Gère tes informations personnelles
                     </p>
 
                     {!isConnected && (
                         <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                            <p style={{ color: 'rgba(255, 255, 255, 0.85)' }}>Tu dois etre connecte pour acceder au profil.</p>
+                            <p style={{ color: 'rgba(255, 255, 255, 0.85)' }}>Tu dois être connecté pour accéder au profil.</p>
                             <Button label="Se connecter" variant="dark" tone="tone1" onClick={() => router.push('/')} className="mt-4" />
                         </div>
                     )}
@@ -202,7 +312,7 @@ export default function ProfilPage() {
                                 >
                                     <div>
                                         <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Prenom
+                                            Prénom
                                         </label>
                                         <input
                                             type="text"
@@ -230,7 +340,7 @@ export default function ProfilPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Telephone
+                                            Téléphone
                                         </label>
                                         <input
                                             type="tel"
@@ -243,8 +353,61 @@ export default function ProfilPage() {
                             </section>
 
                             <section className="mb-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
+                                        Préférences de voyage
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPrefsModal(true)}
+                                        className="text-sm font-medium transition-colors"
+                                        style={{ color: '#0096c7' }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#00b4d8')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.color = '#0096c7')}
+                                    >
+                                        {hasPreferences ? 'Modifier' : 'Configurer'}
+                                    </button>
+                                </div>
+                                <div
+                                    className="rounded-2xl p-6"
+                                    style={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    }}
+                                >
+                                    {hasPreferences ? (
+                                        <div className="space-y-4">
+                                            <PreferenceRow label="Environnements" values={userPreferences.environments ?? []} />
+                                            <PreferenceRow label="Profil voyageur" values={userPreferences.traveler_profile ? [userPreferences.traveler_profile] : []} />
+                                            <PreferenceRow label="Activités" values={userPreferences.interests ?? []} />
+                                            <PreferenceRow label="Rythme" values={userPreferences.pace ? [userPreferences.pace] : []} />
+                                            <PreferenceRow label="Cuisine" values={userPreferences.food_preference ? [userPreferences.food_preference] : []} />
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4">
+                                            <p className="text-sm mb-3" style={{ color: 'rgba(255, 255, 255, 0.4)' }}>
+                                                Aucune préférence configurée
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPrefsModal(true)}
+                                                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                                                style={{
+                                                    backgroundColor: 'rgba(0, 150, 199, 0.15)',
+                                                    color: '#0096c7',
+                                                    border: '1px solid rgba(0, 150, 199, 0.3)',
+                                                }}
+                                            >
+                                                Définir mes préférences
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            <section className="mb-8">
                                 <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-                                    Preferences
+                                    Notifications
                                 </h3>
                                 <div
                                     className="rounded-2xl p-6 space-y-4"
@@ -303,6 +466,15 @@ export default function ProfilPage() {
                     )}
                 </div>
             </main>
+
+            <TuPreferes
+                visible={showPrefsModal}
+                initialValues={userPreferences}
+                onComplete={(prefs) => {
+                    void handlePreferencesComplete(prefs);
+                }}
+                onSkip={() => setShowPrefsModal(false)}
+            />
         </div>
     );
 }

@@ -19,6 +19,10 @@ export async function POST(request: Request) {
 
         // 1. Récupérer le JSON envoyé par ton frontend
         const body = await request.json();
+        const normalizedBody = {
+            ...body,
+            currencyCode: 'EUR',
+        };
 
         // 2. Obtenir le Token d'accès Amadeus (Auth)
         const authResponse = await fetch(`${AMADEUS_BASE_URL}/v1/security/oauth2/token`, {
@@ -51,7 +55,7 @@ export async function POST(request: Request) {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(normalizedBody),
         });
 
         const searchData = await searchResponse.json();

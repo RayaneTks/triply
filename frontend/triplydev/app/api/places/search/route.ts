@@ -31,14 +31,22 @@ function normalizeLocation(loc: Record<string, unknown>): Record<string, unknown
     const address = (loc.address as Record<string, unknown>) || {};
     const cityName = (address.cityName as string) || (loc.cityName as string) || (loc.name as string);
     const countryName = (address.countryName as string) || (loc.countryName as string) || '';
+    const rawGeo = loc.geoCode as Record<string, unknown> | undefined;
+    const latRaw = rawGeo?.latitude;
+    const lngRaw = rawGeo?.longitude;
+    const lat = typeof latRaw === 'number' ? latRaw : latRaw != null ? Number(latRaw) : NaN;
+    const lng = typeof lngRaw === 'number' ? lngRaw : lngRaw != null ? Number(lngRaw) : NaN;
+    const geoCode = Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : undefined;
 
-    return {
+    const base: Record<string, unknown> = {
         id: loc.id || loc.iataCode || 'unknown',
         name: loc.name || cityName,
         iataCode: loc.iataCode || '',
         subType: loc.subType || 'CITY',
         address: { cityName, countryName },
     };
+    if (geoCode) base.geoCode = geoCode;
+    return base;
 }
 
 export async function GET(request: Request) {
