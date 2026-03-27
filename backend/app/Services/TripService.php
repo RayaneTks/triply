@@ -8,6 +8,7 @@ use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\TripServiceInterface;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Arr;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,6 +28,7 @@ class TripService implements TripServiceInterface
         $startDate = $payload['start_date'] ?? now()->toDateString();
         $endDate = $payload['end_date'] ?? $startDate;
         $planSnapshot = $payload['plan_snapshot'] ?? null;
+        $storedSnapshot = $this->compactSnapshotForStorage($planSnapshot);
 
         $voyage = Voyage::query()->create([
             'titre' => $payload['title'],
@@ -37,10 +39,14 @@ class TripService implements TripServiceInterface
             'nb_voyageurs' => $payload['travelers_count'] ?? 1,
             'description' => null,
             'user_id' => $user->id,
-            'plan_snapshot' => $planSnapshot,
+            'plan_snapshot' => $storedSnapshot,
         ]);
 
-        return $this->serializeTrip($voyage->fresh(['transports', 'hebergements']));
+        if (is_array($planSnapshot)) {
+            $this->syncStructuredTripData($voyage, $planSnapshot);
+        }
+
+        return $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
     }
 
     public function listTrips(): array
@@ -52,7 +58,7 @@ class TripService implements TripServiceInterface
 
         $voyages = Voyage::query()
             ->where('user_id', $user->id)
-            ->with(['transports', 'hebergements'])
+            ->with(['transports', 'hebergements', 'journees.etapes'])
             ->orderByDesc('date_debut')
             ->get();
 
@@ -90,7 +96,7 @@ class TripService implements TripServiceInterface
             $updates['budget_total'] = (int) $payload['max_budget'];
         }
         if (array_key_exists('plan_snapshot', $payload)) {
-            $updates['plan_snapshot'] = $payload['plan_snapshot'];
+            $updates['plan_snapshot'] = $this->compactSnapshotForStorage($payload['plan_snapshot']);
 
             if (! array_key_exists('max_budget', $payload)) {
                 $updates['budget_total'] = $this->extractBudgetTotal($payload['plan_snapshot']);
@@ -106,7 +112,15 @@ class TripService implements TripServiceInterface
             $voyage->save();
         }
 
-        return $this->serializeTrip($voyage->fresh(['transports', 'hebergements']));
+        if (array_key_exists('plan_snapshot', $payload)) {
+            if (is_array($payload['plan_snapshot'])) {
+                $this->syncStructuredTripData($voyage, $payload['plan_snapshot']);
+            } else {
+                $this->clearStructuredTripData($voyage);
+            }
+        }
+
+        return $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
     }
 
     public function duplicateTrip(string $tripId): array
@@ -117,7 +131,10 @@ class TripService implements TripServiceInterface
         $copy->titre = $source->titre.' (copie)';
         $copy->save();
 
-        return $this->serializeTrip($copy->fresh(['transports', 'hebergements']));
+        $source->loadMissing(['transports', 'hebergements', 'journees.etapes']);
+        $this->duplicateStructuredTripData($source, $copy);
+
+        return $this->serializeTrip($copy->fresh(['transports', 'hebergements', 'journees.etapes']));
     }
 
     public function validateTrip(string $tripId): array
@@ -198,14 +215,16 @@ class TripService implements TripServiceInterface
         return Voyage::query()
             ->where('id', $tripId)
             ->where('user_id', $user->id)
-            ->with(['transports', 'hebergements'])
+            ->with(['transports', 'hebergements', 'journees.etapes'])
             ->firstOrFail();
     }
 
     private function serializeTrip(Voyage $voyage): array
     {
         $firstTransport = $voyage->transports->sortBy('depart_le')->first();
-        $snapshot = is_array($voyage->plan_snapshot) ? $voyage->plan_snapshot : [];
+        $structuredSnapshot = $this->buildSnapshotFromStructuredData($voyage);
+        $storedSnapshot = is_array($voyage->plan_snapshot) ? $voyage->plan_snapshot : [];
+        $snapshot = array_replace_recursive($structuredSnapshot, $storedSnapshot);
         $start = Carbon::parse($voyage->date_debut);
         $end = Carbon::parse($voyage->date_fin);
         $today = now()->startOfDay();
@@ -238,10 +257,342 @@ class TripService implements TripServiceInterface
                         $this->getStringFromSnapshot($snapshot, ['flightSummary', 'currency'])
                     ),
             ],
-            'plan_snapshot' => $voyage->plan_snapshot,
+            'plan_snapshot' => $snapshot,
             'created_at' => $voyage->created_at?->toISOString(),
             'updated_at' => $voyage->updated_at?->toISOString(),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $snapshot
+     */
+    private function syncStructuredTripData(Voyage $voyage, array $snapshot): void
+    {
+        $this->clearStructuredTripData($voyage);
+
+        $this->syncTransportFromSnapshot($voyage, $snapshot);
+        $this->syncHebergementFromSnapshot($voyage, $snapshot);
+        $this->syncDaysAndStepsFromSnapshot($voyage, $snapshot);
+    }
+
+    private function clearStructuredTripData(Voyage $voyage): void
+    {
+        $voyage->transports()->delete();
+        $voyage->hebergements()->delete();
+        $voyage->journees()->delete();
+    }
+
+    private function duplicateStructuredTripData(Voyage $source, Voyage $copy): void
+    {
+        foreach ($source->transports as $transport) {
+            $new = $transport->replicate();
+            $new->voyage_id = $copy->id;
+            $new->save();
+        }
+
+        foreach ($source->hebergements as $hebergement) {
+            $new = $hebergement->replicate();
+            $new->voyage_id = $copy->id;
+            $new->save();
+        }
+
+        foreach ($source->journees as $journee) {
+            $newDay = $journee->replicate();
+            $newDay->voyage_id = $copy->id;
+            $newDay->save();
+
+            foreach ($journee->etapes as $etape) {
+                $newStep = $etape->replicate();
+                $newStep->journee_id = $newDay->id;
+                $newStep->save();
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $snapshot
+     */
+    private function syncTransportFromSnapshot(Voyage $voyage, array $snapshot): void
+    {
+        $flight = Arr::get($snapshot, 'flightSummary');
+        if (! is_array($flight)) {
+            return;
+        }
+
+        $price = $this->extractMoney($this->asNullableString(Arr::get($flight, 'price')));
+        $currency = $this->asNullableString(Arr::get($flight, 'currency'));
+        $priceEur = (int) round($this->toEur($price, $currency));
+
+        $voyage->transports()->create([
+            'type' => $this->asNullableString(Arr::get($flight, 'carrier')) ?: 'Avion',
+            'depart_lieu' => $this->asNullableString(Arr::get($flight, 'originIata')) ?: 'Depart',
+            'arrivee_lieu' => $this->asNullableString(Arr::get($flight, 'destinationIata')) ?: $voyage->destination,
+            'depart_le' => $this->resolveDateTime(
+                $this->asNullableString(Arr::get($flight, 'outboundAt')),
+                Carbon::parse($voyage->date_debut)->setTime(9, 0)
+            ),
+            'arrivee_le' => $this->resolveDateTime(
+                $this->asNullableString(Arr::get($flight, 'returnAt')),
+                Carbon::parse($voyage->date_fin)->setTime(19, 0)
+            ),
+            'prix' => $priceEur,
+            'devise' => 'EUR',
+            'information_supplementaire' => $this->asNullableString(Arr::get($flight, 'bookingUrl')),
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $snapshot
+     */
+    private function syncHebergementFromSnapshot(Voyage $voyage, array $snapshot): void
+    {
+        $hotel = Arr::get($snapshot, 'hotelSummary');
+        if (! is_array($hotel)) {
+            return;
+        }
+
+        $price = $this->extractMoney($this->asNullableString(Arr::get($hotel, 'totalPrice')));
+        $currency = $this->asNullableString(Arr::get($hotel, 'currency'));
+        $priceEur = (int) round($this->toEur($price, $currency));
+
+        $voyage->hebergements()->create([
+            'type' => 'Hotel',
+            'nom' => $this->asNullableString(Arr::get($hotel, 'name')) ?: 'Hebergement principal',
+            'adresse' => $this->asNullableString(Arr::get($hotel, 'address'))
+                ?: $this->asNullableString(Arr::get($hotel, 'cityName'))
+                ?: $voyage->destination,
+            'code_postal' => null,
+            'ville' => $this->asNullableString(Arr::get($hotel, 'cityName')) ?: $voyage->destination,
+            'arrivee_le' => $this->resolveDateTime(
+                $this->asNullableString(Arr::get($hotel, 'checkInDate')),
+                Carbon::parse($voyage->date_debut)->setTime(15, 0)
+            ),
+            'depart_le' => $this->resolveDateTime(
+                $this->asNullableString(Arr::get($hotel, 'checkOutDate')),
+                Carbon::parse($voyage->date_fin)->setTime(11, 0)
+            ),
+            'prix' => $priceEur,
+            'devise' => 'EUR',
+            'informations_supplementaire' => $this->asNullableString(Arr::get($hotel, 'bookingUrl')),
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $snapshot
+     */
+    private function syncDaysAndStepsFromSnapshot(Voyage $voyage, array $snapshot): void
+    {
+        $daysFromSnapshot = Arr::get($snapshot, 'days');
+        $snapshotDays = [];
+        if (is_array($daysFromSnapshot)) {
+            foreach ($daysFromSnapshot as $entry) {
+                if (! is_array($entry)) {
+                    continue;
+                }
+
+                $index = (int) ($entry['dayIndex'] ?? 0);
+                if ($index <= 0) {
+                    continue;
+                }
+
+                $snapshotDays[$index] = $entry;
+            }
+        }
+
+        $start = Carbon::parse($voyage->date_debut)->startOfDay();
+        $end = Carbon::parse($voyage->date_fin)->startOfDay();
+        $travelDays = max(1, $start->diffInDays($end) + 1);
+
+        for ($dayIndex = 1; $dayIndex <= $travelDays; $dayIndex++) {
+            $journee = $voyage->journees()->create([
+                'numero_jour' => $dayIndex,
+                'date_jour' => $start->copy()->addDays($dayIndex - 1)->toDateString(),
+            ]);
+
+            $activities = Arr::get($snapshotDays, $dayIndex.'.activities');
+            if (! is_array($activities)) {
+                continue;
+            }
+
+            foreach (array_values($activities) as $idx => $activity) {
+                if (! is_array($activity)) {
+                    continue;
+                }
+
+                $title = $this->asNullableString($activity['title'] ?? null) ?: 'Activite '.($idx + 1);
+                $duration = $activity['durationHours'] ?? null;
+                $extra = [];
+                if (is_numeric($activity['lng'] ?? null)) {
+                    $extra['lng'] = (float) $activity['lng'];
+                }
+                if (is_numeric($activity['lat'] ?? null)) {
+                    $extra['lat'] = (float) $activity['lat'];
+                }
+                $layerId = $this->asNullableString($activity['layerId'] ?? null);
+                if ($layerId !== null) {
+                    $extra['layerId'] = $layerId;
+                }
+
+                $journee->etapes()->create([
+                    'temps_estime' => $this->formatDurationHours($duration),
+                    'titre' => $title,
+                    'description' => $extra !== [] ? json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+                    'prix_estime' => 0,
+                    'ville' => $voyage->destination,
+                    'pays' => null,
+                    'source_lien' => null,
+                    'ordre' => $idx + 1,
+                ]);
+            }
+        }
+    }
+
+    private function buildSnapshotFromStructuredData(Voyage $voyage): array
+    {
+        $firstTransport = $voyage->transports->sortBy('depart_le')->first();
+        $firstHebergement = $voyage->hebergements->sortBy('arrivee_le')->first();
+
+        $days = $voyage->journees
+            ->sortBy('numero_jour')
+            ->map(function (Journee $journee) {
+                return [
+                    'dayIndex' => $journee->numero_jour,
+                    'activities' => $journee->etapes
+                        ->sortBy('ordre')
+                        ->map(function ($etape) {
+                            $activity = [
+                                'title' => $etape->titre,
+                                'durationHours' => $this->parseDurationHours($etape->temps_estime),
+                            ];
+                            if (is_string($etape->description) && trim($etape->description) !== '') {
+                                $decoded = json_decode($etape->description, true);
+                                if (is_array($decoded)) {
+                                    if (isset($decoded['lng']) && is_numeric($decoded['lng'])) {
+                                        $activity['lng'] = (float) $decoded['lng'];
+                                    }
+                                    if (isset($decoded['lat']) && is_numeric($decoded['lat'])) {
+                                        $activity['lat'] = (float) $decoded['lat'];
+                                    }
+                                    if (isset($decoded['layerId']) && is_scalar($decoded['layerId'])) {
+                                        $activity['layerId'] = (string) $decoded['layerId'];
+                                    }
+                                }
+                            }
+
+                            return $activity;
+                        })
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $snapshot = ['days' => $days];
+
+        if ($firstTransport) {
+            $snapshot['flightSummary'] = [
+                'carrier' => $firstTransport->type,
+                'price' => (string) $firstTransport->prix,
+                'currency' => $firstTransport->devise ?: 'EUR',
+                'originIata' => $firstTransport->depart_lieu,
+                'destinationIata' => $firstTransport->arrivee_lieu,
+                'outboundAt' => $firstTransport->depart_le?->toISOString(),
+                'returnAt' => $firstTransport->arrivee_le?->toISOString(),
+                'bookingUrl' => $firstTransport->information_supplementaire,
+            ];
+        }
+
+        if ($firstHebergement) {
+            $snapshot['hotelSummary'] = [
+                'name' => $firstHebergement->nom,
+                'address' => $firstHebergement->adresse,
+                'cityName' => $firstHebergement->ville,
+                'totalPrice' => (string) $firstHebergement->prix,
+                'currency' => $firstHebergement->devise ?: 'EUR',
+                'checkInDate' => $firstHebergement->arrivee_le?->toDateString(),
+                'checkOutDate' => $firstHebergement->depart_le?->toDateString(),
+                'bookingUrl' => $firstHebergement->informations_supplementaire,
+            ];
+        }
+
+        return $snapshot;
+    }
+
+    private function resolveDateTime(?string $raw, Carbon $fallback): Carbon
+    {
+        if ($raw !== null && trim($raw) !== '') {
+            return Carbon::parse($raw);
+        }
+
+        return $fallback;
+    }
+
+    private function asNullableString(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $str = trim((string) $value);
+
+        return $str !== '' ? $str : null;
+    }
+
+    private function formatDurationHours(mixed $hours): string
+    {
+        if (is_numeric($hours)) {
+            $num = (float) $hours;
+            if ($num > 0) {
+                return rtrim(rtrim(number_format($num, 2, '.', ''), '0'), '.').'h';
+            }
+        }
+
+        return '0h';
+    }
+
+    private function parseDurationHours(?string $duration): ?float
+    {
+        if ($duration === null) {
+            return null;
+        }
+
+        $normalized = trim(str_ireplace('h', '', $duration));
+        if ($normalized === '' || ! is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float) $normalized;
+    }
+
+    private function compactSnapshotForStorage(mixed $snapshot): ?array
+    {
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $stored = [];
+
+        $planningMode = $this->asNullableString($snapshot['planningMode'] ?? null);
+        if ($planningMode !== null) {
+            $stored['planningMode'] = $planningMode;
+        }
+
+        $destinationSummary = Arr::get($snapshot, 'destinationSummary');
+        if (is_array($destinationSummary)) {
+            $compactDestination = [];
+            foreach (['cityName', 'airportName', 'iataCode'] as $key) {
+                $val = $this->asNullableString($destinationSummary[$key] ?? null);
+                if ($val !== null) {
+                    $compactDestination[$key] = $val;
+                }
+            }
+            if ($compactDestination !== []) {
+                $stored['destinationSummary'] = $compactDestination;
+            }
+        }
+
+        return $stored !== [] ? $stored : null;
     }
 
     private function normalizeDateString(mixed $value): string

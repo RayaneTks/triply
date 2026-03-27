@@ -65,6 +65,142 @@ class TripPersistenceTest extends TestCase
             'date_debut' => '2026-04-10',
             'date_fin' => '2026-04-15',
         ]);
+
+        $this->assertDatabaseHas('transports', [
+            'voyage_id' => (int) $tripId,
+            'type' => 'ITA Airways',
+            'arrivee_lieu' => 'Rome',
+            'prix' => 130,
+            'devise' => 'EUR',
+        ]);
+
+        $this->assertDatabaseHas('hebergements', [
+            'voyage_id' => (int) $tripId,
+            'nom' => 'Hotel Roma Centro',
+            'ville' => 'Rome',
+            'prix' => 470,
+            'devise' => 'EUR',
+        ]);
+
+        $this->assertDatabaseHas('journees', [
+            'voyage_id' => (int) $tripId,
+            'numero_jour' => 1,
+        ]);
+
+        $storedTrip = Voyage::query()->findOrFail($tripId);
+        $this->assertIsArray($storedTrip->plan_snapshot);
+        $this->assertArrayHasKey('destinationSummary', $storedTrip->plan_snapshot);
+        $this->assertArrayNotHasKey('flightSummary', $storedTrip->plan_snapshot);
+        $this->assertArrayNotHasKey('hotelSummary', $storedTrip->plan_snapshot);
+        $this->assertArrayNotHasKey('days', $storedTrip->plan_snapshot);
+    }
+
+    public function test_store_trip_normalizes_snapshot_days_into_journees_and_etapes(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        $response = $this->postJson('/api/v1/trips', [
+            'title' => 'Lisbonne planifiee',
+            'destination' => 'LIS',
+            'start_date' => '2026-07-10',
+            'end_date' => '2026-07-12',
+            'travelers_count' => 2,
+            'plan_snapshot' => [
+                'days' => [
+                    [
+                        'dayIndex' => 1,
+                        'activities' => [
+                            ['title' => 'Tour de Belem', 'durationHours' => 2],
+                            ['title' => 'Tram 28', 'durationHours' => 1.5],
+                        ],
+                    ],
+                    [
+                        'dayIndex' => 2,
+                        'activities' => [
+                            ['title' => 'Alfama', 'durationHours' => 3],
+                        ],
+                    ],
+                ],
+                'flightSummary' => [
+                    'carrier' => 'TAP',
+                    'price' => '220',
+                    'currency' => 'EUR',
+                    'originIata' => 'CDG',
+                    'destinationIata' => 'LIS',
+                    'outboundAt' => '2026-07-10T08:30:00',
+                    'returnAt' => '2026-07-12T20:10:00',
+                ],
+                'hotelSummary' => [
+                    'name' => 'Hotel Lisboa',
+                    'address' => 'Rua Augusta 1',
+                    'cityName' => 'Lisbonne',
+                    'totalPrice' => '390',
+                    'currency' => 'EUR',
+                    'checkInDate' => '2026-07-10',
+                    'checkOutDate' => '2026-07-12',
+                ],
+                'destinationSummary' => [
+                    'cityName' => 'Lisbonne',
+                ],
+            ],
+        ]);
+
+        $response->assertCreated();
+        $tripId = (int) $response->json('data.id');
+
+        $this->assertDatabaseHas('transports', [
+            'voyage_id' => $tripId,
+            'type' => 'TAP',
+            'depart_lieu' => 'CDG',
+            'arrivee_lieu' => 'LIS',
+            'prix' => 220,
+            'devise' => 'EUR',
+        ]);
+
+        $this->assertDatabaseHas('hebergements', [
+            'voyage_id' => $tripId,
+            'nom' => 'Hotel Lisboa',
+            'adresse' => 'Rua Augusta 1',
+            'ville' => 'Lisbonne',
+            'prix' => 390,
+        ]);
+
+        $this->assertDatabaseHas('journees', [
+            'voyage_id' => $tripId,
+            'numero_jour' => 1,
+            'date_jour' => '2026-07-10',
+        ]);
+
+        $this->assertDatabaseHas('journees', [
+            'voyage_id' => $tripId,
+            'numero_jour' => 2,
+            'date_jour' => '2026-07-11',
+        ]);
+
+        $this->assertDatabaseHas('journees', [
+            'voyage_id' => $tripId,
+            'numero_jour' => 3,
+            'date_jour' => '2026-07-12',
+        ]);
+
+        $this->assertDatabaseHas('etapes', [
+            'titre' => 'Tour de Belem',
+            'ordre' => 1,
+            'temps_estime' => '2h',
+        ]);
+
+        $this->assertDatabaseHas('etapes', [
+            'titre' => 'Tram 28',
+            'ordre' => 2,
+            'temps_estime' => '1.5h',
+        ]);
+
+        $this->assertDatabaseHas('etapes', [
+            'titre' => 'Alfama',
+            'ordre' => 1,
+            'temps_estime' => '3h',
+        ]);
     }
 
     public function test_update_trip_recomputes_budget_from_snapshot_when_max_budget_is_not_provided(): void
