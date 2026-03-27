@@ -11,7 +11,12 @@ import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 
 type PanelView = 'plan' | 'activity';
 
-export type DayActivityPoi = MapboxPoiFeature & { lngLat: { lng: number; lat: number }; _dragId?: string };
+export type DayActivityPoi = MapboxPoiFeature & {
+    lngLat: { lng: number; lat: number };
+    _dragId?: string;
+    /** Durée en heures (saisie utilisateur) ; sinon estimation selon le layer Mapbox */
+    durationHours?: number;
+};
 
 function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: number; travelDays: number; onSelect: (day: number) => void }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -118,6 +123,13 @@ export function getEstimatedDurationHours(layerId?: string): number {
     return 1;
 }
 
+/** Durée d’une activité : override utilisateur ou estimation layer. */
+export function getActivityDurationHours(poi: Pick<DayActivityPoi, 'layer' | 'durationHours'>): number {
+    const o = poi.durationHours;
+    if (o != null && Number.isFinite(o) && o > 0) return o;
+    return getEstimatedDurationHours(poi.layer?.id);
+}
+
 export type DayActivityRouteLeg = { duration: number; distance: number; geometry?: GeoJSON.LineString };
 
 export type DayActivityRouteInfo = {
@@ -144,6 +156,9 @@ function ActivityCard({
     onRemove,
     isTimeAlert = false,
     legFromPrevious,
+    onDurationHoursChange,
+    onRegenerateWithAi,
+    regenerateLoading = false,
 }: {
     poi: DayActivityPoi;
     index: number;
@@ -158,11 +173,17 @@ function ActivityCard({
         dayRoutes: Partial<Record<ActivityRouteProfile, DayActivityRouteInfo>>;
         onModeChange?: (mode: ActivityRouteProfile) => void;
     } | null;
+    onDurationHoursChange?: (hours: number | null) => void;
+    onRegenerateWithAi?: () => void;
+    regenerateLoading?: boolean;
 }) {
     const name = poi.properties?.name ?? poi.properties?.name_en ?? poi.layer?.id ?? 'Lieu';
     const [address, setAddress] = useState<string | null>(null);
     const [addressLoading, setAddressLoading] = useState(true);
-    const duration = getEstimatedDuration(poi.layer?.id);
+    const durationLabel =
+        poi.durationHours != null && Number.isFinite(poi.durationHours) && poi.durationHours > 0
+            ? `~${poi.durationHours} h`
+            : getEstimatedDuration(poi.layer?.id);
     const costHint = [poi.properties?.class, name].filter(Boolean).join(' ');
     const cost = getEstimatedCost(poi.layer?.id, costHint);
     const dragControls = useDragControls();
@@ -297,7 +318,7 @@ function ActivityCard({
                             className={`flex items-center gap-1.5 ${isTimeAlert ? 'font-medium text-red-300' : 'text-cyan-400'}`}
                         >
                             <ClockIcon className="h-3.5 w-3.5" />
-                            Temps moyen : {duration}
+                            Temps : {durationLabel}
                         </span>
                         <span className="flex items-center gap-1.5 text-cyan-400">
                             <BanknotesIcon className="h-3.5 w-3.5" />
@@ -323,6 +344,51 @@ function ActivityCard({
                             <ChatBubbleLeftRightIcon className="h-4 w-4" />
                             Laisser un avis
                         </a>
+                        {onDurationHoursChange && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <label className="text-[11px] font-medium text-slate-400" htmlFor={`act-dur-${poi._dragId ?? _index}`}>
+                                    Durée (h)
+                                </label>
+                                <input
+                                    id={`act-dur-${poi._dragId ?? _index}`}
+                                    type="number"
+                                    min={0.25}
+                                    max={24}
+                                    step={0.25}
+                                    value={poi.durationHours ?? ''}
+                                    placeholder="auto"
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v === '') {
+                                            onDurationHoursChange(null);
+                                            return;
+                                        }
+                                        const n = parseFloat(v);
+                                        if (Number.isFinite(n) && n > 0) onDurationHoursChange(n);
+                                    }}
+                                    className="w-20 rounded-lg border border-white/15 bg-white/[0.06] px-2 py-1.5 text-[12px] text-slate-100 outline-none focus:border-cyan-500/50"
+                                />
+                                {poi.durationHours != null && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onDurationHoursChange(null)}
+                                        className="text-[11px] font-medium text-slate-500 underline decoration-slate-600 underline-offset-2 hover:text-cyan-400"
+                                    >
+                                        Auto
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        {onRegenerateWithAi && (
+                            <button
+                                type="button"
+                                onClick={onRegenerateWithAi}
+                                disabled={regenerateLoading}
+                                className="mt-2 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 text-left text-[11px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {regenerateLoading ? 'Régénération…' : 'Régénérer avec l’IA'}
+                            </button>
+                        )}
                     </div>
                 </div>
                 {onRemove && (
@@ -444,6 +510,8 @@ interface TripCreationWizardProps {
     onDestinationGeoSelect?: (payload: { latitude: number; longitude: number; iataCode: string; name: string }) => void;
     planningMode: PlanningMode | null;
     onPlanningModeChange: (mode: PlanningMode) => void;
+    /** Réaffiche les cartes pleine IA / semi-IA / manuel et efface le mode mémorisé. */
+    onBackToPlanningMode?: () => void;
     /** Sans connexion, la sélection du mode est bloquée. */
     isConnected: boolean;
     onLoginClick: () => void;
@@ -457,6 +525,11 @@ interface TripCreationWizardProps {
     onOpenValidateTrip?: () => void;
     validateTripDisabled?: boolean;
     geocodeAppendPending?: boolean;
+    /** Heures par activité pour le jour affiché (null = estimation auto) */
+    onDayActivityDurationChange?: (activityIndex: number, hours: number | null) => void;
+    onRegenerateDayActivity?: (activityIndex: number) => void | Promise<void>;
+    /** Indique quelle activité du jour courant est en cours de régénération IA */
+    regeneratingActivity?: { day: number; index: number } | null;
 }
 
 export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
@@ -495,6 +568,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onDestinationGeoSelect,
     planningMode,
     onPlanningModeChange,
+    onBackToPlanningMode,
     isConnected,
     onLoginClick,
     onAppendHotelToDay,
@@ -507,6 +581,9 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onOpenValidateTrip,
     validateTripDisabled = true,
     geocodeAppendPending = false,
+    onDayActivityDurationChange,
+    onRegenerateDayActivity,
+    regeneratingActivity = null,
 }) => {
     const requiredChecklist = useMemo(
         () => [
@@ -520,6 +597,8 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     );
     const requiredCompleted = requiredChecklist.filter((item) => item.valid).length;
     const hasMinimum = planningMode != null && requiredCompleted === requiredChecklist.length;
+    /** En pleine IA, l’étape 2 reste accessible pour construire le plan même sans formulaire complet. */
+    const canAccessStep2 = hasMinimum || planningMode === 'full_ai';
     const isFirstTripDay = selectedDay === 1;
     const isLastTripDay = selectedDay === travelDays && travelDays >= 1;
     const [internalActiveView, setInternalActiveView] = useState<PanelView>('plan');
@@ -550,12 +629,12 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => hasMinimum && setResolvedView('activity')}
-                        disabled={!hasMinimum}
+                        onClick={() => canAccessStep2 && setResolvedView('activity')}
+                        disabled={!canAccessStep2}
                         className={`flex-1 px-4 py-3 text-[13px] font-semibold transition-colors ${
                             resolvedActiveView === 'activity'
                                 ? 'border-b-2 border-cyan-500 text-cyan-400'
-                                : hasMinimum
+                                : canAccessStep2
                                   ? 'text-slate-400 hover:text-slate-200'
                                   : 'cursor-not-allowed text-slate-600'
                         }`}
@@ -624,6 +703,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 selectedHotel={selectedHotel}
                                 onHotelCardClick={onHotelCardClick}
                                 onRemoveHotel={onRemoveHotel}
+                                onBackToPlanningMode={onBackToPlanningMode}
                             />
                             </div>
                         )}
@@ -822,6 +902,19 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                             poi._dragId === activityTimeAlertDragId
                                         }
                                         onRemove={onRemoveDayActivity ? () => onRemoveDayActivity(index) : undefined}
+                                        onDurationHoursChange={
+                                            onDayActivityDurationChange
+                                                ? (h) => onDayActivityDurationChange(index, h)
+                                                : undefined
+                                        }
+                                        onRegenerateWithAi={
+                                            onRegenerateDayActivity ? () => void onRegenerateDayActivity(index) : undefined
+                                        }
+                                        regenerateLoading={
+                                            regeneratingActivity != null &&
+                                            regeneratingActivity.day === selectedDay &&
+                                            regeneratingActivity.index === index
+                                        }
                                     />
                                     );
                                 })}

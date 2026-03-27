@@ -17,7 +17,7 @@ import {
 import Assistant, { type AssistantHandle, type SuggestedActivityPin } from '@/src/components/Assistant/Assistant';
 import {
     TripCreationWizard,
-    getEstimatedDurationHours,
+    getActivityDurationHours,
     type ActivityRouteProfile,
     type DayActivityPoi,
 } from '@/src/features/trip-creation/TripCreationWizard';
@@ -54,6 +54,11 @@ import {
 } from '@/src/features/trip-creation/planning-mode';
 import { createTrip, validateTripApi } from '@/src/lib/trips-client';
 import type { PlanSnapshot } from '@/src/lib/plan-snapshot';
+import {
+    buildStep1FormSnapshotForAssistant,
+    type AssistantStep1FormPatch,
+} from '@/src/features/trip-creation/step1-form-patch';
+import { requestActivityRegeneration } from '@/src/lib/assistant-regenerate';
 
 /** Segment / carte en alerte dépassement temps jour */
 const ACTIVITY_TIME_ALERT_COLOR = '#ef4444';
@@ -404,6 +409,7 @@ export default function Home() {
 
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [assistantRequestLoading, setAssistantRequestLoading] = useState(false);
+    const [regeneratingActivity, setRegeneratingActivity] = useState<{ day: number; index: number } | null>(null);
     const assistantRef = useRef<AssistantHandle>(null);
     const [planningMode, setPlanningModeState] = useState<PlanningMode | null>(null);
     useEffect(() => {
@@ -435,6 +441,15 @@ export default function Home() {
     const [validateTripError, setValidateTripError] = useState('');
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
     const [wizardView, setWizardView] = useState<'plan' | 'activity'>('plan');
+
+    const handleBackToPlanningModeSelection = useCallback(() => {
+        const uid = getStoredSession()?.user?.id ?? null;
+        clearPlanningModeStorage(uid);
+        setPlanningModeState(null);
+        setWizardView('plan');
+        setIsAssistantOpen(false);
+    }, []);
+
     /** Dernières coordonnées connues pour le code IATA d’arrivée (sélection autocomplete) */
     const [destinationGeo, setDestinationGeo] = useState<{ lat: number; lng: number; iataCode: string } | null>(null);
     const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
@@ -797,7 +812,7 @@ export default function Home() {
                     lng: p.lngLat.lng,
                     lat: p.lngLat.lat,
                     layerId: p.layer?.id,
-                    durationHours: getEstimatedDurationHours(p.layer?.id),
+                    durationHours: getActivityDurationHours(p),
                 })),
             });
         }
@@ -855,10 +870,151 @@ export default function Home() {
             dayActivitiesByDay,
         ]);
 
+    const assistantStep1Snapshot = useMemo(
+        () =>
+            buildStep1FormSnapshotForAssistant({
+                departureCity: tripConfig.departureCity,
+                arrivalCity: tripConfig.arrivalCity,
+                arrivalCityName: tripConfig.arrivalCityName,
+                travelDays: tripConfig.travelDays,
+                travelerCount: tripConfig.travelerCount,
+                budget: tripConfig.budget,
+                activityTime: tripConfig.activityTime,
+                outboundDate: tripConfig.outboundDate,
+                returnDate: tripConfig.returnDate,
+                outboundDepartureTime: tripConfig.outboundDepartureTime,
+                outboundArrivalTime: tripConfig.outboundArrivalTime,
+                returnDepartureTime: tripConfig.returnDepartureTime,
+                returnArrivalTime: tripConfig.returnArrivalTime,
+                selectedOptions: tripConfig.selectedOptions,
+                dietarySelections: tripConfig.dietarySelections,
+            }),
+        [
+            tripConfig.departureCity,
+            tripConfig.arrivalCity,
+            tripConfig.arrivalCityName,
+            tripConfig.travelDays,
+            tripConfig.travelerCount,
+            tripConfig.budget,
+            tripConfig.activityTime,
+            tripConfig.outboundDate,
+            tripConfig.returnDate,
+            tripConfig.outboundDepartureTime,
+            tripConfig.outboundArrivalTime,
+            tripConfig.returnDepartureTime,
+            tripConfig.returnArrivalTime,
+            tripConfig.selectedOptions,
+            tripConfig.dietarySelections,
+        ]
+    );
+
+    const handleApplyAssistantStep1Patch = useCallback(
+        (patch: AssistantStep1FormPatch) => {
+            if (patch.departureCity != null) tripConfig.setDepartureCity(patch.departureCity);
+            if (patch.arrivalCity != null) tripConfig.setArrivalCity(patch.arrivalCity);
+            if (patch.arrivalCityName != null) tripConfig.setArrivalCityName(patch.arrivalCityName);
+            if (patch.travelerCount != null) tripConfig.setTravelerCount(patch.travelerCount);
+            if (patch.budget != null) tripConfig.setBudget(patch.budget);
+            if (patch.activityTime != null) tripConfig.setActivityTime(patch.activityTime);
+            if (patch.outboundDepartureTime != null) tripConfig.setOutboundDepartureTime(patch.outboundDepartureTime);
+            if (patch.outboundArrivalTime != null) tripConfig.setOutboundArrivalTime(patch.outboundArrivalTime);
+            if (patch.returnDepartureTime != null) tripConfig.setReturnDepartureTime(patch.returnDepartureTime);
+            if (patch.returnArrivalTime != null) tripConfig.setReturnArrivalTime(patch.returnArrivalTime);
+            if (patch.outboundDate != null) tripConfig.setOutboundDate(patch.outboundDate);
+            if (patch.returnDate != null) {
+                const outAfter = patch.outboundDate ?? tripConfig.outboundDate;
+                if (!outAfter || patch.returnDate >= outAfter) tripConfig.setReturnDate(patch.returnDate);
+            }
+            if (patch.travelDays != null) tripConfig.setTravelDays(patch.travelDays);
+            if (patch.selectedOptions != null) tripConfig.setSelectedOptions(patch.selectedOptions);
+            if (patch.dietarySelections != null) tripConfig.setDietarySelections(patch.dietarySelections);
+
+            const geoQuery =
+                (patch.arrivalCityName || patch.arrivalCity || tripConfig.arrivalCityName || tripConfig.arrivalCity || '')
+                    .trim();
+            const iataForGeo = (patch.arrivalCity ?? tripConfig.arrivalCity).trim().toUpperCase();
+            if (geoQuery.length >= 2) {
+                void (async () => {
+                    const geo = await fetchGeocodeFirst(geoQuery);
+                    if (!geo) return;
+                    const iata =
+                        iataForGeo.length === 3 && /^[A-Z]{3}$/.test(iataForGeo) ? iataForGeo : '';
+                    setDestinationGeo({ lat: geo.lat, lng: geo.lng, iataCode: iata });
+                })();
+            }
+        },
+        [tripConfig]
+    );
+
     const handleRequestAiDaySuggestions = useCallback(() => {
         setIsAssistantOpen(true);
         queueMicrotask(() => assistantRef.current?.suggestActivitiesForDay());
     }, []);
+
+    const handleDayActivityDurationChange = useCallback((day: number, activityIndex: number, hours: number | null) => {
+        setDayActivitiesByDay((prev) => {
+            const list = [...(prev[day] ?? [])];
+            const poi = list[activityIndex];
+            if (!poi) return prev;
+            const next: DayActivityPoi = { ...poi };
+            if (hours == null || !Number.isFinite(hours)) {
+                delete next.durationHours;
+            } else {
+                next.durationHours = Math.min(24, Math.max(0.25, hours));
+            }
+            list[activityIndex] = next;
+            return { ...prev, [day]: list };
+        });
+    }, []);
+
+    const handleRegenerateDayActivity = useCallback(
+        async (day: number, activityIndex: number) => {
+            const session = getStoredSession();
+            if (!session?.token) return;
+            const list = dayActivitiesByDay[day];
+            const poi = list?.[activityIndex];
+            if (!poi) return;
+            const title = getDayActivityLabel(poi);
+            setRegeneratingActivity({ day, index: activityIndex });
+            try {
+                const { replacement, reply } = await requestActivityRegeneration(session.token, {
+                    title,
+                    lat: poi.lngLat.lat,
+                    lng: poi.lngLat.lng,
+                    dayIndex: day,
+                    destinationContext: tripConfig.arrivalCityName || tripConfig.arrivalCity || '',
+                });
+                if (!replacement) {
+                    window.alert(reply?.trim() || "L'IA n'a pas pu proposer d'alternative.");
+                    return;
+                }
+                setDayActivitiesByDay((prev) => {
+                    const L = [...(prev[day] ?? [])];
+                    const cur = L[activityIndex];
+                    if (!cur) return prev;
+                    const dragId = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    L[activityIndex] = {
+                        ...cur,
+                        lngLat: { lng: replacement.lng, lat: replacement.lat },
+                        properties: {
+                            ...cur.properties,
+                            name: replacement.title,
+                            name_en: replacement.title,
+                        },
+                        layer: cur.layer ?? { id: 'poi' },
+                        durationHours: replacement.durationHours,
+                        _dragId: dragId,
+                    };
+                    return { ...prev, [day]: L };
+                });
+            } catch (e) {
+                window.alert(e instanceof Error ? e.message : 'Régénération impossible.');
+            } finally {
+                setRegeneratingActivity(null);
+            }
+        },
+        [dayActivitiesByDay, tripConfig.arrivalCity, tripConfig.arrivalCityName]
+    );
 
     const handleConfirmValidateTrip = useCallback(async () => {
         const session = getStoredSession();
@@ -930,7 +1086,7 @@ export default function Home() {
             activityHoursByDay[selectedDay] ??
             Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0);
         if (maxH <= 0) return null;
-        const currentH = list.reduce((acc, p) => acc + getEstimatedDurationHours(p.layer?.id), 0);
+        const currentH = list.reduce((acc, p) => acc + getActivityDurationHours(p), 0);
         if (currentH <= maxH) return null;
         const lid = lastAddedActivityDragIdByDay[selectedDay];
         if (!lid || !list.some((p) => p._dragId === lid)) return null;
@@ -1350,7 +1506,7 @@ export default function Home() {
                                     return {
                                         key,
                                         label: getDayActivityLabel(p),
-                                        hours: getEstimatedDurationHours(p.layer?.id),
+                                        hours: getActivityDurationHours(p),
                                         color: isAlert
                                             ? ACTIVITY_TIME_ALERT_COLOR
                                             : ACTIVITY_TIMELINE_COLORS[i % ACTIVITY_TIMELINE_COLORS.length],
@@ -1641,6 +1797,10 @@ export default function Home() {
                                                     planningContext={assistantPlanningContext}
                                                     onSuggestedActivities={handleSuggestedActivitiesFromAssistant}
                                                     onLoadingChange={setAssistantRequestLoading}
+                                                    step1FormSnapshot={assistantStep1Snapshot}
+                                                    step1HotelOptionLabels={multiSelectOptions}
+                                                    step1DietaryLabels={dietaryMultiSelectOptions}
+                                                    onApplyStep1Form={handleApplyAssistantStep1Patch}
                                                 />
                                             ) : (
                                                 <div className="overflow-y-auto p-6">
@@ -1709,6 +1869,7 @@ export default function Home() {
                                             onDestinationGeoSelect={handleDestinationGeoSelect}
                                             planningMode={planningMode}
                                             onPlanningModeChange={handlePlanningModeChange}
+                                            onBackToPlanningMode={handleBackToPlanningModeSelection}
                                             isConnected={isConnected}
                                             onLoginClick={handleLoginClick}
                                             onAppendHotelToDay={handleAppendHotelToDay}
@@ -1726,6 +1887,15 @@ export default function Home() {
                                             }}
                                             validateTripDisabled={!hasAnyPlannedActivity}
                                             geocodeAppendPending={geocodeAppendPending}
+                                            onDayActivityDurationChange={(idx, h) =>
+                                                handleDayActivityDurationChange(selectedDay, idx, h)
+                                            }
+                                            onRegenerateDayActivity={
+                                                planningMode === 'full_ai' || planningMode === 'semi_ai'
+                                                    ? (idx) => void handleRegenerateDayActivity(selectedDay, idx)
+                                                    : undefined
+                                            }
+                                            regeneratingActivity={regeneratingActivity}
                                         />
                                     </div>
                                 </motion.div>

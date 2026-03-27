@@ -57,6 +57,8 @@ interface TripConfigurationFormProps {
     selectedHotel?: HotelOffer | null;
     onHotelCardClick?: () => void;
     onRemoveHotel?: () => void;
+    /** Retour à l’écran de sélection du mode (pleine IA / semi-IA / manuel) */
+    onBackToPlanningMode?: () => void;
 }
 
 const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; children: React.ReactNode }> = ({ icon, title, tag, children }) => (
@@ -103,6 +105,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
         onFlightCardClick, onRemoveFlight, setArrivalCityName, onArrivalGeoSelect,
         onOpenHotelSearch, selectedHotel, onHotelCardClick, onRemoveHotel,
+        onBackToPlanningMode,
     } = props;
 
     const inputCls = 'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/[0.04] px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
@@ -111,6 +114,29 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
     return (
         <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-auto px-3 py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-700/50">
             <div className="space-y-5">
+                {onBackToPlanningMode && (
+                    <button
+                        type="button"
+                        onClick={onBackToPlanningMode}
+                        className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left text-[12px] font-semibold text-slate-300 transition-colors hover:border-cyan-500/30 hover:bg-white/[0.06] hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background,#222222)]"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="shrink-0 text-slate-400"
+                            aria-hidden
+                        >
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        Retour au choix du plan
+                    </button>
+                )}
 
                 {/* 1 - Destination */}
                 <Section icon={svg("M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z")} title="Où allez-vous ?">
