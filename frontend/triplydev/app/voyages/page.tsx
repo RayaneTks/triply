@@ -7,13 +7,58 @@ import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { clearSession, getStoredSession } from '@/src/lib/auth-client';
 import { listTrips, type TripSummary } from '@/src/lib/trips-client';
 
+const parseAmount = (value: unknown): number => {
+    const n = Number.parseFloat(String(value ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+};
+
+const parseTripDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const raw = String(dateStr).trim();
+    if (!raw) return null;
+    const direct = new Date(raw.includes('T') ? raw : `${raw}T12:00:00`);
+    if (!Number.isNaN(direct.getTime())) return direct;
+    const slice10 = raw.slice(0, 10);
+    const fallback = new Date(`${slice10}T12:00:00`);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+};
+
 const formatShortDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    return new Date(`${dateStr}T12:00:00`).toLocaleDateString('fr-FR', {
+    const parsed = parseTripDate(dateStr);
+    if (!parsed) return '-';
+    return parsed.toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
     });
+};
+
+const getComputedBudget = (trip: TripSummary): { amount: number; currency: string } => {
+    const persisted = parseAmount(trip.budget_total);
+    const snapshot = trip.plan_snapshot;
+    const flight = parseAmount(snapshot?.flightSummary?.price) || parseAmount(trip.flight?.price);
+    const hotel = parseAmount(snapshot?.hotelSummary?.totalPrice);
+    const total = persisted > 0 ? persisted : flight + hotel;
+    const currency = snapshot?.flightSummary?.currency || snapshot?.hotelSummary?.currency || trip.currency || 'EUR';
+    return { amount: total, currency };
+};
+
+const getTripCity = (trip: TripSummary): string => {
+    return (
+        trip.plan_snapshot?.destinationSummary?.cityName ||
+        trip.plan_snapshot?.hotelSummary?.cityName ||
+        trip.destination ||
+        'Destination'
+    );
+};
+
+const getTripTitle = (trip: TripSummary): string => {
+    const city = getTripCity(trip);
+    const airport = (trip.plan_snapshot?.destinationSummary?.airportName || '').trim();
+    if (airport && airport.toLowerCase() !== city.toLowerCase()) {
+        return `${city} | ${airport}`;
+    }
+    return city;
 };
 
 const PlaneIcon = () => (
@@ -163,7 +208,7 @@ export default function VoyagesPage() {
                                                     <PlaneIcon />
                                                 </span>
                                                 <span className="font-semibold truncate" style={{ color: 'var(--foreground)' }}>
-                                                    {trip.title || trip.destination}
+                                                    {getTripTitle(trip)}
                                                 </span>
                                             </div>
                                             <span
@@ -173,6 +218,10 @@ export default function VoyagesPage() {
                                                 {trip.status}
                                             </span>
                                         </div>
+
+                                        <p className="text-sm mb-2 truncate" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                                            {getTripCity(trip)}
+                                        </p>
 
                                         <p className="text-sm mb-2" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                                             {formatShortDate(trip.start_date)} - {formatShortDate(trip.end_date)}
@@ -184,7 +233,7 @@ export default function VoyagesPage() {
 
                                         <div className="flex items-center justify-between">
                                             <span className="font-bold" style={{ color: 'var(--primary)' }}>
-                                                {trip.budget_total} {trip.currency}
+                                                {Math.round(getComputedBudget(trip).amount)} {getComputedBudget(trip).currency}
                                             </span>
                                             <span className="flex items-center gap-1" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                                                 Voir le detail

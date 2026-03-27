@@ -4,13 +4,19 @@ namespace App\Services;
 
 use App\Models\Journee;
 use App\Models\Voyage;
+use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\TripServiceInterface;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 
 class TripService implements TripServiceInterface
 {
+    public function __construct(private readonly CurrencyConverterInterface $currencyConverter)
+    {
+    }
+
     public function createTrip(array $payload): array
     {
         $user = Auth::user();
@@ -20,17 +26,18 @@ class TripService implements TripServiceInterface
 
         $startDate = $payload['start_date'] ?? now()->toDateString();
         $endDate = $payload['end_date'] ?? $startDate;
+        $planSnapshot = $payload['plan_snapshot'] ?? null;
 
         $voyage = Voyage::query()->create([
             'titre' => $payload['title'],
-            'destination' => $payload['destination'],
+            'destination' => $this->resolveDestination($payload['destination'], $planSnapshot),
             'date_debut' => $startDate,
             'date_fin' => $endDate,
-            'budget_total' => 0,
+            'budget_total' => $this->extractBudgetTotal($planSnapshot),
             'nb_voyageurs' => $payload['travelers_count'] ?? 1,
             'description' => null,
             'user_id' => $user->id,
-            'plan_snapshot' => $payload['plan_snapshot'] ?? null,
+            'plan_snapshot' => $planSnapshot,
         ]);
 
         return $this->serializeTrip($voyage->fresh(['transports', 'hebergements']));
@@ -84,6 +91,14 @@ class TripService implements TripServiceInterface
         }
         if (array_key_exists('plan_snapshot', $payload)) {
             $updates['plan_snapshot'] = $payload['plan_snapshot'];
+
+            if (! array_key_exists('max_budget', $payload)) {
+                $updates['budget_total'] = $this->extractBudgetTotal($payload['plan_snapshot']);
+            }
+
+            if (! array_key_exists('arrival_location', $payload)) {
+                $updates['destination'] = $this->resolveDestination($voyage->destination, $payload['plan_snapshot']);
+            }
         }
 
         if ($updates !== []) {
@@ -190,6 +205,7 @@ class TripService implements TripServiceInterface
     private function serializeTrip(Voyage $voyage): array
     {
         $firstTransport = $voyage->transports->sortBy('depart_le')->first();
+        $snapshot = is_array($voyage->plan_snapshot) ? $voyage->plan_snapshot : [];
         $start = Carbon::parse($voyage->date_debut);
         $end = Carbon::parse($voyage->date_fin);
         $today = now()->startOfDay();
@@ -205,20 +221,108 @@ class TripService implements TripServiceInterface
             'id' => (string) $voyage->id,
             'title' => $voyage->titre,
             'destination' => $voyage->destination,
-            'start_date' => $voyage->date_debut,
-            'end_date' => $voyage->date_fin,
+            'start_date' => $this->normalizeDateString($voyage->date_debut),
+            'end_date' => $this->normalizeDateString($voyage->date_fin),
             'travel_days' => max(1, $start->diffInDays($end) + 1),
             'travelers_count' => $voyage->nb_voyageurs,
             'budget_total' => $voyage->budget_total,
-            'currency' => $firstTransport?->devise ?? 'EUR',
+            'currency' => 'EUR',
             'status' => $status,
             'flight' => [
-                'carrier' => $firstTransport?->type,
-                'price' => $firstTransport?->prix,
+                'carrier' => $firstTransport?->type
+                    ?? $this->getStringFromSnapshot($snapshot, ['flightSummary', 'carrier']),
+                'price' => $firstTransport
+                    ? $this->toEur((float) $firstTransport->prix, $firstTransport->devise)
+                    : $this->toEur(
+                        $this->extractMoney($this->getStringFromSnapshot($snapshot, ['flightSummary', 'price'])),
+                        $this->getStringFromSnapshot($snapshot, ['flightSummary', 'currency'])
+                    ),
             ],
             'plan_snapshot' => $voyage->plan_snapshot,
             'created_at' => $voyage->created_at?->toISOString(),
             'updated_at' => $voyage->updated_at?->toISOString(),
         ];
+    }
+
+    private function normalizeDateString(mixed $value): string
+    {
+        if ($value instanceof CarbonInterface) {
+            return $value->toDateString();
+        }
+
+        return Carbon::parse((string) $value)->toDateString();
+    }
+
+    private function resolveDestination(string $fallback, mixed $snapshot): string
+    {
+        if (! is_array($snapshot)) {
+            return $fallback;
+        }
+
+        $city = $this->getStringFromSnapshot($snapshot, ['destinationSummary', 'cityName'])
+            ?? $this->getStringFromSnapshot($snapshot, ['hotelSummary', 'cityName']);
+
+        return $city ?: $fallback;
+    }
+
+    private function extractBudgetTotal(mixed $snapshot): int
+    {
+        if (! is_array($snapshot)) {
+            return 0;
+        }
+
+        $flightPrice = $this->extractMoney($this->getStringFromSnapshot($snapshot, ['flightSummary', 'price']));
+        $hotelPrice = $this->extractMoney($this->getStringFromSnapshot($snapshot, ['hotelSummary', 'totalPrice']));
+
+        $flightCurrency = $this->getStringFromSnapshot($snapshot, ['flightSummary', 'currency']);
+        $hotelCurrency = $this->getStringFromSnapshot($snapshot, ['hotelSummary', 'currency']);
+
+        $flightEur = $this->toEur($flightPrice, $flightCurrency);
+        $hotelEur = $this->toEur($hotelPrice, $hotelCurrency);
+
+        return (int) round($flightEur + $hotelEur);
+    }
+
+    private function toEur(float $amount, ?string $currency): float
+    {
+        return $this->currencyConverter->convert($amount, (string) ($currency ?? 'EUR'), 'EUR');
+    }
+
+    private function extractMoney(?string $value): float
+    {
+        if ($value === null) {
+            return 0.0;
+        }
+
+        $normalized = str_replace(',', '.', trim($value));
+        if ($normalized === '') {
+            return 0.0;
+        }
+
+        return is_numeric($normalized) ? (float) $normalized : 0.0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @param  array<int, string>  $path
+     */
+    private function getStringFromSnapshot(array $snapshot, array $path): ?string
+    {
+        $current = $snapshot;
+        foreach ($path as $segment) {
+            if (! is_array($current) || ! array_key_exists($segment, $current)) {
+                return null;
+            }
+
+            $current = $current[$segment];
+        }
+
+        if (! is_scalar($current)) {
+            return null;
+        }
+
+        $value = trim((string) $current);
+
+        return $value !== '' ? $value : null;
     }
 }

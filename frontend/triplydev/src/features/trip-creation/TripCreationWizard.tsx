@@ -452,8 +452,10 @@ interface TripCreationWizardProps {
     onAppendAirportReturn?: () => void;
     canAppendReturnAirport?: boolean;
     onRequestAiDaySuggestions?: () => void;
+    onRequestAiAllDaysSuggestions?: () => void;
     showAiSuggestionButton?: boolean;
     aiSuggestionsLoading?: boolean;
+    aiAllDaysSuggestionsLoading?: boolean;
     onOpenValidateTrip?: () => void;
     validateTripDisabled?: boolean;
     geocodeAppendPending?: boolean;
@@ -502,8 +504,10 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onAppendAirportReturn,
     canAppendReturnAirport = false,
     onRequestAiDaySuggestions,
+    onRequestAiAllDaysSuggestions,
     showAiSuggestionButton = false,
     aiSuggestionsLoading = false,
+    aiAllDaysSuggestionsLoading = false,
     onOpenValidateTrip,
     validateTripDisabled = true,
     geocodeAppendPending = false,
@@ -693,34 +697,48 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             <p className="text-[12px] text-slate-400">
                                 Cliquez sur un lieu sur la carte pour l&apos;ajouter à votre journée.
                             </p>
-                            {showAiSuggestionButton && onRequestAiDaySuggestions && (
-                                <button
-                                    type="button"
-                                    onClick={onRequestAiDaySuggestions}
-                                    disabled={aiSuggestionsLoading}
-                                    className="rounded-xl border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-left text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {aiSuggestionsLoading ? 'Suggestions en cours…' : 'Suggestions IA pour ce jour'}
-                                </button>
+                            {showAiSuggestionButton && (onRequestAiDaySuggestions || onRequestAiAllDaysSuggestions) && (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {onRequestAiDaySuggestions && (
+                                        <button
+                                            type="button"
+                                            onClick={onRequestAiDaySuggestions}
+                                            disabled={aiSuggestionsLoading}
+                                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-left text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {aiSuggestionsLoading ? 'Suggestions en cours…' : 'Suggestions IA pour ce jour'}
+                                        </button>
+                                    )}
+                                    {onRequestAiAllDaysSuggestions && (
+                                        <button
+                                            type="button"
+                                            onClick={onRequestAiAllDaysSuggestions}
+                                            disabled={aiAllDaysSuggestionsLoading}
+                                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-left text-[12px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {aiAllDaysSuggestionsLoading
+                                                ? 'Génération du séjour en cours…'
+                                                : 'Suggestions IA pour tout le séjour'}
+                                        </button>
+                                    )}
+                                </div>
                             )}
-                            {(isFirstTripDay || isLastTripDay) && selectedHotel && onAppendHotelToDay && (
+                            {(isFirstTripDay || isLastTripDay) && selectedHotel && (
                                 <button
                                     type="button"
-                                    onClick={onAppendHotelToDay}
-                                    disabled={geocodeAppendPending}
+                                    onClick={() => (onOpenHotelSearch ? onOpenHotelSearch() : onAppendHotelToDay?.())}
                                     className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-left text-[12px] font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
                                 >
-                                    {geocodeAppendPending ? 'Recherche du lieu…' : 'Ajouter mon hôtel au programme'}
+                                    Changer d&apos;hôtel
                                 </button>
                             )}
-                            {isFirstTripDay && selectedFlight && onAppendAirportOutbound && (
+                            {isFirstTripDay && selectedFlight && (
                                 <button
                                     type="button"
-                                    onClick={onAppendAirportOutbound}
-                                    disabled={geocodeAppendPending}
+                                    onClick={() => (onOpenFlightSearch ? onOpenFlightSearch() : onAppendAirportOutbound?.())}
                                     className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-left text-[12px] font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50"
                                 >
-                                    Ajouter l&apos;aéroport (vol aller)
+                                    Changer de vol (aller)
                                 </button>
                             )}
                             {isLastTripDay && selectedFlight && canAppendReturnAirport && onAppendAirportReturn && (

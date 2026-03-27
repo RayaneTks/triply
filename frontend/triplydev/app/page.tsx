@@ -100,6 +100,57 @@ async function fetchGeocodeFirst(keyword: string): Promise<{ lat: number; lng: n
     }
 }
 
+type PlaceSearchItem = {
+    iataCode?: string;
+    subType?: 'CITY' | 'AIRPORT' | string;
+    name?: string;
+    address?: {
+        cityName?: string;
+    };
+};
+
+async function resolveDestinationLabels(params: {
+    iataCode?: string;
+    selectedName?: string;
+}): Promise<{ cityName: string; airportName?: string; iataCode?: string }> {
+    const iata = (params.iataCode || '').trim().toUpperCase();
+    const selectedName = (params.selectedName || '').trim();
+
+    let cityName = selectedName;
+    let airportName: string | undefined;
+
+    if (iata.length >= 3) {
+        try {
+            const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(iata)}`);
+            const data: unknown = await res.json();
+            const list = Array.isArray(data) ? data : [];
+            const items = list as PlaceSearchItem[];
+
+            const exact = items.filter((it) => (it.iataCode || '').toUpperCase() === iata);
+            const cityItem = exact.find((it) => it.subType === 'CITY') ?? exact.find((it) => !!it.address?.cityName);
+            const airportItem = exact.find((it) => it.subType === 'AIRPORT');
+
+            const cityFromApi = (cityItem?.address?.cityName || cityItem?.name || airportItem?.address?.cityName || '').trim();
+            const airportFromApi = (airportItem?.name || '').trim();
+
+            if (cityFromApi) cityName = cityFromApi;
+            if (airportFromApi) airportName = airportFromApi;
+        } catch {
+            // Fallback silencieux: on garde les données locales.
+        }
+    }
+
+    if (!cityName) {
+        cityName = iata || 'Destination';
+    }
+
+    if (!airportName && selectedName && selectedName.toLowerCase() !== cityName.toLowerCase()) {
+        airportName = selectedName;
+    }
+
+    return { cityName, airportName, iataCode: iata || undefined };
+}
+
 function poiStableKeyForLeg(p: DayActivityPoi) {
     return p._dragId ?? `${p.lngLat.lng.toFixed(6)},${p.lngLat.lat.toFixed(6)}`;
 }
@@ -833,33 +884,44 @@ export default function Home() {
         }
     }, [appendSyntheticPoi, selectedFlightOffer]);
 
+    const addAssistantSuggestionsToDay = useCallback((day: number, items: SuggestedActivityPin[]) => {
+        setDayActivitiesByDay((prev) => {
+            const list = prev[day] ?? [];
+            const next = [...list];
+            for (const it of items) {
+                const title = it.title.trim();
+                if (!title) continue;
+                const key = `${title}-${it.lng.toFixed(5)}-${it.lat.toFixed(5)}`;
+                const exists = next.some((p) => {
+                    const t = getDayActivityLabel(p);
+                    return `${t}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key;
+                });
+                if (exists) continue;
+                const _dragId = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                setLastAddedActivityDragIdByDay((m) => ({ ...m, [day]: _dragId }));
+                next.push({
+                    layer: { id: 'poi' },
+                    properties: { name: title, name_en: title },
+                    lngLat: { lng: it.lng, lat: it.lat },
+                    _dragId,
+                });
+            }
+            return { ...prev, [day]: next };
+        });
+    }, []);
+
     const handleSuggestedActivitiesFromAssistant = useCallback(
         (items: SuggestedActivityPin[]) => {
-            setDayActivitiesByDay((prev) => {
-                const list = prev[selectedDay] ?? [];
-                const next = [...list];
-                for (const it of items) {
-                    const title = it.title.trim();
-                    if (!title) continue;
-                    const key = `${title}-${it.lng.toFixed(5)}-${it.lat.toFixed(5)}`;
-                    const exists = next.some((p) => {
-                        const t = getDayActivityLabel(p);
-                        return `${t}-${p.lngLat.lng.toFixed(5)}-${p.lngLat.lat.toFixed(5)}` === key;
-                    });
-                    if (exists) continue;
-                    const _dragId = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                    setLastAddedActivityDragIdByDay((m) => ({ ...m, [selectedDay]: _dragId }));
-                    next.push({
-                        layer: { id: 'poi' },
-                        properties: { name: title, name_en: title },
-                        lngLat: { lng: it.lng, lat: it.lat },
-                        _dragId,
-                    });
-                }
-                return { ...prev, [selectedDay]: next };
-            });
+            addAssistantSuggestionsToDay(selectedDay, items);
         },
-        [selectedDay]
+        [addAssistantSuggestionsToDay, selectedDay]
+    );
+
+    const handleSuggestedActivitiesForSpecificDay = useCallback(
+        (day: number, items: SuggestedActivityPin[]) => {
+            addAssistantSuggestionsToDay(day, items);
+        },
+        [addAssistantSuggestionsToDay]
     );
 
     const buildPlanSnapshot = useCallback((): PlanSnapshot => {
@@ -889,12 +951,19 @@ export default function Home() {
                   }
                 : undefined,
             hotelSummary: selectedHotelOffer
-                ? { name: selectedHotelOffer.hotelName, cityCode: selectedHotelOffer.cityCode }
+                ? {
+                      name: selectedHotelOffer.hotelName,
+                      cityCode: selectedHotelOffer.cityCode,
+                      cityName: tripConfig.arrivalCityName || undefined,
+                      totalPrice: selectedHotelOffer.price?.total,
+                      currency: selectedHotelOffer.price?.currency,
+                  }
                 : undefined,
         };
     }, [
         dayActivitiesByDay,
         tripConfig.travelDays,
+        tripConfig.arrivalCityName,
         planningMode,
         selectedFlightOffer,
         selectedFlightCarrierName,
@@ -914,7 +983,7 @@ export default function Home() {
                 ? perDay
                 : Number.isFinite(fromForm) && fromForm > 0
                   ? fromForm
-                  : 8;
+                                    : 6;
         const td = tripConfig.travelDays || 1;
         return {
             maxActivityHoursPerDay,
@@ -937,6 +1006,13 @@ export default function Home() {
         queueMicrotask(() => assistantRef.current?.suggestActivitiesForDay());
     }, []);
 
+    const handleRequestAiAllDaysSuggestions = useCallback(() => {
+        setIsAssistantOpen(true);
+        queueMicrotask(() => {
+            void assistantRef.current?.suggestActivitiesForAllDays();
+        });
+    }, []);
+
     const handleConfirmValidateTrip = useCallback(async () => {
         const session = getStoredSession();
         if (!session?.token) {
@@ -946,16 +1022,29 @@ export default function Home() {
         setValidateTripSubmitting(true);
         setValidateTripError('');
         try {
-            const dest = tripConfig.arrivalCityName || tripConfig.arrivalCity;
+            const destinationInfo = await resolveDestinationLabels({
+                iataCode: tripConfig.arrivalCity,
+                selectedName: tripConfig.arrivalCityName,
+            });
             const snapshot = buildPlanSnapshot();
-            const title = `${dest} · ${tripConfig.outboundDate || ''}`.trim();
+            const withDestinationSummary: PlanSnapshot = {
+                ...snapshot,
+                destinationSummary: destinationInfo,
+            };
+
+            const titleBase =
+                destinationInfo.airportName && destinationInfo.airportName.toLowerCase() !== destinationInfo.cityName.toLowerCase()
+                    ? `${destinationInfo.cityName} (${destinationInfo.airportName})`
+                    : destinationInfo.cityName;
+            const title = `${titleBase} · ${tripConfig.outboundDate || ''}`.trim();
+
             const created = await createTrip(session.token, {
                 title: title || 'Mon voyage',
-                destination: dest || 'Destination',
+                destination: destinationInfo.cityName || 'Destination',
                 start_date: tripConfig.outboundDate || undefined,
                 end_date: tripConfig.returnDate || undefined,
                 travelers_count: tripConfig.travelerCount,
-                plan_snapshot: snapshot,
+                plan_snapshot: withDestinationSummary,
             });
             await validateTripApi(session.token, created.id);
             setValidateTripModalOpen(false);
@@ -1717,6 +1806,7 @@ export default function Home() {
                                                     destination={tripConfig.arrivalCityName || tripConfig.arrivalCity}
                                                     planningContext={assistantPlanningContext}
                                                     onSuggestedActivities={handleSuggestedActivitiesFromAssistant}
+                                                    onSuggestedActivitiesForDay={handleSuggestedActivitiesForSpecificDay}
                                                     onLoadingChange={setAssistantRequestLoading}
                                                 />
                                             ) : (
@@ -1793,10 +1883,12 @@ export default function Home() {
                                             onAppendAirportReturn={handleAppendAirportReturn}
                                             canAppendReturnAirport={Boolean(selectedFlightOffer?.itineraries?.[1])}
                                             onRequestAiDaySuggestions={handleRequestAiDaySuggestions}
+                                            onRequestAiAllDaysSuggestions={handleRequestAiAllDaysSuggestions}
                                             showAiSuggestionButton={
                                                 planningMode === 'full_ai' || planningMode === 'semi_ai'
                                             }
                                             aiSuggestionsLoading={assistantRequestLoading}
+                                            aiAllDaysSuggestionsLoading={assistantRequestLoading}
                                             onOpenValidateTrip={() => {
                                                 setValidateTripError('');
                                                 setValidateTripModalOpen(true);

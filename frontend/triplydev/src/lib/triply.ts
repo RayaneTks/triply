@@ -150,8 +150,8 @@ Format JSON STRICT attendu (sans markdown, sans texte autour) :
 
 Règles pour suggestedActivities :
 - Tableau de lieux concrets (monuments, musées, quartiers, parcs, etc.) dans la zone de la destination ou null si hors sujet.
-- Coordonnées GPS plausibles (pas 0,0). Maximum 8 entrées. Si la question ne demande pas d'idées d'activités pour le voyage, renvoie [].
-- durationHours optionnel (ex. 1.5). La somme des durées suggérées ne doit pas dépasser le budget horaire du jour indiqué dans le contexte planificateur quand il est fourni.
+- Coordonnées GPS plausibles (pas 0,0). Si la question ne demande pas d'idées d'activités pour le voyage, renvoie [].
+- durationHours optionnel (ex. 1.5). La somme des durées suggérées ne doit pas dépasser le budget horaire du jour indiqué dans le contexte planificateur quand il est fourni. Si le budget horaire n'est pas fourni, base-toi sur 6 heures d'activités.
 
 Si la demande est hors périmètre, réponds avec reply contenant EXACTEMENT ce message de refus :
 "${REFUSAL_TEXT}"

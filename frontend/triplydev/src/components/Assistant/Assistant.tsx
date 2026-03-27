@@ -52,6 +52,7 @@ export interface AssistantPlanningContext {
 
 export type AssistantHandle = {
     suggestActivitiesForDay: () => void;
+    suggestActivitiesForAllDays: () => Promise<void>;
 };
 
 interface AssistantProps {
@@ -60,6 +61,7 @@ interface AssistantProps {
     onClearChat?: () => void;
     planningContext?: AssistantPlanningContext | null;
     onSuggestedActivities?: (items: SuggestedActivityPin[]) => void;
+    onSuggestedActivitiesForDay?: (day: number, items: SuggestedActivityPin[]) => void;
     onLoadingChange?: (loading: boolean) => void;
 }
 
@@ -85,7 +87,15 @@ function saveMessages(messages: ChatMessage[]) {
 }
 
 const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(
-    { onUpdateLocations, destination, onClearChat, planningContext, onSuggestedActivities, onLoadingChange },
+    {
+        onUpdateLocations,
+        destination,
+        onClearChat,
+        planningContext,
+        onSuggestedActivities,
+        onSuggestedActivitiesForDay,
+        onLoadingChange,
+    },
     ref
 ) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -126,7 +136,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
 
     const postUserMessage = useCallback(
-        async (currentMessageText: string) => {
+        async (currentMessageText: string, targetDay?: number) => {
             if (!currentMessageText.trim() || loading) return;
 
             const session = getStoredSession();
@@ -167,6 +177,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 })();
 
                 const ctx = planningContextRef.current;
+                const requestSelectedDay = targetDay ?? ctx?.selectedDay;
 
                 const res = await fetch('/api/assistant', {
                     method: 'POST',
@@ -179,7 +190,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         destinationContext: destination,
                         userPreferences: prefs,
                         maxActivityHoursPerDay: ctx?.maxActivityHoursPerDay,
-                        selectedDay: ctx?.selectedDay,
+                        selectedDay: requestSelectedDay,
                         travelDays: ctx?.travelDays,
                         planningMode: ctx?.planningMode,
                         currentDayActivityTitles: ctx?.currentDayActivityTitles,
@@ -210,8 +221,12 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     onUpdateLocations(data.locations);
                 }
 
-                if (data.suggestedActivities && data.suggestedActivities.length > 0 && onSuggestedActivities) {
-                    onSuggestedActivities(data.suggestedActivities);
+                if (data.suggestedActivities && data.suggestedActivities.length > 0) {
+                    if (targetDay != null && onSuggestedActivitiesForDay) {
+                        onSuggestedActivitiesForDay(targetDay, data.suggestedActivities);
+                    } else if (onSuggestedActivities) {
+                        onSuggestedActivities(data.suggestedActivities);
+                    }
                 }
             } catch (error) {
                 console.error('Erreur API', error);
@@ -230,7 +245,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 setPendingAssistantMessage(null);
             }
         },
-        [destination, loading, messages, onLoadingChange, onSuggestedActivities, onUpdateLocations]
+        [destination, loading, messages, onLoadingChange, onSuggestedActivities, onSuggestedActivitiesForDay, onUpdateLocations]
     );
 
     useImperativeHandle(
@@ -240,9 +255,28 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 const dest = destination?.trim() || 'la destination';
                 const ctx = planningContextRef.current;
                 const day = ctx?.selectedDay ?? 1;
-                const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 8;
+                const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
                 void postUserMessage(
-                    `Propose-moi jusqu'à 8 activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`
+                    `Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                    day
+                );
+            },
+            suggestActivitiesForAllDays: async () => {
+                const dest = destination?.trim() || 'la destination';
+                const ctx = planningContextRef.current;
+                const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
+                const travelDays = Math.max(1, ctx?.travelDays ?? 1);
+                const dayIndexes = Array.from({ length: travelDays }, (_, i) => i + 1);
+
+                await dayIndexes.reduce(
+                    (chain, day) =>
+                        chain.then(() =>
+                            postUserMessage(
+                                `Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                                day
+                            )
+                        ),
+                    Promise.resolve()
                 );
             },
         }),
