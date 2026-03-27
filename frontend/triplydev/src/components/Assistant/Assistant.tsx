@@ -7,8 +7,11 @@ import { SearchBar } from '@/src/components/Searchbar/Searchbar';
 import { Button } from '@/src/components/Button/Button';
 import { getStoredSession } from '@/src/lib/auth-client';
 import { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
+import type { AssistantStep1FormPatch } from '@/src/features/trip-creation/step1-form-patch';
 
 const CHAT_STORAGE_KEY = 'triply-assistant-chat';
+
+export type AssistantChatMode = 'itinerary' | 'qa';
 
 interface Coordinates {
     latitude: number;
@@ -32,6 +35,7 @@ interface AssistantResponse {
     reply: string;
     locations: Location[];
     suggestedActivities?: SuggestedActivityPin[];
+    step1FormPatch?: AssistantStep1FormPatch | null;
 }
 
 export type Role = 'user' | 'assistant';
@@ -63,6 +67,10 @@ interface AssistantProps {
     onSuggestedActivities?: (items: SuggestedActivityPin[]) => void;
     onSuggestedActivitiesForDay?: (day: number, items: SuggestedActivityPin[]) => void;
     onLoadingChange?: (loading: boolean) => void;
+    step1FormSnapshot?: Record<string, unknown> | null;
+    step1HotelOptionLabels?: string[];
+    step1DietaryLabels?: string[];
+    onApplyStep1Form?: (patch: AssistantStep1FormPatch) => void;
 }
 
 function loadStoredMessages(): ChatMessage[] {
@@ -95,6 +103,10 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         onSuggestedActivities,
         onSuggestedActivitiesForDay,
         onLoadingChange,
+        step1FormSnapshot,
+        step1HotelOptionLabels,
+        step1DietaryLabels,
+        onApplyStep1Form,
     },
     ref
 ) {
@@ -102,9 +114,22 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [pendingAssistantMessage, setPendingAssistantMessage] = useState<string | null>(null);
+    const [chatMode, setChatMode] = useState<AssistantChatMode>('itinerary');
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const planningContextRef = useRef(planningContext);
     planningContextRef.current = planningContext;
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    const step1ApiRef = useRef({
+        snapshot: {} as Record<string, unknown>,
+        hotelLabels: [] as string[],
+        dietaryLabels: [] as string[],
+    });
+    step1ApiRef.current = {
+        snapshot: step1FormSnapshot ?? {},
+        hotelLabels: step1HotelOptionLabels ?? [],
+        dietaryLabels: step1DietaryLabels ?? [],
+    };
 
     useEffect(() => {
         setMessages(loadStoredMessages());
@@ -131,12 +156,34 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         });
     }, [messages, loading, pendingAssistantMessage]);
 
-    const placeholderText = destination
-        ? `Rechercher des activites a ${destination}...`
-        : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
+    const placeholderText =
+        chatMode === 'qa'
+            ? 'Posez votre question voyage…'
+            : destination
+              ? `Rechercher des activites a ${destination}...`
+              : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
+
+    const stopRequest = useCallback(() => {
+        abortControllerRef.current?.abort();
+    }, []);
+
+    const undoLastExchange = useCallback(() => {
+        if (loading) {
+            stopRequest();
+            return;
+        }
+        setMessages((prev) => {
+            if (prev.length < 2) return prev;
+            const last = prev[prev.length - 1];
+            const prev2 = prev[prev.length - 2];
+            if (last.role === 'assistant' && prev2.role === 'user') return prev.slice(0, -2);
+            if (last.role === 'user') return prev.slice(0, -1);
+            return prev;
+        });
+    }, [loading, stopRequest]);
 
     const postUserMessage = useCallback(
-        async (currentMessageText: string, targetDay?: number) => {
+        async (currentMessageText: string, opts?: { forceItinerary?: boolean }, targetDay?: number) => {
             if (!currentMessageText.trim() || loading) return;
 
             const session = getStoredSession();
@@ -162,6 +209,11 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
             onLoadingChange?.(true);
             setPendingAssistantMessage("Triply réfléchit à la meilleure façon d'organiser votre voyage...");
 
+            const effectiveMode: AssistantChatMode = opts?.forceItinerary ? 'itinerary' : chatMode;
+
+            const ac = new AbortController();
+            abortControllerRef.current = ac;
+
             try {
                 const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
 
@@ -177,6 +229,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 })();
 
                 const ctx = planningContextRef.current;
+                const s1 = step1ApiRef.current;
                 const requestSelectedDay = targetDay ?? ctx?.selectedDay;
 
                 const res = await fetch('/api/assistant', {
@@ -185,15 +238,20 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${session.token}`,
                     },
+                    signal: ac.signal,
                     body: JSON.stringify({
                         messages: apiMessages,
                         destinationContext: destination,
                         userPreferences: prefs,
+                        chatMode: effectiveMode,
                         maxActivityHoursPerDay: ctx?.maxActivityHoursPerDay,
                         selectedDay: requestSelectedDay,
                         travelDays: ctx?.travelDays,
                         planningMode: ctx?.planningMode,
                         currentDayActivityTitles: ctx?.currentDayActivityTitles,
+                        step1FormSnapshot: s1.snapshot,
+                        step1HotelOptionLabels: s1.hotelLabels,
+                        step1DietaryLabels: s1.dietaryLabels,
                     }),
                 });
 
@@ -217,18 +275,28 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
 
                 setMessages((prev) => [...prev, assistantMessage]);
 
-                if (data.locations && data.locations.length > 0 && onUpdateLocations) {
+                const applyItineraryEffects = effectiveMode === 'itinerary';
+
+                if (applyItineraryEffects && data.locations && data.locations.length > 0 && onUpdateLocations) {
                     onUpdateLocations(data.locations);
                 }
 
-                if (data.suggestedActivities && data.suggestedActivities.length > 0) {
+                if (applyItineraryEffects && data.suggestedActivities && data.suggestedActivities.length > 0) {
                     if (targetDay != null && onSuggestedActivitiesForDay) {
                         onSuggestedActivitiesForDay(targetDay, data.suggestedActivities);
                     } else if (onSuggestedActivities) {
                         onSuggestedActivities(data.suggestedActivities);
                     }
                 }
+
+                if (applyItineraryEffects && data.step1FormPatch && onApplyStep1Form) {
+                    onApplyStep1Form(data.step1FormPatch);
+                }
             } catch (error) {
+                if (error instanceof Error && error.name === 'AbortError') {
+                    setMessages((prev) => (prev.length > 0 && prev[prev.length - 1]?.role === 'user' ? prev.slice(0, -1) : prev));
+                    return;
+                }
                 console.error('Erreur API', error);
                 const errorMessage: ChatMessage = {
                     id: uuid(),
@@ -240,12 +308,22 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 };
                 setMessages((prev) => [...prev, errorMessage]);
             } finally {
+                abortControllerRef.current = null;
                 setLoading(false);
                 onLoadingChange?.(false);
                 setPendingAssistantMessage(null);
             }
         },
-        [destination, loading, messages, onLoadingChange, onSuggestedActivities, onSuggestedActivitiesForDay, onUpdateLocations]
+        [
+            chatMode,
+            destination,
+            loading,
+            messages,
+            onApplyStep1Form,
+            onLoadingChange,
+            onSuggestedActivities,
+            onSuggestedActivitiesForDay, onUpdateLocations,
+        ]
     );
 
     useImperativeHandle(
@@ -285,7 +363,11 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
 
     const sendMessage = async () => {
         if ((!message.trim() && !destination) || loading) return;
-        const currentMessageText = message.trim() || `Montre-moi les hotels et activites a ${destination}`;
+        const currentMessageText =
+            message.trim() ||
+            (chatMode === 'qa'
+                ? 'Bonjour, j’ai une question sur mon voyage.'
+                : `Montre-moi les hotels et activites a ${destination}`);
         setMessage('');
         await postUserMessage(currentMessageText);
     };
@@ -297,8 +379,57 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         }
     };
 
+    const canUndo = messages.length >= 2 || loading;
+
     return (
         <div className="flex h-full min-h-0 flex-col" style={{ backgroundColor: 'var(--background, #222222)' }}>
+            <div className="flex-shrink-0 space-y-2 border-b border-white/10 px-4 py-2">
+                <div className="flex gap-1 rounded-lg bg-white/[0.06] p-0.5">
+                    <button
+                        type="button"
+                        onClick={() => setChatMode('itinerary')}
+                        className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                            chatMode === 'itinerary' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                    >
+                        Itinéraire
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setChatMode('qa')}
+                        className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                            chatMode === 'qa' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                    >
+                        Q&amp;A
+                    </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {loading && (
+                        <button
+                            type="button"
+                            onClick={stopRequest}
+                            className="rounded-md border border-red-500/40 bg-red-500/15 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/25"
+                        >
+                            Arrêter
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={undoLastExchange}
+                        disabled={!canUndo}
+                        className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        title="Annuler le dernier échange ou arrêter la génération"
+                    >
+                        Annuler le dernier échange
+                    </button>
+                </div>
+                {chatMode === 'qa' && (
+                    <p className="text-[10px] leading-snug text-slate-500">
+                        Questions uniquement : pas de mise à jour de la carte ni du formulaire.
+                    </p>
+                )}
+            </div>
             <div
                 ref={scrollContainerRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
