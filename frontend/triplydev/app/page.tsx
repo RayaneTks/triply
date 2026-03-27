@@ -59,6 +59,7 @@ import {
     type AssistantStep1FormPatch,
 } from '@/src/features/trip-creation/step1-form-patch';
 import { requestActivityRegeneration } from '@/src/lib/assistant-regenerate';
+import { buildManualFlightOffer, buildManualHotelOffer } from '@/src/features/trip-creation/manual-trip-offers';
 
 /** Segment / carte en alerte dépassement temps jour */
 const ACTIVITY_TIME_ALERT_COLOR = '#ef4444';
@@ -496,6 +497,7 @@ export default function Home() {
     }, [tripConfig]);
 
     const handleFlightSelect = (offer: FlightOffer, carrierName: string) => {
+        tripConfig.setManualFlightEntry(false);
         setSelectedFlightOffer(offer);
         setSelectedFlightCarrierName(carrierName);
         setIsFlightModalOpen(false);
@@ -508,6 +510,7 @@ export default function Home() {
     }, [selectedFlightOffer]);
 
     const handleHotelSelect = (offer: HotelOffer) => {
+        tripConfig.setManualHotelEntry(false);
         setSelectedHotelOffer(offer);
         setIsHotelModalOpen(false);
         tripConfig.setArrivalCity(offer.cityCode);
@@ -515,6 +518,87 @@ export default function Home() {
         tripConfig.setReturnDate(offer.checkOutDate);
         if (offer.guests?.adults) tripConfig.setTravelerCount(offer.guests.adults);
     };
+
+    const prevManualFlightRef = useRef(false);
+    useEffect(() => {
+        if (tripConfig.manualFlightEntry && !prevManualFlightRef.current) {
+            setSelectedFlightOffer(null);
+            setSelectedFlightCarrierName('');
+            setIsFlightDetailModalOpen(false);
+        }
+        prevManualFlightRef.current = tripConfig.manualFlightEntry;
+    }, [tripConfig.manualFlightEntry]);
+
+    const prevManualHotelRef = useRef(false);
+    useEffect(() => {
+        if (tripConfig.manualHotelEntry && !prevManualHotelRef.current) {
+            setSelectedHotelOffer(null);
+            setIsHotelDetailModalOpen(false);
+        }
+        prevManualHotelRef.current = tripConfig.manualHotelEntry;
+    }, [tripConfig.manualHotelEntry]);
+
+    const effectiveFlightOffer = useMemo(
+        () =>
+            tripConfig.manualFlightEntry
+                ? buildManualFlightOffer({
+                      manualFlightEntry: true,
+                      departureCity: tripConfig.departureCity,
+                      arrivalCity: tripConfig.arrivalCity,
+                      outboundDate: tripConfig.outboundDate,
+                      returnDate: tripConfig.returnDate,
+                      outboundDepartureTime: tripConfig.outboundDepartureTime,
+                      outboundArrivalTime: tripConfig.outboundArrivalTime,
+                      returnDepartureTime: tripConfig.returnDepartureTime,
+                      returnArrivalTime: tripConfig.returnArrivalTime,
+                      manualFlightAirline: tripConfig.manualFlightAirline,
+                      manualFlightNumber: tripConfig.manualFlightNumber,
+                      manualFlightNumberReturn: tripConfig.manualFlightNumberReturn,
+                  })
+                : selectedFlightOffer,
+        [
+            tripConfig.manualFlightEntry,
+            tripConfig.departureCity,
+            tripConfig.arrivalCity,
+            tripConfig.outboundDate,
+            tripConfig.returnDate,
+            tripConfig.outboundDepartureTime,
+            tripConfig.outboundArrivalTime,
+            tripConfig.returnDepartureTime,
+            tripConfig.returnArrivalTime,
+            tripConfig.manualFlightAirline,
+            tripConfig.manualFlightNumber,
+            tripConfig.manualFlightNumberReturn,
+            selectedFlightOffer,
+        ]
+    );
+
+    const effectiveFlightCarrierName = tripConfig.manualFlightEntry
+        ? tripConfig.manualFlightAirline
+        : selectedFlightCarrierName;
+
+    const effectiveHotelOffer = useMemo(
+        () =>
+            tripConfig.manualHotelEntry
+                ? buildManualHotelOffer({
+                      manualHotelEntry: true,
+                      manualHotelName: tripConfig.manualHotelName,
+                      manualHotelAddress: tripConfig.manualHotelAddress,
+                      manualHotelCheckIn: tripConfig.manualHotelCheckIn,
+                      manualHotelCheckOut: tripConfig.manualHotelCheckOut,
+                      arrivalCity: tripConfig.arrivalCity,
+                  })
+                : selectedHotelOffer,
+        [
+            tripConfig.manualHotelEntry,
+            tripConfig.manualHotelName,
+            tripConfig.manualHotelAddress,
+            tripConfig.manualHotelCheckIn,
+            tripConfig.manualHotelCheckOut,
+            tripConfig.arrivalCity,
+            selectedHotelOffer,
+        ]
+    );
 
     // Gestion de la recherche de vol
     const handleFlightSearch = async () => {
@@ -719,24 +803,24 @@ export default function Home() {
     );
 
     const handleAppendHotelToDay = useCallback(async () => {
-        if (!selectedHotelOffer) return;
+        if (!effectiveHotelOffer) return;
         setGeocodeAppendPending(true);
         try {
-            const kw = `${selectedHotelOffer.hotelName} ${selectedHotelOffer.cityCode}`;
+            const kw = `${effectiveHotelOffer.hotelName} ${effectiveHotelOffer.cityCode}`;
             const g = await fetchGeocodeFirst(kw);
             if (!g) {
                 window.alert("Impossible de localiser l'hôtel. Essayez une recherche plus précise.");
                 return;
             }
-            appendSyntheticPoi(g.name || selectedHotelOffer.hotelName, g.lat, g.lng, 'hotel');
+            appendSyntheticPoi(g.name || effectiveHotelOffer.hotelName, g.lat, g.lng, 'hotel');
         } finally {
             setGeocodeAppendPending(false);
         }
-    }, [appendSyntheticPoi, selectedHotelOffer]);
+    }, [appendSyntheticPoi, effectiveHotelOffer]);
 
     const handleAppendAirportOutbound = useCallback(async () => {
-        if (!selectedFlightOffer) return;
-        const seg = selectedFlightOffer.itineraries?.[0]?.segments?.[0];
+        if (!effectiveFlightOffer) return;
+        const seg = effectiveFlightOffer.itineraries?.[0]?.segments?.[0];
         const iata = seg?.departure?.iataCode;
         if (!iata) return;
         setGeocodeAppendPending(true);
@@ -750,11 +834,11 @@ export default function Home() {
         } finally {
             setGeocodeAppendPending(false);
         }
-    }, [appendSyntheticPoi, selectedFlightOffer]);
+    }, [appendSyntheticPoi, effectiveFlightOffer]);
 
     const handleAppendAirportReturn = useCallback(async () => {
-        if (!selectedFlightOffer) return;
-        const ret = selectedFlightOffer.itineraries?.[1];
+        if (!effectiveFlightOffer) return;
+        const ret = effectiveFlightOffer.itineraries?.[1];
         const fs = ret?.segments?.[0];
         const iata = fs?.departure?.iataCode;
         if (!iata) return;
@@ -769,7 +853,7 @@ export default function Home() {
         } finally {
             setGeocodeAppendPending(false);
         }
-    }, [appendSyntheticPoi, selectedFlightOffer]);
+    }, [appendSyntheticPoi, effectiveFlightOffer]);
 
     const handleSuggestedActivitiesFromAssistant = useCallback(
         (items: SuggestedActivityPin[]) => {
@@ -819,24 +903,24 @@ export default function Home() {
         return {
             days,
             planningMode: planningMode ?? undefined,
-            flightSummary: selectedFlightOffer
+            flightSummary: effectiveFlightOffer
                 ? {
-                      carrier: selectedFlightCarrierName || undefined,
-                      price: selectedFlightOffer.price?.grandTotal,
-                      currency: selectedFlightOffer.price?.currency,
+                      carrier: effectiveFlightCarrierName || undefined,
+                      price: effectiveFlightOffer.price?.grandTotal,
+                      currency: effectiveFlightOffer.price?.currency,
                   }
                 : undefined,
-            hotelSummary: selectedHotelOffer
-                ? { name: selectedHotelOffer.hotelName, cityCode: selectedHotelOffer.cityCode }
+            hotelSummary: effectiveHotelOffer
+                ? { name: effectiveHotelOffer.hotelName, cityCode: effectiveHotelOffer.cityCode }
                 : undefined,
         };
     }, [
         dayActivitiesByDay,
         tripConfig.travelDays,
         planningMode,
-        selectedFlightOffer,
-        selectedFlightCarrierName,
-        selectedHotelOffer,
+        effectiveFlightOffer,
+        effectiveFlightCarrierName,
+        effectiveHotelOffer,
     ]);
 
     const hasAnyPlannedActivity = useMemo(
@@ -871,24 +955,7 @@ export default function Home() {
         ]);
 
     const assistantStep1Snapshot = useMemo(
-        () =>
-            buildStep1FormSnapshotForAssistant({
-                departureCity: tripConfig.departureCity,
-                arrivalCity: tripConfig.arrivalCity,
-                arrivalCityName: tripConfig.arrivalCityName,
-                travelDays: tripConfig.travelDays,
-                travelerCount: tripConfig.travelerCount,
-                budget: tripConfig.budget,
-                activityTime: tripConfig.activityTime,
-                outboundDate: tripConfig.outboundDate,
-                returnDate: tripConfig.returnDate,
-                outboundDepartureTime: tripConfig.outboundDepartureTime,
-                outboundArrivalTime: tripConfig.outboundArrivalTime,
-                returnDepartureTime: tripConfig.returnDepartureTime,
-                returnArrivalTime: tripConfig.returnArrivalTime,
-                selectedOptions: tripConfig.selectedOptions,
-                dietarySelections: tripConfig.dietarySelections,
-            }),
+        () => buildStep1FormSnapshotForAssistant(tripConfig),
         [
             tripConfig.departureCity,
             tripConfig.arrivalCity,
@@ -905,6 +972,15 @@ export default function Home() {
             tripConfig.returnArrivalTime,
             tripConfig.selectedOptions,
             tripConfig.dietarySelections,
+            tripConfig.manualFlightEntry,
+            tripConfig.manualFlightAirline,
+            tripConfig.manualFlightNumber,
+            tripConfig.manualFlightNumberReturn,
+            tripConfig.manualHotelEntry,
+            tripConfig.manualHotelName,
+            tripConfig.manualHotelAddress,
+            tripConfig.manualHotelCheckIn,
+            tripConfig.manualHotelCheckOut,
         ]
     );
 
@@ -1460,8 +1536,8 @@ export default function Home() {
                             <FlightDetailModal
                                 visible={isFlightDetailModalOpen}
                                 onClose={() => setIsFlightDetailModalOpen(false)}
-                                offer={selectedFlightOffer}
-                                carrierName={selectedFlightCarrierName}
+                                offer={effectiveFlightOffer}
+                                carrierName={effectiveFlightCarrierName}
                             />
 
                             <HotelSearchModal
@@ -1492,7 +1568,7 @@ export default function Home() {
                             <HotelDetailModal
                                 visible={isHotelDetailModalOpen}
                                 onClose={() => setIsHotelDetailModalOpen(false)}
-                                offer={selectedHotelOffer}
+                                offer={effectiveHotelOffer}
                             />
 
                             {/* Barre de progression Activité / jour - haut droite */}
@@ -1832,9 +1908,9 @@ export default function Home() {
                                             state={tripConfig}
                                             multiSelectOptions={multiSelectOptions}
                                             dietaryMultiSelectOptions={dietaryMultiSelectOptions}
-                                            selectedFlight={selectedFlightOffer}
-                                            selectedFlightCarrierName={selectedFlightCarrierName}
-                                            selectedHotel={selectedHotelOffer}
+                                            selectedFlight={effectiveFlightOffer}
+                                            selectedFlightCarrierName={effectiveFlightCarrierName}
+                                            selectedHotel={effectiveHotelOffer}
                                             isFlightModalOpen={isFlightModalOpen}
                                             isHotelModalOpen={isHotelModalOpen}
                                             onOpenFlightSearch={() => setIsFlightModalOpen(true)}
@@ -1845,11 +1921,20 @@ export default function Home() {
                                             onRemoveFlight={() => {
                                                 setSelectedFlightOffer(null);
                                                 setSelectedFlightCarrierName('');
+                                                tripConfig.setManualFlightEntry(false);
+                                                tripConfig.setManualFlightAirline('');
+                                                tripConfig.setManualFlightNumber('');
+                                                tripConfig.setManualFlightNumberReturn('');
                                                 setIsFlightDetailModalOpen(false);
                                             }}
                                             onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
                                             onRemoveHotel={() => {
                                                 setSelectedHotelOffer(null);
+                                                tripConfig.setManualHotelEntry(false);
+                                                tripConfig.setManualHotelName('');
+                                                tripConfig.setManualHotelAddress('');
+                                                tripConfig.setManualHotelCheckIn('');
+                                                tripConfig.setManualHotelCheckOut('');
                                                 setIsHotelDetailModalOpen(false);
                                             }}
                                             selectedDay={selectedDay}
@@ -1875,7 +1960,7 @@ export default function Home() {
                                             onAppendHotelToDay={handleAppendHotelToDay}
                                             onAppendAirportOutbound={handleAppendAirportOutbound}
                                             onAppendAirportReturn={handleAppendAirportReturn}
-                                            canAppendReturnAirport={Boolean(selectedFlightOffer?.itineraries?.[1])}
+                                            canAppendReturnAirport={Boolean(effectiveFlightOffer?.itineraries?.[1])}
                                             onRequestAiDaySuggestions={handleRequestAiDaySuggestions}
                                             showAiSuggestionButton={
                                                 planningMode === 'full_ai' || planningMode === 'semi_ai'

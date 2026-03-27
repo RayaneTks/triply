@@ -704,6 +704,24 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 onHotelCardClick={onHotelCardClick}
                                 onRemoveHotel={onRemoveHotel}
                                 onBackToPlanningMode={onBackToPlanningMode}
+                                manualFlightEntry={state.manualFlightEntry}
+                                setManualFlightEntry={state.setManualFlightEntry}
+                                manualFlightAirline={state.manualFlightAirline}
+                                setManualFlightAirline={state.setManualFlightAirline}
+                                manualFlightNumber={state.manualFlightNumber}
+                                setManualFlightNumber={state.setManualFlightNumber}
+                                manualFlightNumberReturn={state.manualFlightNumberReturn}
+                                setManualFlightNumberReturn={state.setManualFlightNumberReturn}
+                                manualHotelEntry={state.manualHotelEntry}
+                                setManualHotelEntry={state.setManualHotelEntry}
+                                manualHotelName={state.manualHotelName}
+                                setManualHotelName={state.setManualHotelName}
+                                manualHotelAddress={state.manualHotelAddress}
+                                setManualHotelAddress={state.setManualHotelAddress}
+                                manualHotelCheckIn={state.manualHotelCheckIn}
+                                setManualHotelCheckIn={state.setManualHotelCheckIn}
+                                manualHotelCheckOut={state.manualHotelCheckOut}
+                                setManualHotelCheckOut={state.setManualHotelCheckOut}
                             />
                             </div>
                         )}

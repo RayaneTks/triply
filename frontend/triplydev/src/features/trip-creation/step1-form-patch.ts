@@ -133,5 +133,14 @@ export function buildStep1FormSnapshotForAssistant(state: TripConfigurationState
         selectedOptions: state.selectedOptions,
         dietarySelections: state.dietarySelections,
         travelDays: state.travelDays,
+        manualFlightEntry: state.manualFlightEntry,
+        manualFlightAirline: state.manualFlightAirline,
+        manualFlightNumber: state.manualFlightNumber,
+        manualFlightNumberReturn: state.manualFlightNumberReturn,
+        manualHotelEntry: state.manualHotelEntry,
+        manualHotelName: state.manualHotelName,
+        manualHotelAddress: state.manualHotelAddress,
+        manualHotelCheckIn: state.manualHotelCheckIn,
+        manualHotelCheckOut: state.manualHotelCheckOut,
     };
 }

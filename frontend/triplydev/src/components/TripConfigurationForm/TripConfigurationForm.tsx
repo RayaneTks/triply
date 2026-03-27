@@ -59,6 +59,24 @@ interface TripConfigurationFormProps {
     onRemoveHotel?: () => void;
     /** Retour à l’écran de sélection du mode (pleine IA / semi-IA / manuel) */
     onBackToPlanningMode?: () => void;
+    manualFlightEntry: boolean;
+    setManualFlightEntry: (v: boolean) => void;
+    manualFlightAirline: string;
+    setManualFlightAirline: (v: string) => void;
+    manualFlightNumber: string;
+    setManualFlightNumber: (v: string) => void;
+    manualFlightNumberReturn: string;
+    setManualFlightNumberReturn: (v: string) => void;
+    manualHotelEntry: boolean;
+    setManualHotelEntry: (v: boolean) => void;
+    manualHotelName: string;
+    setManualHotelName: (v: string) => void;
+    manualHotelAddress: string;
+    setManualHotelAddress: (v: string) => void;
+    manualHotelCheckIn: string;
+    setManualHotelCheckIn: (v: string) => void;
+    manualHotelCheckOut: string;
+    setManualHotelCheckOut: (v: string) => void;
 }
 
 const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; children: React.ReactNode }> = ({ icon, title, tag, children }) => (
@@ -102,10 +120,32 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         returnArrivalTime, setReturnArrivalTime,
         selectedOptions, setSelectedOptions, multiSelectOptions,
         dietaryMultiSelectOptions, dietarySelections, setDietarySelections,
-        onOpenFlightSearch, selectedFlight, selectedFlightCarrierName = '',
+        onOpenFlightSearch,
+        onCloseFlightSearch,
+        onCloseHotelSearch,
+        selectedFlight,
+        selectedFlightCarrierName = '',
         onFlightCardClick, onRemoveFlight, setArrivalCityName, onArrivalGeoSelect,
         onOpenHotelSearch, selectedHotel, onHotelCardClick, onRemoveHotel,
         onBackToPlanningMode,
+        manualFlightEntry,
+        setManualFlightEntry,
+        manualFlightAirline,
+        setManualFlightAirline,
+        manualFlightNumber,
+        setManualFlightNumber,
+        manualFlightNumberReturn,
+        setManualFlightNumberReturn,
+        manualHotelEntry,
+        setManualHotelEntry,
+        manualHotelName,
+        setManualHotelName,
+        manualHotelAddress,
+        setManualHotelAddress,
+        manualHotelCheckIn,
+        setManualHotelCheckIn,
+        manualHotelCheckOut,
+        setManualHotelCheckOut,
     } = props;
 
     const inputCls = 'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/[0.04] px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
@@ -197,7 +237,75 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 <>
                 {/* 4 - Transport */}
                 <Section icon={svg("M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z")} title="Transport" tag="optionnel">
-                    {selectedFlight ? (
+                    <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                        <input
+                            type="checkbox"
+                            checked={manualFlightEntry}
+                            onChange={(e) => {
+                                const on = e.target.checked;
+                                setManualFlightEntry(on);
+                                if (on) onCloseFlightSearch?.();
+                            }}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/10 text-cyan-500 focus:ring-cyan-500/50"
+                        />
+                        <span className="text-[12px] leading-snug text-slate-300">
+                            <span className="font-semibold text-slate-200">Saisir un vol manuellement</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">
+                                Masque la recherche. Horaires : section « Quand partez-vous ? » (vol aller / retour).
+                            </span>
+                        </span>
+                    </label>
+                    {manualFlightEntry ? (
+                        <div className="space-y-2.5">
+                            <div className={inputCls}>
+                                <input
+                                    type="text"
+                                    value={manualFlightAirline}
+                                    onChange={(e) => setManualFlightAirline(e.target.value)}
+                                    placeholder="Compagnie (ex. Air France)"
+                                    className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="mb-1 block text-[11px] font-medium text-slate-500">N° vol aller</label>
+                                    <div className={inputCls}>
+                                        <input
+                                            type="text"
+                                            value={manualFlightNumber}
+                                            onChange={(e) => setManualFlightNumber(e.target.value)}
+                                            placeholder="AF123"
+                                            className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-[11px] font-medium text-slate-500">N° vol retour</label>
+                                    <div className={inputCls}>
+                                        <input
+                                            type="text"
+                                            value={manualFlightNumberReturn}
+                                            onChange={(e) => setManualFlightNumberReturn(e.target.value)}
+                                            placeholder="optionnel"
+                                            className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            {selectedFlight ? (
+                                <SelectedFlightCard
+                                    offer={selectedFlight}
+                                    carrierName={selectedFlightCarrierName}
+                                    onClick={onFlightCardClick || (() => {})}
+                                    onRemove={onRemoveFlight}
+                                />
+                            ) : (
+                                <p className="text-[11px] text-slate-500">
+                                    Renseignez départ, destination et dates plus haut pour afficher le récapitulatif.
+                                </p>
+                            )}
+                        </div>
+                    ) : selectedFlight ? (
                         <SelectedFlightCard offer={selectedFlight} carrierName={selectedFlightCarrierName} onClick={onFlightCardClick || (() => {})} onRemove={onRemoveFlight} />
                     ) : (
                         <button type="button" onClick={onOpenFlightSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
@@ -214,7 +322,77 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
 
                 {/* 5 - Hébergement */}
                 <Section icon={svg("M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4M5 21V10.9M19 21V10.9")} title="Hébergement" tag="optionnel">
-                    {selectedHotel ? (
+                    <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                        <input
+                            type="checkbox"
+                            checked={manualHotelEntry}
+                            onChange={(e) => {
+                                const on = e.target.checked;
+                                setManualHotelEntry(on);
+                                if (on) {
+                                    onCloseHotelSearch?.();
+                                    if (!manualHotelCheckIn.trim() && arrivalDate) setManualHotelCheckIn(arrivalDate);
+                                    if (!manualHotelCheckOut.trim() && departureDate) setManualHotelCheckOut(departureDate);
+                                }
+                            }}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/30 bg-white/10 text-cyan-500 focus:ring-cyan-500/50"
+                        />
+                        <span className="text-[12px] leading-snug text-slate-300">
+                            <span className="font-semibold text-slate-200">Saisir un hôtel manuellement</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">Masque la recherche. Adresse et dates d&apos;hébergement.</span>
+                        </span>
+                    </label>
+                    {manualHotelEntry ? (
+                        <div className="space-y-2.5">
+                            <div className={inputCls}>
+                                <input
+                                    type="text"
+                                    value={manualHotelName}
+                                    onChange={(e) => setManualHotelName(e.target.value)}
+                                    placeholder="Nom de l'hébergement"
+                                    className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                                />
+                            </div>
+                            <div className={inputCls}>
+                                <input
+                                    type="text"
+                                    value={manualHotelAddress}
+                                    onChange={(e) => setManualHotelAddress(e.target.value)}
+                                    placeholder="Adresse complète"
+                                    className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="mb-1 block text-[11px] font-medium text-slate-500">Check-in</label>
+                                    <div className={inputCls}>
+                                        <input
+                                            type="date"
+                                            value={manualHotelCheckIn}
+                                            onChange={(e) => setManualHotelCheckIn(e.target.value)}
+                                            className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-[11px] font-medium text-slate-500">Check-out</label>
+                                    <div className={inputCls}>
+                                        <input
+                                            type="date"
+                                            value={manualHotelCheckOut}
+                                            onChange={(e) => setManualHotelCheckOut(e.target.value)}
+                                            className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            {selectedHotel ? (
+                                <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick || (() => {})} onRemove={onRemoveHotel} />
+                            ) : (
+                                <p className="text-[11px] text-slate-500">Nom ou adresse + dates pour afficher le récapitulatif.</p>
+                            )}
+                        </div>
+                    ) : selectedHotel ? (
                         <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick || (() => {})} onRemove={onRemoveHotel} />
                     ) : (
                         <button type="button" onClick={onOpenHotelSearch} className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3.5 py-3 text-left transition-all hover:border-cyan-500/40 hover:bg-cyan-500/[0.04]">
