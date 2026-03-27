@@ -87,7 +87,7 @@ const NAV_ITEMS = [
     { label: 'Profil', Icon: UserIcon, path: '/profil' },
     { label: 'Mes voyages', Icon: ClipboardIcon, path: '/voyages' },
     { label: 'Tarifs', Icon: PricingIcon, path: '/pricing' },
-    { label: 'À propos', Icon: InfoIcon, path: undefined },
+    { label: 'À propos', Icon: InfoIcon, path: '/a-propos' },
     { label: 'Contact', Icon: MailIcon, path: undefined },
 ];
 
