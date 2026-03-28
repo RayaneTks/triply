@@ -123,11 +123,15 @@ export default function ProfilPage() {
                     email: user.email || '',
                 }));
 
-                const prefs = await fetchPreferences(session.token);
-                setUserPreferences(prefs);
-
                 saveSession({ token: session.token, user });
                 setIsConnected(true);
+
+                try {
+                    const prefs = await fetchPreferences(session.token);
+                    setUserPreferences(prefs);
+                } catch {
+                    setError('Profil chargé, mais les préférences n\'ont pas pu être récupérées.');
+                }
             } catch {
                 clearSession();
                 setIsConnected(false);
