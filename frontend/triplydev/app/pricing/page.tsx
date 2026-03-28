@@ -11,15 +11,16 @@ const PLANS = [
   {
     id: 'free',
     name: 'Free',
-    description: 'Pour découvrir Triply et planifier vos premiers voyages.',
+    description: 'Pour découvrir Triply à votre rythme et préparer vos premiers séjours avec le sourire.',
     monthlyPrice: 0,
     annualPrice: 0,
     features: [
-      '3 itinéraires par mois',
-      'Recherche vols & hôtels',
-      'Assistant IA basique',
-      'Carte interactive',
-      'Export PDF',
+      'Jusqu’à trois voyages par an pour structurer vos idées sans pression',
+      'Un assistant voyage à vos côtés pour croiser les pistes et défricher le terrain (usage léger)',
+      'Des repères clairs pour avancer sur vos vols et vos hébergements',
+      'Une carte vivante pour visualiser votre parcours d’un coup d’œil',
+      'Un souvenir de voyage soigné à emporter ou à partager facilement',
+      'Notre équipe joignable par e-mail pour les questions essentieles',
     ],
     cta: 'Commencer gratuitement',
     popular: false,
@@ -28,16 +29,16 @@ const PLANS = [
   {
     id: 'silver',
     name: 'Silver',
-    description: 'Pour les voyageurs réguliers qui veulent optimiser chaque détail.',
+    description: 'Pour ceux qui voyagent régulièrement et veulent un vrai fil conducteur à chaque départ.',
     monthlyPrice: 18.99,
     annualPrice: 159.99,
     features: [
-      'Itinéraires illimités',
-      'Comparaison vols & hôtels avancée',
-      'Assistant IA prioritaire',
-      'Suggestions personnalisées',
-      'Export PowerPoint',
-      'Support prioritaire',
+      'Dix séjours à imaginer et à structurer dans l’année, avec une méthode claire',
+      'Un assistant voyage plus présent pour peaufiner chaque journée et chaque choix',
+      'Des comparatifs simples entre options de transport et de logement',
+      'Des suggestions qui respectent vos envies, votre rythme et votre budget',
+      'Un beau récap à montrer à vos proches avant de partir',
+      'Une équipe qui vous répond en priorité lorsque vous avez besoin d’un coup de pouce',
     ],
     cta: 'Essayer Silver',
     popular: true,
@@ -46,18 +47,17 @@ const PLANS = [
   {
     id: 'gold',
     name: 'Gold',
-    description: 'Pour les équipes et agences qui organisent des voyages à plusieurs.',
+    description: 'Pour les voyageurs exigeants qui enchaînent les destinations sur un seul compte.',
     monthlyPrice: 29.99,
     annualPrice: 251.99,
     features: [
-      'Tout Silver inclus',
-      'Gestion multi-utilisateurs',
-      'Tableau de bord partagé',
-      'API d\'intégration',
-      'Facturation centralisée',
-      'Account manager dédié',
+      'Tout le confort Silver, réservé à votre compte personnel',
+      'Autant de voyages que vous le souhaitez sur l’année, sans plafond',
+      'L’assistant vous accompagne en priorité maximale, même quand tout le monde planifie en même temps',
+      'Pensé pour enchaîner escapades et longs séjours sans vous freiner',
+      'Un accompagnement renforcé lorsque vous avez besoin d’attention particulière',
     ],
-    cta: 'Contacter les ventes',
+    cta: 'Essayer Gold',
     popular: false,
     href: '/',
   },
@@ -66,23 +66,23 @@ const PLANS = [
 const FEATURES = [
   {
     icon: '🗺️',
-    title: 'Carte 3D interactive',
-    desc: 'Visualisez vos destinations sur une carte mondiale immersive, jour et nuit.',
+    title: 'Votre voyage sur la carte',
+    desc: 'Parcourez le monde visuellement : repérez vos étapes, jour et nuit, comme sur un globe personnel.',
   },
   {
     icon: '🤖',
-    title: 'Assistant IA voyage',
-    desc: 'Triply AI vous aide à trouver vols, hôtels, activités et restaurants selon votre budget.',
+    title: 'Un copilote qui parle voyage',
+    desc: 'Posez vos questions : idées d’activités, restos, quartiers à explorer et arbitrages selon votre budget.',
   },
   {
     icon: '✈️',
-    title: 'Vols & hébergements',
-    desc: 'Recherche Amadeus intégrée : comparez les offres en temps réel.',
+    title: 'Vols et hébergements éclairés',
+    desc: 'Avancez sur vos options sans jongler entre dix sites : repères utiles pour choisir sereinement.',
   },
   {
     icon: '📋',
-    title: 'Itinéraires sur mesure',
-    desc: 'Générez des plans jour par jour, exportables en PDF ou PowerPoint.',
+    title: 'Un fil conducteur jour après jour',
+    desc: 'Transformez vos envies en parcours clair, prêt à suivre sur place ou à partager avant le départ.',
   },
 ];
 
@@ -175,8 +175,8 @@ export default function PricingPage() {
             </span>
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-slate-400">
-            Triply centralise vols, hôtels, activités et IA pour organiser vos voyages en quelques clics.
-            Choisissez le plan adapté à votre usage.
+            Rassemblez inspirations, comparatifs et conseils dans une seule expérience pensée pour les voyageurs.
+            Choisissez la formule qui suit votre rythme.
           </p>
         </motion.section>
 
@@ -261,7 +261,7 @@ export default function PricingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 * i }}
-                className={`relative flex flex-col rounded-2xl border p-8 transition-all duration-300 ${
+                className={`relative flex min-w-0 flex-col rounded-2xl border p-8 transition-all duration-300 ${
                   plan.popular
                     ? 'border-primary'
                     : 'border-white/10 bg-white/2 hover:border-white/20 hover:bg-white/4'
@@ -281,27 +281,29 @@ export default function PricingPage() {
                   <p className="mt-2 text-sm text-slate-400">{plan.description}</p>
                 </div>
 
-                <div className="mb-6 flex items-baseline gap-1">
-                  <div className="relative min-w-22.5">
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`${plan.id}-${displayPrice}-${period}`}
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className="inline-block text-4xl font-bold"
-                        style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
-                      >
-                        {displayPrice}€
-                      </motion.span>
-                    </AnimatePresence>
-                  </div>
-                  <span className="text-slate-500">{period}</span>
-                  {isAnnual && plan.monthlyPrice > 0 && (
-                    <span className="ml-2 text-xs text-slate-500">
-                      soit {Math.round((plan.annualPrice / 12) * 10) / 10}€/mois
+                <div className="mb-6 min-w-0">
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
+                    <span className="min-w-0 shrink-0">
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={`${plan.id}-${displayPrice}-${period}`}
+                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-block text-3xl font-bold tabular-nums sm:text-4xl"
+                          style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
+                        >
+                          {displayPrice}€
+                        </motion.span>
+                      </AnimatePresence>
                     </span>
+                    <span className="shrink-0 text-sm text-slate-500 sm:text-base">{period}</span>
+                  </div>
+                  {isAnnual && plan.monthlyPrice > 0 && (
+                    <p className="mt-1 text-xs leading-snug text-slate-500">
+                      soit {Math.round((plan.annualPrice / 12) * 10) / 10}€/mois
+                    </p>
                   )}
                 </div>
 
