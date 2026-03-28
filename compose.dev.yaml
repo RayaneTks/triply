@@ -10,14 +10,10 @@ services:
     container_name: tri-app
     ports:
       - "5173:3000"
+    env_file:
+      - ./frontend/triplydev/.env
     environment:
       NODE_ENV: development
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-      WATCHPACK_POLLING_INTERVAL: "1000"
-      NEXT_PUBLIC_BACKEND_API_URL: /api/v1
-      BACKEND_API_BASE_URL: http://tri-api/api/v1
-      BACKEND_PROXY_TARGET: http://tri-api
     user: "0:0"
     command: npm run dev -- --webpack --hostname 0.0.0.0 --port 3000
     networks:
