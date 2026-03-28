@@ -9,9 +9,8 @@ services:
       target: production
     container_name: tri-app
     restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_BACKEND_API_URL: /api/v1
-      BACKEND_API_BASE_URL: http://tri-api/api/v1
+    env_file:
+      - ./frontend/triplydev/.env
     networks:
       - triply-production
       - web
