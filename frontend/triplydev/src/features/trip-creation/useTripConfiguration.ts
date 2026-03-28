@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 function daysBetween(start: string, end: string): number {
     if (!start || !end) return 0;
@@ -7,6 +7,21 @@ function daysBetween(start: string, end: string): number {
     if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
     const diff = b.getTime() - a.getTime();
     return Math.max(1, Math.ceil(diff / (24 * 60 * 60 * 1000)));
+}
+
+/** Ajoute des jours calendaires à une date ISO YYYY-MM-DD (fuseau local). */
+function addDaysToIsoDate(iso: string, daysToAdd: number): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+    if (!m) return iso;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const dt = new Date(y, mo - 1, d);
+    dt.setDate(dt.getDate() + daysToAdd);
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
 }
 
 export interface TripConfigurationState {
@@ -101,6 +116,14 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const computedDays = daysBetween(outboundDate, returnDate);
     const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
 
+    const setTravelDays = useCallback((raw: number) => {
+        const n = Math.min(365, Math.max(1, Math.floor(Number(raw)) || 1));
+        setTravelDaysFallback(n);
+        if (outboundDate.trim()) {
+            setReturnDate(addDaysToIsoDate(outboundDate, n));
+        }
+    }, [outboundDate]);
+
     return {
         departureCity,
         arrivalCity,
@@ -129,7 +152,7 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
-        setTravelDays: setTravelDaysFallback,
+        setTravelDays,
         setTravelerCount,
         setBudget,
         setActivityTime,

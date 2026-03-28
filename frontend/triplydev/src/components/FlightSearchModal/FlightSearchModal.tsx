@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
-import { TimePicker } from '@/src/components/TimePicker/TimePicker';
 import { Button } from '@/src/components/Button/Button';
 import { FlightResults } from '@/src/components/FlightResults/FlightResults';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
@@ -61,14 +60,6 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
     setArrivalDate,
     departureDate,
     setDepartureDate,
-    outboundDepartureTime,
-    setOutboundDepartureTime,
-    outboundArrivalTime,
-    setOutboundArrivalTime,
-    returnDepartureTime,
-    setReturnDepartureTime,
-    returnArrivalTime,
-    setReturnArrivalTime,
     travelerCount,
     setTravelerCount,
     budget,
@@ -238,40 +229,6 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                                 {errors.dates}
                                             </p>
                                         )}
-                                        <p className="mt-2 text-[11px] font-medium text-slate-500">Vol aller</p>
-                                        <div className="mt-1 flex flex-col gap-2 sm:flex-row">
-                                            <div className="min-w-0 flex-1">
-                                                <TimePicker
-                                                    value={outboundDepartureTime}
-                                                    onChange={setOutboundDepartureTime}
-                                                    label="Décollage"
-                                                />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <TimePicker
-                                                    value={outboundArrivalTime}
-                                                    onChange={setOutboundArrivalTime}
-                                                    label="Atterrissage"
-                                                />
-                                            </div>
-                                        </div>
-                                        <p className="mt-2 text-[11px] font-medium text-slate-500">Vol retour</p>
-                                        <div className="mt-1 flex flex-col gap-2 sm:flex-row">
-                                            <div className="min-w-0 flex-1">
-                                                <TimePicker
-                                                    value={returnDepartureTime}
-                                                    onChange={setReturnDepartureTime}
-                                                    label="Décollage"
-                                                />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <TimePicker
-                                                    value={returnArrivalTime}
-                                                    onChange={setReturnArrivalTime}
-                                                    label="Atterrissage"
-                                                />
-                                            </div>
-                                        </div>
                                     </div>
 
                                     <div className="pt-4">

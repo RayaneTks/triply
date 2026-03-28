@@ -232,6 +232,10 @@ FORMULAIRE ÉTAPE 1 (Triply) — remplissage assisté :
   - dietarySelections : sous-ensemble EXACT parmi [${diets}].
 - Ne mets pas de valeurs inventées douteuses : mieux vaut omettre un champ que de deviner un mauvais code IATA.
 - Dans "reply", résume ce que tu as rempli ou ce qui manque encore.
+
+Suggestions d'activités (suggestedActivities) et itinéraire :
+- Le JSON ci-dessus décrit aussi le voyage déjà saisi par l'utilisateur. Pour toute proposition de POI ou d'activités, tu DOIS t'aligner sur ces données : nombre de voyageurs, budget, rythme (activityTime), dates, préférences hôtel (selectedOptions), régime alimentaire (dietarySelections), vol/hôtel manuels ou sélectionnés si présents.
+- Choisis des lieux et types d'expérience cohérents (ex. familles, budget serré, contraintes alimentaires, style plage / ville / luxe, proximité logique avec l'hébergement ou la ville d'arrivée).
 `;
 }
 
