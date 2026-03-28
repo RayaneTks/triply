@@ -2,16 +2,15 @@ services:
   # ====================================
   # Frontend service using Nginx to serve the built assets from Vite.
   # ====================================
-  app:
+  tri-app:
     build:
       context: ./frontend/triplydev
       dockerfile: ./docker/production/nginx/Dockerfile
       target: production
     container_name: tri-app
     restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_BACKEND_API_URL: /api/v1
-      BACKEND_API_BASE_URL: http://tri-api/api/v1
+    env_file:
+      - ./frontend/triplydev/.env
     networks:
       - triply-production
       - web
@@ -23,7 +22,7 @@ services:
       - "traefik.http.routers.tri-front.tls.certresolver=myresolver"
       - "traefik.http.services.tri-front.loadbalancer.server.port=3000"
 
-  api:
+  tri-api:
     build:
       context: ./backend
       dockerfile: ./docker/production/nginx/Dockerfile
@@ -40,10 +39,10 @@ services:
     networks:
       - triply-production
     depends_on:
-      php-fpm:
-        condition: service_healthy  # Wait for php-fpm health check
+      tri-php-fpm:
+        condition: service_healthy  # Wait for tri-php-fpm health check
 
-  php-fpm:
+  tri-php-fpm:
     # For the php-fpm service, we will create a custom image to install the necessary PHP extensions and setup proper permissions.
     build:
       context: ./backend

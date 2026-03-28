@@ -16,6 +16,7 @@ export interface AuthSession {
 
 export interface UserPreferences {
     environments?: string[];
+    planning_mode?: 'full_ai' | 'semi_ai' | 'manual' | null;
     traveler_profile?: string | null;
     interests?: string[];
     pace?: string | null;

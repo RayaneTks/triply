@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import MessageList from '@/src/components/Messages/MessageList';
 import { SearchBar } from '@/src/components/Searchbar/Searchbar';
 import { Button } from '@/src/components/Button/Button';
-import { getStoredSession } from '@/src/lib/auth-client';
+import { getStoredSession, type UserPreferences } from '@/src/lib/auth-client';
 import { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
 import type { AssistantStep1FormPatch } from '@/src/features/trip-creation/step1-form-patch';
 
@@ -92,6 +92,27 @@ function saveMessages(messages: ChatMessage[]) {
     } catch {
         // ignore
     }
+}
+
+function toAssistantPreferences(preferences: UserPreferences | string[] | null | undefined): string[] {
+    if (Array.isArray(preferences)) {
+        return [...new Set(preferences.filter((value): value is string => typeof value === 'string' && value.trim() !== ''))];
+    }
+    if (!preferences || typeof preferences !== 'object') {
+        return [];
+    }
+
+    const values = [
+        ...(preferences.environments ?? []),
+        ...(preferences.interests ?? []),
+        ...(preferences.diet ?? []),
+        ...(preferences.visited_cities ?? []),
+        preferences.traveler_profile,
+        preferences.pace,
+        preferences.food_preference,
+    ];
+
+    return [...new Set(values.filter((value): value is string => typeof value === 'string' && value.trim() !== ''))];
 }
 
 const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(
@@ -221,8 +242,11 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     try {
                         const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFERENCES_STORAGE_KEY) : null;
                         if (!raw) return [];
-                        const parsed = JSON.parse(raw);
-                        return Array.isArray(parsed) ? parsed : [];
+                        const parsed: unknown = JSON.parse(raw);
+                        if (Array.isArray(parsed)) {
+                            return toAssistantPreferences(parsed);
+                        }
+                        return toAssistantPreferences(parsed as UserPreferences);
                     } catch {
                         return [];
                     }
