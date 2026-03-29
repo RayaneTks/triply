@@ -402,6 +402,8 @@ class TripService implements TripServiceInterface
                 ?: $voyage->destination,
             'code_postal' => null,
             'ville' => $this->asNullableString(Arr::get($hotel, 'cityName')) ?: $voyage->destination,
+            'latitude' => is_numeric(Arr::get($hotel, 'latitude')) ? (float) Arr::get($hotel, 'latitude') : null,
+            'longitude' => is_numeric(Arr::get($hotel, 'longitude')) ? (float) Arr::get($hotel, 'longitude') : null,
             'arrivee_le' => $this->resolveDateTime(
                 $this->asNullableString(Arr::get($hotel, 'checkInDate')),
                 Carbon::parse($voyage->date_debut)->setTime(15, 0)
@@ -546,6 +548,8 @@ class TripService implements TripServiceInterface
             $snapshot['hotelSummary'] = [
                 'name' => $firstHebergement->nom,
                 'address' => $firstHebergement->adresse,
+                'latitude' => $firstHebergement->latitude,
+                'longitude' => $firstHebergement->longitude,
                 'cityName' => $firstHebergement->ville,
                 'totalPrice' => (string) $firstHebergement->prix,
                 'currency' => $firstHebergement->devise ?: 'EUR',
@@ -628,31 +632,6 @@ class TripService implements TripServiceInterface
             }
             if ($compactDestination !== []) {
                 $stored['destinationSummary'] = $compactDestination;
-            }
-        }
-
-        $hotelSummary = Arr::get($snapshot, 'hotelSummary');
-        if (is_array($hotelSummary)) {
-            $compactHotel = [];
-            foreach (['name', 'address', 'cityCode', 'cityName', 'totalPrice', 'currency', 'checkInDate', 'checkOutDate', 'bookingUrl'] as $key) {
-                $val = $this->asNullableString($hotelSummary[$key] ?? null);
-                if ($val !== null) {
-                    $compactHotel[$key] = $val;
-                }
-            }
-
-            $latitude = $hotelSummary['latitude'] ?? null;
-            if (is_numeric($latitude)) {
-                $compactHotel['latitude'] = (float) $latitude;
-            }
-
-            $longitude = $hotelSummary['longitude'] ?? null;
-            if (is_numeric($longitude)) {
-                $compactHotel['longitude'] = (float) $longitude;
-            }
-
-            if ($compactHotel !== []) {
-                $stored['hotelSummary'] = $compactHotel;
             }
         }
 

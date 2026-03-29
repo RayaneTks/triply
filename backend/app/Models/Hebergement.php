@@ -13,6 +13,8 @@ class Hebergement extends Model
         'adresse',
         'code_postal',
         'ville',
+        'latitude',
+        'longitude',
         'arrivee_le',
         'depart_le',
         'prix',
@@ -22,6 +24,8 @@ class Hebergement extends Model
     ];
 
     protected $casts = [
+        'latitude' => 'float',
+        'longitude' => 'float',
         'arrivee_le' => 'datetime',
         'depart_le' => 'datetime',
     ];

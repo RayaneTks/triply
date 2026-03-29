@@ -1359,13 +1359,15 @@ export default function Home() {
             hotelSummary: effectiveHotelOffer
                 ? {
                       name: effectiveHotelOffer.hotelName,
-                                            address: effectiveHotelOffer.hotelAddress,
+                      address: effectiveHotelOffer.hotelAddress,
                       latitude: effectiveHotelOffer.hotelLatitude,
                       longitude: effectiveHotelOffer.hotelLongitude,
                       cityCode: effectiveHotelOffer.cityCode,
                       cityName: tripConfig.arrivalCityName || undefined,
-                                            totalPrice: effectiveHotelOffer.price?.total,
-                                            currency: effectiveHotelOffer.price?.currency,
+                      totalPrice: effectiveHotelOffer.price?.total,
+                      currency: effectiveHotelOffer.price?.currency,
+                      checkInDate: effectiveHotelOffer.checkInDate,
+                      checkOutDate: effectiveHotelOffer.checkOutDate,
                   }
                 : undefined,
         };
