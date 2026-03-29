@@ -20,33 +20,72 @@ class TripService implements TripServiceInterface
 
     public function createTrip(array $payload): array
     {
-        $user = Auth::user();
-        if (! $user) {
-            throw new ModelNotFoundException('Utilisateur non authentifie.');
+        // #region agent log
+        $agentLog = static function (string $hypothesisId, string $location, string $message, array $data = []): void {
+            $p = storage_path('logs/debug-cc5fd8.log');
+            file_put_contents(
+                $p,
+                json_encode([
+                    'sessionId' => 'cc5fd8',
+                    'hypothesisId' => $hypothesisId,
+                    'location' => $location,
+                    'message' => $message,
+                    'data' => $data,
+                    'timestamp' => (int) round(microtime(true) * 1000),
+                ], JSON_UNESCAPED_UNICODE)."\n",
+                FILE_APPEND | LOCK_EX
+            );
+        };
+        // #endregion
+
+        try {
+            $agentLog('A', 'TripService::createTrip', 'entry', ['payload_keys' => array_keys($payload)]);
+
+            $user = Auth::user();
+            if (! $user) {
+                throw new ModelNotFoundException('Utilisateur non authentifie.');
+            }
+
+            $startDate = $payload['start_date'] ?? now()->toDateString();
+            $endDate = $payload['end_date'] ?? $startDate;
+            $planSnapshot = $payload['plan_snapshot'] ?? null;
+            $storedSnapshot = $this->compactSnapshotForStorage($planSnapshot);
+
+            $voyage = Voyage::query()->create([
+                'titre' => $payload['title'],
+                'destination' => $this->resolveDestination($payload['destination'], $planSnapshot),
+                'date_debut' => $startDate,
+                'date_fin' => $endDate,
+                'budget_total' => $this->extractBudgetTotal($planSnapshot),
+                'nb_voyageurs' => $payload['travelers_count'] ?? 1,
+                'description' => null,
+                'user_id' => $user->id,
+                'plan_snapshot' => $storedSnapshot,
+            ]);
+
+            $agentLog('B', 'TripService::createTrip', 'after_voyage_create', ['voyage_id' => $voyage->id]);
+
+            if (is_array($planSnapshot)) {
+                $agentLog('C', 'TripService::createTrip', 'before_sync', []);
+                $this->syncStructuredTripData($voyage, $planSnapshot);
+                $agentLog('D', 'TripService::createTrip', 'after_sync', []);
+            }
+
+            $out = $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
+            $agentLog('E', 'TripService::createTrip', 'success', []);
+
+            return $out;
+        } catch (\Throwable $e) {
+            // #region agent log
+            $agentLog('X', 'TripService::createTrip', 'exception', [
+                'class' => $e::class,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            // #endregion
+            throw $e;
         }
-
-        $startDate = $payload['start_date'] ?? now()->toDateString();
-        $endDate = $payload['end_date'] ?? $startDate;
-        $planSnapshot = $payload['plan_snapshot'] ?? null;
-        $storedSnapshot = $this->compactSnapshotForStorage($planSnapshot);
-
-        $voyage = Voyage::query()->create([
-            'titre' => $payload['title'],
-            'destination' => $this->resolveDestination($payload['destination'], $planSnapshot),
-            'date_debut' => $startDate,
-            'date_fin' => $endDate,
-            'budget_total' => $this->extractBudgetTotal($planSnapshot),
-            'nb_voyageurs' => $payload['travelers_count'] ?? 1,
-            'description' => null,
-            'user_id' => $user->id,
-            'plan_snapshot' => $storedSnapshot,
-        ]);
-
-        if (is_array($planSnapshot)) {
-            $this->syncStructuredTripData($voyage, $planSnapshot);
-        }
-
-        return $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
     }
 
     public function listTrips(): array
@@ -589,6 +628,31 @@ class TripService implements TripServiceInterface
             }
             if ($compactDestination !== []) {
                 $stored['destinationSummary'] = $compactDestination;
+            }
+        }
+
+        $hotelSummary = Arr::get($snapshot, 'hotelSummary');
+        if (is_array($hotelSummary)) {
+            $compactHotel = [];
+            foreach (['name', 'address', 'cityCode', 'cityName', 'totalPrice', 'currency', 'checkInDate', 'checkOutDate', 'bookingUrl'] as $key) {
+                $val = $this->asNullableString($hotelSummary[$key] ?? null);
+                if ($val !== null) {
+                    $compactHotel[$key] = $val;
+                }
+            }
+
+            $latitude = $hotelSummary['latitude'] ?? null;
+            if (is_numeric($latitude)) {
+                $compactHotel['latitude'] = (float) $latitude;
+            }
+
+            $longitude = $hotelSummary['longitude'] ?? null;
+            if (is_numeric($longitude)) {
+                $compactHotel['longitude'] = (float) $longitude;
+            }
+
+            if ($compactHotel !== []) {
+                $stored['hotelSummary'] = $compactHotel;
             }
         }
 

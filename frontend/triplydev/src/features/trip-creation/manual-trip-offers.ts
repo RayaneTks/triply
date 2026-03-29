@@ -92,6 +92,7 @@ export function buildManualHotelOffer(i: ManualHotelBuildInput): HotelOffer | nu
         id: 'manual-hotel',
         hotelId: 'manual',
         hotelName: displayName.slice(0, 120),
+        hotelAddress: addr || undefined,
         cityCode: cc.length >= 2 ? cc.slice(0, 3) : '—',
         checkInDate: i.manualHotelCheckIn.trim(),
         checkOutDate: i.manualHotelCheckOut.trim(),

@@ -16,7 +16,7 @@ import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelRe
 export const HOTEL_PREFERENCE_OPTIONS = [
     'Petit déjeuner inclus', 'Proche du centre ville', 'Spa/piscine',
     'Plage', 'Équipement', 'Retour positif', 'Hôtel de luxe',
-    'Animaux domestiques', 'Réservé aux adultes', 'Wi-Fi',
+    'Animaux domestiques', 'Réservé aux adultes', 'LGBTQIA+ friendly',
 ];
 
 /** Valeurs Amadeus Hotel Offers API v3 (boardType) */
@@ -320,15 +320,19 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-100">
-                                            Préférences
+                                            Préférences de voyage
                                         </label>
                                         <MultiSelect
+                                            variant="tripForm"
                                             options={multiSelectOptions}
                                             selectedValues={selectedOptions}
-                                            onChange={setSelectedOptions}
-                                            placeholder="Sélectionner des préférences..."
+                                            onChange={setSelectedOptions ?? (() => {})}
+                                            placeholder="Préférences de voyage…"
                                             className="w-full"
                                         />
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            Identique au formulaire d&apos;étape 1 : les choix restent synchronisés.
+                                        </p>
                                     </div>
 
                                     <div className="pt-4">

@@ -101,6 +101,7 @@ export default function VoyagesPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trips, setTrips] = useState<TripSummary[]>([]);
+    const [creationOrder, setCreationOrder] = useState<'desc' | 'asc'>('desc');
 
     useEffect(() => {
         let active = true;
@@ -138,7 +139,22 @@ export default function VoyagesPage() {
         };
     }, [router]);
 
-    const hasTrips = useMemo(() => trips.length > 0, [trips]);
+    const sortedTrips = useMemo(() => {
+        const getCreatedTimestamp = (trip: TripSummary): number => {
+            const created = parseTripDate(trip.created_at || '');
+            if (created) return created.getTime();
+            const fallback = parseTripDate(trip.start_date);
+            return fallback ? fallback.getTime() : 0;
+        };
+
+        return [...trips].sort((a, b) => {
+            const aTime = getCreatedTimestamp(a);
+            const bTime = getCreatedTimestamp(b);
+            return creationOrder === 'asc' ? aTime - bTime : bTime - aTime;
+        });
+    }, [trips, creationOrder]);
+
+    const hasTrips = useMemo(() => sortedTrips.length > 0, [sortedTrips]);
 
     return (
         <div className="flex h-dvh min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
@@ -165,12 +181,34 @@ export default function VoyagesPage() {
                         </Link>
                     </div>
 
-                    <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
-                        Mes voyages
-                    </h1>
-                    <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                        Consultez et gerez tous vos voyages
-                    </p>
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col">
+                            <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
+                                Mes voyages
+                            </h1>
+                            <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                Consultez et gerez tous vos voyages
+                            </p>
+                        </div>
+                        {!loading && !error && hasTrips && (
+                            <div className="mb-6 flex items-center justify-end gap-2">
+                                <select
+                                    id="creation-order"
+                                    value={creationOrder}
+                                    onChange={(e) => setCreationOrder(e.target.value as 'desc' | 'asc')}
+                                    className="rounded-lg border px-3 py-1.5 text-sm"
+                                    style={{
+                                        backgroundColor: 'var(--background)',
+                                        borderColor: 'rgba(255, 255, 255, 0.18)',
+                                        color: 'var(--foreground)',
+                                    }}
+                                >
+                                    <option value="desc">Plus recents</option>
+                                    <option value="asc">Plus anciens</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
 
                     {loading && (
                         <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
@@ -193,7 +231,7 @@ export default function VoyagesPage() {
 
                     {!loading && !error && hasTrips && (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {trips.map((trip) => (
+                            {sortedTrips.map((trip) => (
                                 <Link key={trip.id} href={`/voyages/${trip.id}`}>
                                     <article
                                         className="rounded-2xl p-5 h-full cursor-pointer transition-all hover:border-primary hover:bg-white/5"

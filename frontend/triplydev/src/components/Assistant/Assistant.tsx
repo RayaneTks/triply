@@ -1,15 +1,23 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { v4 as uuid } from 'uuid';
 import MessageList from '@/src/components/Messages/MessageList';
 import { SearchBar } from '@/src/components/Searchbar/Searchbar';
 import { Button } from '@/src/components/Button/Button';
 import { getStoredSession, type UserPreferences } from '@/src/lib/auth-client';
 import { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
-import type { AssistantStep1FormPatch } from '@/src/features/trip-creation/step1-form-patch';
+import {
+    type AssistantStep1FormPatch,
+    buildStep1ActivityConstraintsPromptFragment,
+} from '@/src/features/trip-creation/step1-form-patch';
 
-const CHAT_STORAGE_KEY = 'triply-assistant-chat';
+const LEGACY_CHAT_STORAGE_KEY = 'triply-assistant-chat';
+
+function chatStorageKeyForUser(userId: string | number | null | undefined): string | null {
+    if (userId == null || userId === '') return null;
+    return `${LEGACY_CHAT_STORAGE_KEY}:user:${String(userId)}`;
+}
 
 export type AssistantChatMode = 'itinerary' | 'qa';
 
@@ -60,6 +68,8 @@ export type AssistantHandle = {
 };
 
 interface AssistantProps {
+    /** Identifiant du compte connecté : historique du chat isolé par utilisateur (localStorage). */
+    chatOwnerId: string | number | null;
     onUpdateLocations?: (locations: Location[]) => void;
     destination?: string;
     onClearChat?: () => void;
@@ -73,22 +83,48 @@ interface AssistantProps {
     onApplyStep1Form?: (patch: AssistantStep1FormPatch) => void;
 }
 
-function loadStoredMessages(): ChatMessage[] {
+function loadStoredMessages(userId: string | number | null | undefined): ChatMessage[] {
     if (typeof window === 'undefined') return [];
+    const key = chatStorageKeyForUser(userId);
+    if (!key) return [];
     try {
-        const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
+        const raw = window.localStorage.getItem(key);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        }
+        const legacyRaw = window.localStorage.getItem(LEGACY_CHAT_STORAGE_KEY);
+        if (legacyRaw) {
+            const legacyParsed = JSON.parse(legacyRaw);
+            if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
+                window.localStorage.setItem(key, legacyRaw);
+                window.localStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
+                return legacyParsed;
+            }
+        }
     } catch {
         return [];
     }
+    return [];
 }
 
-function saveMessages(messages: ChatMessage[]) {
+function saveMessages(messages: ChatMessage[], userId: string | number | null | undefined) {
     if (typeof window === 'undefined') return;
+    const key = chatStorageKeyForUser(userId);
+    if (!key) return;
     try {
-        window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+        window.localStorage.setItem(key, JSON.stringify(messages));
+    } catch {
+        // ignore
+    }
+}
+
+function clearStoredMessagesForUser(userId: string | number | null | undefined) {
+    if (typeof window === 'undefined') return;
+    const key = chatStorageKeyForUser(userId);
+    if (!key) return;
+    try {
+        window.localStorage.removeItem(key);
     } catch {
         // ignore
     }
@@ -117,6 +153,7 @@ function toAssistantPreferences(preferences: UserPreferences | string[] | null |
 
 const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(
     {
+        chatOwnerId,
         onUpdateLocations,
         destination,
         onClearChat,
@@ -152,21 +189,20 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         dietaryLabels: step1DietaryLabels ?? [],
     };
 
-    useEffect(() => {
-        setMessages(loadStoredMessages());
-    }, []);
+    useLayoutEffect(() => {
+        setMessages(loadStoredMessages(chatOwnerId));
+    }, [chatOwnerId]);
 
     useEffect(() => {
+        if (chatOwnerId == null || chatOwnerId === '') return;
         if (messages.length > 0) {
-            saveMessages(messages);
+            saveMessages(messages, chatOwnerId);
         }
-    }, [messages]);
+    }, [messages, chatOwnerId]);
 
     const clearChat = () => {
         setMessages([]);
-        if (typeof window !== 'undefined') {
-            window.localStorage.removeItem(CHAT_STORAGE_KEY);
-        }
+        clearStoredMessagesForUser(chatOwnerId);
         onClearChat?.();
     };
 
@@ -358,8 +394,10 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 const ctx = planningContextRef.current;
                 const day = ctx?.selectedDay ?? 1;
                 const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
+                const step1Line = buildStep1ActivityConstraintsPromptFragment(step1ApiRef.current.snapshot);
+                const prefix = step1Line ? `${step1Line} ` : '';
                 void postUserMessage(
-                    `Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                    `${prefix}Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
                     undefined,
                     day
                 );
@@ -370,12 +408,14 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
                 const travelDays = Math.max(1, ctx?.travelDays ?? 1);
                 const dayIndexes = Array.from({ length: travelDays }, (_, i) => i + 1);
+                const step1Line = buildStep1ActivityConstraintsPromptFragment(step1ApiRef.current.snapshot);
+                const prefix = step1Line ? `${step1Line} ` : '';
 
                 await dayIndexes.reduce(
                     (chain, day) =>
                         chain.then(() =>
                             postUserMessage(
-                                `Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                                `${prefix}Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
                                 undefined,
                                 day
                             )
@@ -477,7 +517,10 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     </div>
                 )}
             </div>
-            <div className="shrink-0 border-t border-white/10 px-4 pb-4 pt-2 flex flex-col gap-2" style={{ backgroundColor: 'var(--background, #222222)' }}>
+            <div
+                className="flex shrink-0 flex-col gap-2 border-t border-white/10 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]"
+                style={{ backgroundColor: 'var(--background, #222222)' }}
+            >
                 <div className="flex justify-between items-center">
                     <button
                         type="button"

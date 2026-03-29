@@ -4,6 +4,29 @@ const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
 const AMADEUS_BASE_URL = 'https://test.api.amadeus.com';
 
+type AmadeusAddress = {
+    lines?: string[];
+    cityName?: string;
+    countryCode?: string;
+    postalCode?: string;
+};
+
+type AmadeusGeoCode = {
+    latitude?: number;
+    longitude?: number;
+};
+
+function formatAddress(address?: AmadeusAddress): string | undefined {
+    if (!address) return undefined;
+    const lines = Array.isArray(address.lines) ? address.lines.filter((v) => typeof v === 'string' && v.trim() !== '') : [];
+    const city = typeof address.cityName === 'string' ? address.cityName.trim() : '';
+    const zip = typeof address.postalCode === 'string' ? address.postalCode.trim() : '';
+    const country = typeof address.countryCode === 'string' ? address.countryCode.trim() : '';
+    const cityBlock = [zip, city].filter(Boolean).join(' ');
+    const all = [...lines, cityBlock, country].filter(Boolean);
+    return all.length > 0 ? all.join(', ') : undefined;
+}
+
 async function getAmadeusToken() {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
@@ -54,17 +77,20 @@ export async function GET(req: Request) {
             hotelId?: string;
             iataCode?: string;
             name?: string;
+            address?: AmadeusAddress;
             geoCode?: { latitude?: number; lat?: number; longitude?: number; lng?: number; lon?: number };
         }
         const locations = (data.data || []).map((h: AmadeusHotelGeoItem) => {
             const geo = h.geoCode || {};
             const lat = geo.latitude ?? geo.lat ?? 0;
             const lng = geo.longitude ?? geo.lng ?? geo.lon ?? 0;
+            const formattedAddress = formatAddress(h.address);
             return {
                 id: h.hotelId ?? String(h.iataCode ?? Math.random()),
                 title: h.name ?? 'Hôtel',
                 coordinates: { latitude: lat, longitude: lng },
-                type: 'hotel'
+                type: 'hotel',
+                ...(formattedAddress ? { address: formattedAddress } : {}),
             };
         });
 
@@ -185,6 +211,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ data: [], dictionaries: { hotels: {} } });
         }
 
+        const hotelMetaById = new Map<string, { address?: AmadeusAddress; formattedAddress?: string; geoCode?: AmadeusGeoCode }>();
+        for (const h of hotels as Array<{ hotelId?: string; address?: AmadeusAddress; geoCode?: AmadeusGeoCode }>) {
+            if (!h?.hotelId) continue;
+            hotelMetaById.set(h.hotelId, {
+                ...(h.address ? { address: h.address } : {}),
+                ...(h.address ? { formattedAddress: formatAddress(h.address) } : {}),
+                ...(h.geoCode ? { geoCode: h.geoCode } : {}),
+            });
+        }
+
         // 3. Rechercher les offres pour ces hôtels (approfondi : plus d'offres par hôtel)
         const params = new URLSearchParams({
             hotelIds: hotelIds.join(','),
@@ -228,6 +264,29 @@ export async function POST(request: Request) {
                 { error: 'Erreur recherche hôtels', details: offersData?.errors || offersData },
                 { status: offersResponse.status }
             );
+        }
+
+        if (Array.isArray(offersData?.data)) {
+            offersData.data = offersData.data.map((entry: Record<string, unknown>) => {
+                const hotel = (entry.hotel ?? null) as Record<string, unknown> | null;
+                const hotelId = typeof hotel?.hotelId === 'string' ? hotel.hotelId : '';
+                const extra = hotelId ? hotelMetaById.get(hotelId) : undefined;
+                if (!hotel || !extra) return entry;
+
+                const lat = typeof extra.geoCode?.latitude === 'number' ? extra.geoCode.latitude : undefined;
+                const lng = typeof extra.geoCode?.longitude === 'number' ? extra.geoCode.longitude : undefined;
+
+                return {
+                    ...entry,
+                    hotel: {
+                        ...hotel,
+                        ...(extra.address ? { address: extra.address } : {}),
+                        ...(extra.formattedAddress ? { formattedAddress: extra.formattedAddress } : {}),
+                        ...(lat != null ? { latitude: lat } : {}),
+                        ...(lng != null ? { longitude: lng } : {}),
+                    },
+                };
+            });
         }
 
         return NextResponse.json(offersData);

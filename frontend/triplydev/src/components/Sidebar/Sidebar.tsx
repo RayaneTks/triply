@@ -6,18 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/Button/Button';
-
-function useMediaQuery(query: string): boolean {
-    return useSyncExternalStore(
-        (onStoreChange) => {
-            const m = window.matchMedia(query);
-            m.addEventListener('change', onStoreChange);
-            return () => m.removeEventListener('change', onStoreChange);
-        },
-        () => window.matchMedia(query).matches,
-        () => false
-    );
-}
+import { MEDIA_MAX_LG, useMediaQuery } from '@/src/hooks/useMediaQuery';
 
 const iconSize = 20;
 
@@ -96,6 +85,8 @@ export interface SidebarProps {
     className?: string;
     isCollapsed?: boolean;
     onToggle?: () => void;
+    /** Quand le parent affiche déjà l’overlay (drawer mobile), ne pas dupliquer le backdrop. */
+    useExternalBackdrop?: boolean;
 
     isConnected: boolean;
     onLoginClick: () => void;
@@ -107,12 +98,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                     className = '',
                                                     isCollapsed = false,
                                                     onToggle,
+                                                    useExternalBackdrop = false,
                                                     isConnected,
                                                     onLoginClick,
                                                     onLogoutClick,
                                                 }) => {
     const pathname = usePathname();
-    const isMobile = useMediaQuery('(max-width: 768px)');
+    const isMobile = useMediaQuery(MEDIA_MAX_LG);
     const hasHydrated = useSyncExternalStore(
         () => () => {},
         () => true,
@@ -127,17 +119,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ? NAV_ITEMS
         : NAV_ITEMS.filter((item) => item.path !== '/voyages');
 
+    const handleToggle = () => {
+        onToggle?.();
+    };
+
     return (
         <>
-            {effectiveIsMobile && !isCollapsed && (
+            {effectiveIsMobile && !isCollapsed && !useExternalBackdrop && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-20 md:hidden"
-                    onClick={onToggle}
+                    className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+                    onClick={handleToggle}
                     aria-hidden="true"
                 />
             )}
         <motion.aside
-            className={`relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl md:z-auto ${className}`}
+            className={`relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl lg:z-auto ${className}`}
             style={{ backgroundColor: 'var(--background, #222222)' }}
             animate={{ width: isCollapsed ? collapsedW : expandedW }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
@@ -166,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 )}
                 <button
-                    onClick={onToggle}
+                    onClick={handleToggle}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                     aria-label={isCollapsed ? 'Ouvrir le menu' : 'Fermer le menu'}
                 >

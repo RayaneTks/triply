@@ -144,3 +144,87 @@ export function buildStep1FormSnapshotForAssistant(state: TripConfigurationState
         manualHotelCheckOut: state.manualHotelCheckOut,
     };
 }
+
+/**
+ * Rappel court pour les prompts « suggestions activités » (jour / séjour entier),
+ * afin que le modèle aligne les POI sur l’étape 1 (y compris vol/hôtel passés dans le snapshot).
+ */
+export function buildStep1ActivityConstraintsPromptFragment(snapshot: Record<string, unknown>): string {
+    const bits: string[] = [];
+
+    const arrName = snapshot.arrivalCityName;
+    const arr = snapshot.arrivalCity;
+    if (typeof arrName === 'string' && arrName.trim()) bits.push(`destination « ${arrName.trim()} »`);
+    else if (typeof arr === 'string' && arr.trim()) bits.push(`destination (IATA) ${arr.trim().toUpperCase()}`);
+
+    const dep = snapshot.departureCity;
+    if (typeof dep === 'string' && dep.trim()) bits.push(`départ (IATA) ${dep.trim().toUpperCase()}`);
+
+    const tc = snapshot.travelerCount;
+    if (typeof tc === 'number' && tc > 0) bits.push(`${tc} voyageur(s)`);
+
+    const bud = snapshot.budget;
+    if (typeof bud === 'string' && bud.trim()) bits.push(`budget : ${bud.trim()}`);
+
+    const at = snapshot.activityTime;
+    if (typeof at === 'string' && at.trim()) bits.push(`environ ${at.trim()} h d'activités par jour (rythme)`);
+
+    const od = snapshot.outboundDate;
+    const rd = snapshot.returnDate;
+    if (typeof od === 'string' && od && typeof rd === 'string' && rd) bits.push(`dates du séjour : ${od} → ${rd}`);
+
+    const td = snapshot.travelDays;
+    if (typeof td === 'number' && td > 0 && !(od && rd)) bits.push(`${td} jour(s) de séjour`);
+
+    const opts = snapshot.selectedOptions;
+    if (Array.isArray(opts) && opts.length) bits.push(`préférences hébergement / style : ${opts.join(', ')}`);
+
+    const diet = snapshot.dietarySelections;
+    if (Array.isArray(diet) && diet.length) bits.push(`régime alimentaire : ${diet.join(', ')}`);
+
+    if (snapshot.manualFlightEntry === true) {
+        const airline = snapshot.manualFlightAirline;
+        const num = snapshot.manualFlightNumber;
+        const chunks = [airline, num].filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+        if (chunks.length) bits.push(`vol saisi : ${chunks.join(' ')}`);
+    }
+
+    if (snapshot.manualHotelEntry === true) {
+        const hn = snapshot.manualHotelName;
+        const ha = snapshot.manualHotelAddress;
+        if (typeof hn === 'string' && hn.trim()) {
+            const line =
+                typeof ha === 'string' && ha.trim() ? `${hn.trim()} (${ha.trim()})` : hn.trim();
+            bits.push(`hébergement saisi : ${line}`);
+        }
+    }
+
+    const sf = snapshot.selectedFlightPlanning;
+    if (sf && typeof sf === 'object' && !Array.isArray(sf)) {
+        const o = sf as Record<string, unknown>;
+        const carrier = typeof o.carrier === 'string' ? o.carrier.trim() : '';
+        const from = typeof o.outboundFrom === 'string' ? o.outboundFrom.trim() : '';
+        const to = typeof o.outboundTo === 'string' ? o.outboundTo.trim() : '';
+        const route = from && to ? `${from} → ${to}` : '';
+        const price = typeof o.price === 'string' ? o.price : '';
+        const cur = typeof o.currency === 'string' ? o.currency : '';
+        const priceNote = price && cur ? `${price} ${cur}` : price;
+        const chunk = [carrier, route, priceNote].filter(Boolean).join(' · ');
+        if (chunk) bits.push(`vol sélectionné : ${chunk}`);
+    }
+
+    const sh = snapshot.selectedHotelPlanning;
+    if (sh && typeof sh === 'object' && !Array.isArray(sh)) {
+        const o = sh as Record<string, unknown>;
+        const name = typeof o.name === 'string' ? o.name.trim() : '';
+        const cc = typeof o.cityCode === 'string' ? o.cityCode.trim() : '';
+        const ci = typeof o.checkIn === 'string' ? o.checkIn : '';
+        const co = typeof o.checkOut === 'string' ? o.checkOut : '';
+        const dates = ci && co ? ` (${ci} → ${co})` : '';
+        const loc = [name, cc].filter(Boolean).join(', ');
+        if (loc) bits.push(`hôtel sélectionné : ${loc}${dates}`);
+    }
+
+    if (bits.length === 0) return '';
+    return `Contraintes du formulaire voyage (étape 1) à respecter : ${bits.join(' ; ')}.`;
+}

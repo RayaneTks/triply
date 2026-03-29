@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -52,6 +52,13 @@ import {
     clearPlanningModeStorage,
     type PlanningMode,
 } from '@/src/features/trip-creation/planning-mode';
+import {
+    applyTripConfigPartial,
+    loadTripConfigDraft,
+    saveTripConfigDraft,
+} from '@/src/features/trip-creation/trip-config-draft';
+import { clampPlanFormStep } from '@/src/features/trip-creation/plan-form-wizard';
+import type { TripConfigurationState } from '@/src/features/trip-creation/useTripConfiguration';
 import { createTrip, validateTripApi } from '@/src/lib/trips-client';
 import type { PlanSnapshot } from '@/src/lib/plan-snapshot';
 import {
@@ -60,6 +67,7 @@ import {
 } from '@/src/features/trip-creation/step1-form-patch';
 import { requestActivityRegeneration } from '@/src/lib/assistant-regenerate';
 import { buildManualFlightOffer, buildManualHotelOffer } from '@/src/features/trip-creation/manual-trip-offers';
+import { MEDIA_MIN_LG, useMediaQuery } from '@/src/hooks/useMediaQuery';
 
 /** Segment / carte en alerte dépassement temps jour */
 const ACTIVITY_TIME_ALERT_COLOR = '#ef4444';
@@ -77,6 +85,9 @@ const ACTIVITY_TIMELINE_COLORS = [
     '#f97316',
     '#4ade80',
 ];
+
+/** LineString GeoJSON (évite `GeoJSON.LineString` en .tsx et les erreurs de namespace). */
+type GeoLineString = { type: 'LineString'; coordinates: number[][] };
 
 function getDayActivityLabel(p: {
     properties?: Record<string, unknown> | null;
@@ -194,34 +205,84 @@ function activityListSignature(list: DayActivityPoi[]) {
     return list.map(poiStableKeyForLeg).join('|');
 }
 
-/** Assemble la géométrie d’un leg Mapbox à partir des steps (un LineString par tronçon entre waypoints). */
-function geometryFromLegSteps(leg: { steps?: Array<{ geometry?: GeoJSON.Geometry }> }): GeoJSON.LineString | null {
-    const steps = leg.steps;
-    if (!Array.isArray(steps) || steps.length === 0) return null;
-    const coordinates: number[][] = [];
-    for (const step of steps) {
-        const g = step.geometry;
-        if (
-            g &&
-            typeof g === 'object' &&
-            'type' in g &&
-            g.type === 'LineString' &&
-            'coordinates' in g &&
-            Array.isArray((g as GeoJSON.LineString).coordinates)
-        ) {
-            for (const c of (g as GeoJSON.LineString).coordinates) {
-                const pt = c as number[];
-                if (coordinates.length === 0) {
-                    coordinates.push(pt);
-                } else {
-                    const last = coordinates[coordinates.length - 1];
-                    if (last[0] !== pt[0] || last[1] !== pt[1]) coordinates.push(pt);
-                }
-            }
+function coordsNearlyEqual(a: { lng: number; lat: number }, b: { lng: number; lat: number }): boolean {
+    return Math.abs(a.lng - b.lng) < 1e-6 && Math.abs(a.lat - b.lat) < 1e-6;
+}
+
+/** Fusionne des LineString successifs (évite le doublon au point de jonction). */
+function mergeRouteLineStrings(geoms: GeoLineString[]): GeoLineString | null {
+    const valid = geoms.filter((g) => Array.isArray(g?.coordinates) && g.coordinates.length >= 2);
+    if (valid.length === 0) return null;
+    if (valid.length === 1) return valid[0];
+    const coordinates: number[][] = [...valid[0].coordinates];
+    for (let i = 1; i < valid.length; i++) {
+        const next = valid[i].coordinates;
+        const firstNext = next[0];
+        const last = coordinates[coordinates.length - 1];
+        if (last[0] !== firstNext[0] || last[1] !== firstNext[1]) {
+            coordinates.push(...next);
+        } else {
+            coordinates.push(...next.slice(1));
         }
     }
-    if (coordinates.length < 2) return null;
-    return { type: 'LineString', coordinates };
+    return coordinates.length >= 2 ? { type: 'LineString', coordinates } : null;
+}
+
+/** Points du jour courant à partir de la clé `selectedDay:lng,lat;...` (voir routeDepsKey). */
+function parseLngLatPointsFromRouteDepsKey(routeDepsKey: string): { lng: number; lat: number }[] | null {
+    const idx = routeDepsKey.indexOf(':');
+    if (idx < 0) return null;
+    const part = routeDepsKey.slice(idx + 1).trim();
+    if (!part) return null;
+    const pts: { lng: number; lat: number }[] = [];
+    for (const seg of part.split(';')) {
+        const bits = seg.split(',');
+        if (bits.length < 2) return null;
+        const lng = Number(bits[0]);
+        const lat = Number(bits[1]);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+        pts.push({ lng, lat });
+    }
+    return pts.length >= 2 ? pts : null;
+}
+
+type MapboxLegRouteResult = { duration: number; distance: number; geometry?: GeoLineString };
+
+async function fetchMapboxLegRoute(
+    accessToken: string,
+    profile: 'driving' | 'walking' | 'cycling',
+    a: { lng: number; lat: number },
+    b: { lng: number; lat: number }
+): Promise<MapboxLegRouteResult> {
+    if (coordsNearlyEqual(a, b)) {
+        return {
+            duration: 0,
+            distance: 0,
+            geometry: { type: 'LineString', coordinates: [[a.lng, a.lat], [b.lng, b.lat]] },
+        };
+    }
+    const coordStr = `${a.lng},${a.lat};${b.lng},${b.lat}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordStr}?geometries=geojson&overview=full&access_token=${accessToken}`;
+    try {
+        const res = await fetch(url);
+        const data = (await res.json()) as {
+            routes?: Array<{ duration?: number; distance?: number; geometry?: GeoLineString }>;
+        };
+        const route = data.routes?.[0];
+        const geom = route?.geometry;
+        return {
+            duration: typeof route?.duration === 'number' ? route.duration : 0,
+            distance: typeof route?.distance === 'number' ? route.distance : 0,
+            ...(geom &&
+            geom.type === 'LineString' &&
+            Array.isArray(geom.coordinates) &&
+            geom.coordinates.length >= 2
+                ? { geometry: geom as GeoLineString }
+                : {}),
+        };
+    } catch {
+        return { duration: 0, distance: 0 };
+    }
 }
 
 function LoginWithMapBackground({
@@ -351,9 +412,9 @@ export default function Home() {
             Record<
                 'driving' | 'walking' | 'cycling',
                 {
-                    geometry: GeoJSON.LineString;
+                    geometry: GeoLineString;
                     duration: number;
-                    legs: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>;
+                    legs: Array<{ duration: number; distance: number; geometry?: GeoLineString }>;
                 }
             >
         >
@@ -470,6 +531,8 @@ export default function Home() {
     const [isFlightDetailModalOpen, setIsFlightDetailModalOpen] = useState(false);
 
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+    /** Après ouverture du panneau : lance suggestActivities une fois le composant Assistant monté */
+    const [pendingAssistantSuggestion, setPendingAssistantSuggestion] = useState<'day' | 'all' | null>(null);
     const [assistantRequestLoading, setAssistantRequestLoading] = useState(false);
     const [regeneratingActivity, setRegeneratingActivity] = useState<{ day: number; index: number } | null>(null);
     const assistantRef = useRef<AssistantHandle>(null);
@@ -506,17 +569,174 @@ export default function Home() {
         if (planningMode === 'manual') setIsAssistantOpen(false);
     }, [planningMode]);
     const [geocodeAppendPending, setGeocodeAppendPending] = useState(false);
+    /** Évite de re-seeder l’aéroport d’arrivée sur le jour 1 pour le même vol. */
+    const day1OutboundAirportSeededForFlightRef = useRef<string | null>(null);
     const [validateTripModalOpen, setValidateTripModalOpen] = useState(false);
     const [validateTripSubmitting, setValidateTripSubmitting] = useState(false);
     const [validateTripError, setValidateTripError] = useState('');
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(true);
+    const isLgUp = useMediaQuery(MEDIA_MIN_LG);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const itineraryInitRef = useRef(false);
+    useLayoutEffect(() => {
+        if (itineraryInitRef.current) return;
+        itineraryInitRef.current = true;
+        if (typeof window !== 'undefined' && !window.matchMedia(MEDIA_MIN_LG).matches) {
+            setIsConfigPanelOpen(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            if (showTuPreferes) return;
+            if (validateTripModalOpen) {
+                setValidateTripModalOpen(false);
+                return;
+            }
+            if (mapViewMenuOpen) {
+                setMapViewMenuOpen(false);
+                return;
+            }
+            if (hotelFilterMenuOpen) {
+                setHotelFilterMenuOpen(false);
+                return;
+            }
+            if (isAssistantOpen) {
+                setIsAssistantOpen(false);
+                return;
+            }
+            if (isConfigPanelOpen) {
+                setIsConfigPanelOpen(false);
+                return;
+            }
+            if (isMobileNavOpen) {
+                setIsMobileNavOpen(false);
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [
+        showTuPreferes,
+        validateTripModalOpen,
+        mapViewMenuOpen,
+        hotelFilterMenuOpen,
+        isAssistantOpen,
+        isConfigPanelOpen,
+        isMobileNavOpen,
+    ]);
+
     const [wizardView, setWizardView] = useState<'plan' | 'activity'>('plan');
+    const [planFormStep, setPlanFormStep] = useState(0);
+    const [planFormMaxVisited, setPlanFormMaxVisited] = useState(0);
+
+    const tripDraftHydratedRef = useRef(false);
+    const allowTripDraftSaveRef = useRef(false);
+
+    useLayoutEffect(() => {
+        if (tripDraftHydratedRef.current) return;
+        tripDraftHydratedRef.current = true;
+        const uid = getStoredSession()?.user?.id ?? null;
+        const draft = loadTripConfigDraft(uid);
+        if (draft) {
+            if (Object.keys(draft.trip).length > 0) {
+                applyTripConfigPartial(draft.trip, tripConfig);
+            }
+            if (draft.wizardView === 'plan' || draft.wizardView === 'activity') {
+                setWizardView(draft.wizardView);
+            }
+            if (draft.selectedDay != null && draft.selectedDay >= 1) {
+                setSelectedDay(draft.selectedDay);
+            }
+            let pfStep = 0;
+            let pfMax = 0;
+            if (draft.planFormStep != null) {
+                pfStep = clampPlanFormStep(draft.planFormStep);
+            }
+            if (draft.planFormMaxVisited != null) {
+                pfMax = clampPlanFormStep(draft.planFormMaxVisited);
+            } else {
+                pfMax = pfStep;
+            }
+            pfMax = Math.max(pfMax, pfStep);
+            setPlanFormStep(pfStep);
+            setPlanFormMaxVisited(pfMax);
+        }
+        allowTripDraftSaveRef.current = true;
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- hydratation unique au montage ; les setters du hook sont stables
+    }, []);
+
+    useEffect(() => {
+        if (!allowTripDraftSaveRef.current) return;
+        const uid = getStoredSession()?.user?.id ?? null;
+        const t = window.setTimeout(() => {
+            const trip: TripConfigurationState = {
+                departureCity: tripConfig.departureCity,
+                arrivalCity: tripConfig.arrivalCity,
+                arrivalCityName: tripConfig.arrivalCityName,
+                travelDays: tripConfig.travelDays,
+                travelerCount: tripConfig.travelerCount,
+                budget: tripConfig.budget,
+                activityTime: tripConfig.activityTime,
+                outboundDate: tripConfig.outboundDate,
+                returnDate: tripConfig.returnDate,
+                outboundDepartureTime: tripConfig.outboundDepartureTime,
+                outboundArrivalTime: tripConfig.outboundArrivalTime,
+                returnDepartureTime: tripConfig.returnDepartureTime,
+                returnArrivalTime: tripConfig.returnArrivalTime,
+                selectedOptions: tripConfig.selectedOptions,
+                dietarySelections: tripConfig.dietarySelections,
+                manualFlightEntry: tripConfig.manualFlightEntry,
+                manualFlightAirline: tripConfig.manualFlightAirline,
+                manualFlightNumber: tripConfig.manualFlightNumber,
+                manualFlightNumberReturn: tripConfig.manualFlightNumberReturn,
+                manualHotelEntry: tripConfig.manualHotelEntry,
+                manualHotelName: tripConfig.manualHotelName,
+                manualHotelAddress: tripConfig.manualHotelAddress,
+                manualHotelCheckIn: tripConfig.manualHotelCheckIn,
+                manualHotelCheckOut: tripConfig.manualHotelCheckOut,
+            };
+            saveTripConfigDraft(uid, { trip, wizardView, selectedDay, planFormStep, planFormMaxVisited });
+        }, 200);
+        return () => window.clearTimeout(t);
+    }, [
+        tripConfig.departureCity,
+        tripConfig.arrivalCity,
+        tripConfig.arrivalCityName,
+        tripConfig.travelDays,
+        tripConfig.travelerCount,
+        tripConfig.budget,
+        tripConfig.activityTime,
+        tripConfig.outboundDate,
+        tripConfig.returnDate,
+        tripConfig.outboundDepartureTime,
+        tripConfig.outboundArrivalTime,
+        tripConfig.returnDepartureTime,
+        tripConfig.returnArrivalTime,
+        tripConfig.selectedOptions,
+        tripConfig.dietarySelections,
+        tripConfig.manualFlightEntry,
+        tripConfig.manualFlightAirline,
+        tripConfig.manualFlightNumber,
+        tripConfig.manualFlightNumberReturn,
+        tripConfig.manualHotelEntry,
+        tripConfig.manualHotelName,
+        tripConfig.manualHotelAddress,
+        tripConfig.manualHotelCheckIn,
+        tripConfig.manualHotelCheckOut,
+        wizardView,
+        selectedDay,
+        planFormStep,
+        planFormMaxVisited,
+    ]);
 
     const handleBackToPlanningModeSelection = useCallback(() => {
         const uid = getStoredSession()?.user?.id ?? null;
         clearPlanningModeStorage(uid);
         setPlanningModeState(null);
         setWizardView('plan');
+        setPlanFormStep(0);
+        setPlanFormMaxVisited(0);
         setIsAssistantOpen(false);
     }, []);
 
@@ -528,7 +748,6 @@ export default function Home() {
     const [isHotelDetailModalOpen, setIsHotelDetailModalOpen] = useState(false);
     const [hotelApiResponse, setHotelApiResponse] = useState<(AmadeusHotelResponse | { error?: string; details?: string }) | null>(null);
     const [isLoadingHotel, setIsLoadingHotel] = useState(false);
-    const [hotelSelectedOptions, setHotelSelectedOptions] = useState<string[]>([]);
     const [hotelMealRegime, setHotelMealRegime] = useState('');
 
     const syncFormFromFlight = useCallback((offer: FlightOffer) => {
@@ -646,6 +865,15 @@ export default function Home() {
         ? tripConfig.manualFlightAirline
         : selectedFlightCarrierName;
 
+    /** IATA du dernier segment du vol aller = aéroport d’arrivée à la destination */
+    const outboundFlightArrivalIata = useMemo(() => {
+        const segs = effectiveFlightOffer?.itineraries?.[0]?.segments;
+        if (!Array.isArray(segs) || segs.length === 0) return '';
+        const last = segs[segs.length - 1];
+        const c = last?.arrival?.iataCode?.trim().toUpperCase();
+        return c && c.length >= 2 ? c : '';
+    }, [effectiveFlightOffer]);
+
     const effectiveHotelOffer = useMemo(
         () =>
             tripConfig.manualHotelEntry
@@ -755,7 +983,7 @@ export default function Home() {
                     adults: tripConfig.travelerCount,
                     roomQuantity: 1,
                     maxPrice: effectiveHotelBudget ? parseInt(effectiveHotelBudget, 10) : undefined,
-                    preferences: hotelSelectedOptions,
+                    preferences: tripConfig.selectedOptions,
                     ...(hotelMealRegime.trim() ? { boardType: hotelMealRegime.trim() } : {}),
                 }),
             });
@@ -773,10 +1001,22 @@ export default function Home() {
                     const offers = item.offers || [];
 
                     for (const off of offers) {
+                        const lines = Array.isArray(hotel?.address?.lines)
+                            ? hotel.address.lines.filter((line): line is string => typeof line === 'string' && line.trim() !== '')
+                            : [];
+                        const cityFromAddress = typeof hotel?.address?.cityName === 'string' ? hotel.address.cityName.trim() : '';
+                        const zipFromAddress = typeof hotel?.address?.postalCode === 'string' ? hotel.address.postalCode.trim() : '';
+                        const countryFromAddress = typeof hotel?.address?.countryCode === 'string' ? hotel.address.countryCode.trim() : '';
+                        const cityBlock = [zipFromAddress, cityFromAddress].filter(Boolean).join(' ');
+                        const mergedAddress = [...lines, cityBlock, countryFromAddress].filter(Boolean).join(', ');
+
                         const offer: HotelOffer = {
                             id: off.id || `${hotel?.hotelId}-${off.checkInDate}-${off.checkOutDate}`,
                             hotelId: hotel?.hotelId || '',
                             hotelName: hotel?.name || 'Hotel',
+                            hotelAddress: (hotel?.formattedAddress || mergedAddress || '').trim() || undefined,
+                            hotelLatitude: typeof hotel?.latitude === 'number' ? hotel.latitude : undefined,
+                            hotelLongitude: typeof hotel?.longitude === 'number' ? hotel.longitude : undefined,
                             cityCode: hotel?.cityCode || city,
                             checkInDate: off.checkInDate || checkIn,
                             checkOutDate: off.checkOutDate || checkOut,
@@ -924,10 +1164,10 @@ export default function Home() {
         }
     };
 
-    const appendSyntheticPoi = useCallback(
-        (name: string, lat: number, lng: number, layerId: string) => {
+    const appendSyntheticPoiToDay = useCallback(
+        (day: number, name: string, lat: number, lng: number, layerId: string) => {
             setDayActivitiesByDay((prev) => {
-                const prevDay = prev[selectedDay] ?? [];
+                const prevDay = prev[day] ?? [];
                 const key = `${name}-${lng.toFixed(5)}-${lat.toFixed(5)}`;
                 const exists = prevDay.some((p) => {
                     const t = getDayActivityLabel(p);
@@ -935,17 +1175,24 @@ export default function Home() {
                 });
                 if (exists) return prev;
                 const _dragId = `syn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                setLastAddedActivityDragIdByDay((m) => ({ ...m, [selectedDay]: _dragId }));
+                setLastAddedActivityDragIdByDay((m) => ({ ...m, [day]: _dragId }));
                 const poi: DayActivityPoi = {
                     layer: { id: layerId },
                     properties: { name, name_en: name },
                     lngLat: { lng, lat },
                     _dragId,
                 };
-                return { ...prev, [selectedDay]: [...prevDay, poi] };
+                return { ...prev, [day]: [...prevDay, poi] };
             });
         },
-        [selectedDay]
+        []
+    );
+
+    const appendSyntheticPoi = useCallback(
+        (name: string, lat: number, lng: number, layerId: string) => {
+            appendSyntheticPoiToDay(selectedDay, name, lat, lng, layerId);
+        },
+        [appendSyntheticPoiToDay, selectedDay]
     );
 
     const handleAppendHotelToDay = useCallback(async () => {
@@ -966,8 +1213,9 @@ export default function Home() {
 
     const handleAppendAirportOutbound = useCallback(async () => {
         if (!effectiveFlightOffer) return;
-        const seg = effectiveFlightOffer.itineraries?.[0]?.segments?.[0];
-        const iata = seg?.departure?.iataCode;
+        const segs = effectiveFlightOffer.itineraries?.[0]?.segments;
+        const last = Array.isArray(segs) && segs.length > 0 ? segs[segs.length - 1] : undefined;
+        const iata = last?.arrival?.iataCode?.trim().toUpperCase();
         if (!iata) return;
         setGeocodeAppendPending(true);
         try {
@@ -1001,6 +1249,43 @@ export default function Home() {
         }
     }, [appendSyntheticPoi, effectiveFlightOffer]);
 
+    useEffect(() => {
+        if (!effectiveFlightOffer) {
+            day1OutboundAirportSeededForFlightRef.current = null;
+        }
+    }, [effectiveFlightOffer]);
+
+    useEffect(() => {
+        if (wizardView !== 'activity' || !effectiveFlightOffer || !outboundFlightArrivalIata) return;
+        const seedKey = `${effectiveFlightOffer.id}-${outboundFlightArrivalIata}`;
+        if (day1OutboundAirportSeededForFlightRef.current === seedKey) return;
+
+        const label = `Aéroport ${outboundFlightArrivalIata}`;
+        const day1 = dayActivitiesByDay[1] ?? [];
+        if (day1.some((p) => getDayActivityLabel(p) === label)) {
+            day1OutboundAirportSeededForFlightRef.current = seedKey;
+            return;
+        }
+
+        let cancelled = false;
+        void (async () => {
+            const g = await fetchGeocodeFirst(outboundFlightArrivalIata);
+            if (cancelled || !g) return;
+            appendSyntheticPoiToDay(1, label, g.lat, g.lng, 'airport');
+            day1OutboundAirportSeededForFlightRef.current = seedKey;
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        wizardView,
+        effectiveFlightOffer,
+        outboundFlightArrivalIata,
+        dayActivitiesByDay,
+        appendSyntheticPoiToDay,
+    ]);
+
     const addAssistantSuggestionsToDay = useCallback((day: number, items: SuggestedActivityPin[]) => {
         setDayActivitiesByDay((prev) => {
             const list = prev[day] ?? [];
@@ -1016,11 +1301,15 @@ export default function Home() {
                 if (exists) continue;
                 const _dragId = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
                 setLastAddedActivityDragIdByDay((m) => ({ ...m, [day]: _dragId }));
+                const dh = it.durationHours;
+                const durationHours =
+                    dh != null && Number.isFinite(dh) && dh > 0 ? Math.min(24, Math.max(0.25, dh)) : undefined;
                 next.push({
                     layer: { id: 'poi' },
                     properties: { name: title, name_en: title },
                     lngLat: { lng: it.lng, lat: it.lat },
                     _dragId,
+                    ...(durationHours != null ? { durationHours } : {}),
                 });
             }
             return { ...prev, [day]: next };
@@ -1070,6 +1359,9 @@ export default function Home() {
             hotelSummary: effectiveHotelOffer
                 ? {
                       name: effectiveHotelOffer.hotelName,
+                                            address: effectiveHotelOffer.hotelAddress,
+                      latitude: effectiveHotelOffer.hotelLatitude,
+                      longitude: effectiveHotelOffer.hotelLongitude,
                       cityCode: effectiveHotelOffer.cityCode,
                       cityName: tripConfig.arrivalCityName || undefined,
                                             totalPrice: effectiveHotelOffer.price?.total,
@@ -1118,10 +1410,33 @@ export default function Home() {
             dayActivitiesByDay,
         ]);
 
-    const assistantStep1Snapshot = useMemo(
-        () => buildStep1FormSnapshotForAssistant(tripConfig),
-        [tripConfig]
-    );
+    const assistantStep1Snapshot = useMemo(() => {
+        const base = buildStep1FormSnapshotForAssistant(tripConfig);
+        const extra: Record<string, unknown> = { ...base };
+        if (effectiveFlightOffer) {
+            const it0 = effectiveFlightOffer.itineraries?.[0];
+            const segs = it0?.segments ?? [];
+            const first = segs[0];
+            const last = segs.length ? segs[segs.length - 1] : undefined;
+            extra.selectedFlightPlanning = {
+                carrier: effectiveFlightCarrierName || undefined,
+                outboundFrom: first?.departure?.iataCode,
+                outboundTo: last?.arrival?.iataCode,
+                price: effectiveFlightOffer.price?.grandTotal,
+                currency: effectiveFlightOffer.price?.currency,
+            };
+        }
+        if (effectiveHotelOffer) {
+            extra.selectedHotelPlanning = {
+                name: effectiveHotelOffer.hotelName,
+                address: effectiveHotelOffer.hotelAddress,
+                cityCode: effectiveHotelOffer.cityCode,
+                checkIn: effectiveHotelOffer.checkInDate,
+                checkOut: effectiveHotelOffer.checkOutDate,
+            };
+        }
+        return extra;
+    }, [tripConfig, effectiveFlightOffer, effectiveFlightCarrierName, effectiveHotelOffer]);
 
     const handleApplyAssistantStep1Patch = useCallback(
         (patch: AssistantStep1FormPatch) => {
@@ -1163,7 +1478,7 @@ export default function Home() {
 
     const handleRequestAiDaySuggestions = useCallback(() => {
         setIsAssistantOpen(true);
-        queueMicrotask(() => assistantRef.current?.suggestActivitiesForDay());
+        setPendingAssistantSuggestion('day');
     }, []);
 
     const handleDayActivityDurationChange = useCallback((day: number, activityIndex: number, hours: number | null) => {
@@ -1233,10 +1548,18 @@ export default function Home() {
 
     const handleRequestAiAllDaysSuggestions = useCallback(() => {
         setIsAssistantOpen(true);
-        queueMicrotask(() => {
-            void assistantRef.current?.suggestActivitiesForAllDays();
-        });
+        setPendingAssistantSuggestion('all');
     }, []);
+
+    useLayoutEffect(() => {
+        if (!isAssistantOpen || pendingAssistantSuggestion == null || !isConnected) return;
+        if (pendingAssistantSuggestion === 'day') {
+            assistantRef.current?.suggestActivitiesForDay();
+        } else {
+            void assistantRef.current?.suggestActivitiesForAllDays();
+        }
+        setPendingAssistantSuggestion(null);
+    }, [isAssistantOpen, pendingAssistantSuggestion, isConnected]);
 
     const handleConfirmValidateTrip = useCallback(async () => {
         const session = getStoredSession();
@@ -1313,6 +1636,20 @@ export default function Home() {
 
     const travelDays = tripConfig.travelDays || 1;
     const dayActivities = dayActivitiesByDay[selectedDay] ?? [];
+
+    /** Étapes du jour sur la carte (libellés alignés sur le panneau « Vers l’étape N »), coordonnées exactes du POI */
+    const mapLocationsWithDayActivities = useMemo(() => {
+        if (wizardView !== 'activity') return mapLocations;
+        const acts = dayActivitiesByDay[selectedDay] ?? [];
+        if (acts.length === 0) return mapLocations;
+        const activityMarkers: LocationPoint[] = acts.map((p, i) => ({
+            id: `itinerary-${selectedDay}-${poiStableKeyForLeg(p)}`,
+            title: `Vers l'étape ${i + 1} · ${getDayActivityLabel(p)}`,
+            coordinates: { latitude: p.lngLat.lat, longitude: p.lngLat.lng },
+            type: 'itinerary-activity',
+        }));
+        return [...mapLocations, ...activityMarkers];
+    }, [mapLocations, wizardView, dayActivitiesByDay, selectedDay]);
 
     /** Dernière activité ajoutée en alerte si le total du jour dépasse le max */
     const activityTimeAlertDragId = useMemo(() => {
@@ -1430,63 +1767,73 @@ export default function Home() {
         return `${selectedDay}:${activities.map((p) => `${p.lngLat.lng},${p.lngLat.lat}`).join(';')}`;
     }, [dayActivitiesByDay, selectedDay]);
 
-    // Appel Mapbox Directions API pour tracer les routes (voiture, vélo, à pied)
+    // Directions par tronçon (A→B) pour chaque profil : un leg raté n’invalide plus tout l’itinéraire
+    // (contrairement à une seule requête multi-waypoints).
     useEffect(() => {
         if (!routeDepsKey || !MAPBOX_TOKEN) {
             setDayRoutes({});
             return;
         }
-        const coords = routeDepsKey.split(':')[1] ?? '';
+        const points = parseLngLatPointsFromRouteDepsKey(routeDepsKey);
+        if (!points) {
+            setDayRoutes({});
+            return;
+        }
         const profiles = ['driving', 'walking', 'cycling'] as const;
         let cancelled = false;
-        Promise.all(
-            profiles.map((profile) =>
-                fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`
-                )
-                    .then((res) => res.json())
-                    .then((data) => {
-                        const route = data.routes?.[0];
-                        const geom = route?.geometry;
-                        const duration = route?.duration ?? 0;
-                        const rawLegs = route?.legs;
-                        const legs = Array.isArray(rawLegs)
-                            ? rawLegs.map((leg: { duration?: number; distance?: number; steps?: Array<{ geometry?: GeoJSON.Geometry }> }) => {
-                                  const legGeom = geometryFromLegSteps(leg);
-                                  return {
-                                      duration: typeof leg?.duration === 'number' ? leg.duration : 0,
-                                      distance: typeof leg?.distance === 'number' ? leg.distance : 0,
-                                      ...(legGeom ? { geometry: legGeom } : {}),
-                                  };
-                              })
-                            : [];
-                        return { profile, geometry: geom?.type === 'LineString' ? geom : null, duration, legs };
-                    })
-                    .catch(() => ({
-                        profile,
-                        geometry: null,
-                        duration: 0,
-                        legs: [] as Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>,
-                    }))
-            )
+
+        void Promise.all(
+            profiles.map(async (profile) => {
+                const rawLegs = await Promise.all(
+                    points.slice(0, -1).map((_, i) =>
+                        fetchMapboxLegRoute(MAPBOX_TOKEN, profile, points[i], points[i + 1])
+                    )
+                );
+                if (cancelled) return null;
+                const legs = rawLegs.map((l) => ({
+                    duration: l.duration,
+                    distance: l.distance,
+                    ...(l.geometry ? { geometry: l.geometry } : {}),
+                }));
+                const legGeoms = rawLegs.map((l) => l.geometry).filter(Boolean) as GeoLineString[];
+                const merged = mergeRouteLineStrings(legGeoms);
+                const totalDuration = legs.reduce((s, l) => s + l.duration, 0);
+                const hasUsefulData = totalDuration > 0 || merged != null;
+                if (!hasUsefulData) return { profile, skip: true as const };
+
+                const geometry: GeoLineString =
+                    merged ??
+                    ({
+                        type: 'LineString',
+                        coordinates: [
+                            [points[0].lng, points[0].lat],
+                            [points[points.length - 1].lng, points[points.length - 1].lat],
+                        ],
+                    } as GeoLineString);
+
+                return { profile, geometry, duration: totalDuration, legs, skip: false as const };
+            })
         ).then((results) => {
             if (cancelled) return;
             const next: Partial<
                 Record<
                     'driving' | 'walking' | 'cycling',
                     {
-                        geometry: GeoJSON.LineString;
+                        geometry: GeoLineString;
                         duration: number;
-                        legs: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>;
+                        legs: Array<{ duration: number; distance: number; geometry?: GeoLineString }>;
                     }
                 >
             > = {};
-            results.forEach(({ profile, geometry, duration, legs }) => {
-                if (geometry) next[profile] = { geometry, duration, legs };
-            });
+            for (const r of results) {
+                if (!r || r.skip) continue;
+                next[r.profile] = { geometry: r.geometry, duration: r.duration, legs: r.legs };
+            }
             setDayRoutes(next);
         });
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [routeDepsKey, MAPBOX_TOKEN]);
 
     /** Signature des POI du jour (évite des refetch inutiles quand un autre jour change). */
@@ -1503,7 +1850,7 @@ export default function Home() {
 
     /**
      * Tracé carte : une requête Directions par tronçon (A→B) avec le profil choisi dans le wizard.
-     * Les legs de l’itinéraire multi-waypoints ne fournissent pas toujours de géométrie exploitable sans steps/polyline.
+     * (Les durées du panneau viennent du même modèle par tronçon via `dayRoutes`.)
      */
     const [mapDisplaySegments, setMapDisplaySegments] = useState<RouteMapSegment[]>([]);
 
@@ -1542,7 +1889,7 @@ export default function Home() {
                         return {
                             id: String(i),
                             profile,
-                            geometry: geom as GeoJSON.LineString,
+                            geometry: geom as GeoLineString,
                             durationSec: duration,
                         } satisfies RouteMapSegment;
                     }
@@ -1592,16 +1939,45 @@ export default function Home() {
     const handleBackToHome = () => setCurrentView('home');
 
     return (
-        <div className="flex h-dvh overflow-hidden text-slate-100" style={{ backgroundColor: 'var(--background, #222222)' }}>
-            <Sidebar
-                isCollapsed={isSidebarCollapsed}
-                onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                isConnected={isConnected}
-                onLoginClick={handleLoginClick}
-                onLogoutClick={handleLogoutClick}
-            />
+        <div
+            className="flex h-dvh min-h-dvh w-full overflow-hidden flex-col text-slate-100 lg:flex-row"
+            style={{ backgroundColor: 'var(--background, #222222)' }}
+        >
+            <div className="relative z-0 hidden h-full shrink-0 lg:flex">
+                <Sidebar
+                    isCollapsed={isSidebarCollapsed}
+                    onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    isConnected={isConnected}
+                    onLoginClick={handleLoginClick}
+                    onLogoutClick={handleLogoutClick}
+                />
+            </div>
 
-            <div className="relative flex min-w-0 flex-1 overflow-hidden">
+            {isMobileNavOpen && (
+                <>
+                    <button
+                        type="button"
+                        className="fixed inset-0 z-[60] cursor-default bg-black/50 lg:hidden"
+                        aria-label="Fermer le menu"
+                        onClick={() => setIsMobileNavOpen(false)}
+                    />
+                    <div
+                        className="fixed inset-y-0 left-0 z-[70] flex h-dvh max-h-dvh pt-[env(safe-area-inset-top)] lg:hidden"
+                        style={{ backgroundColor: 'var(--background, #222222)' }}
+                    >
+                        <Sidebar
+                            isCollapsed={isSidebarCollapsed}
+                            onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                            useExternalBackdrop
+                            isConnected={isConnected}
+                            onLoginClick={handleLoginClick}
+                            onLogoutClick={handleLogoutClick}
+                        />
+                    </div>
+                </>
+            )}
+
+            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
                 {currentView === 'login' && (
                     hasMapboxToken ? (
                         <LoginWithMapBackground
@@ -1621,7 +1997,138 @@ export default function Home() {
 
                 {currentView === 'home' && (
                     <>
-                        <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+                            {isConfigPanelOpen && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="fixed inset-0 z-[40] cursor-default bg-black/50 lg:hidden"
+                                        aria-label="Fermer le plan de voyage"
+                                        onClick={() => setIsConfigPanelOpen(false)}
+                                    />
+                                    <motion.div
+                                        initial={{ x: -24, opacity: 0 }}
+                                        animate={{ x: 0, opacity: 1 }}
+                                        transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                                        className="pointer-events-auto fixed bottom-0 left-0 top-0 z-50 flex w-[min(100%,420px)] max-w-[420px] flex-col border-r border-white/15 shadow-2xl lg:relative lg:z-auto lg:h-full lg:w-[min(26rem,34vw)] lg:max-w-md lg:shrink-0 xl:max-w-lg"
+                                        style={{ backgroundColor: 'var(--background, #222222)' }}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsConfigPanelOpen(false)}
+                                            className="absolute right-2 top-2 z-30 hidden h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-slate-200 backdrop-blur-sm transition-colors hover:bg-white/10 lg:flex"
+                                            aria-label="Replier le panneau itinéraire"
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                <path d="M18 6L6 18M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                        <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden p-2 sm:p-3 lg:pt-11">
+                                            <div
+                                                className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl backdrop-blur-md lg:rounded-2xl"
+                                                style={{ backgroundColor: 'var(--background, #222222)' }}
+                                            >
+                                                <TripCreationWizard
+                                                    activeView={wizardView}
+                                                    onActiveViewChange={setWizardView}
+                                                    planFormStep={planFormStep}
+                                                    onPlanFormStepChange={setPlanFormStep}
+                                                    planFormMaxVisited={planFormMaxVisited}
+                                                    onPlanFormMaxVisitedChange={setPlanFormMaxVisited}
+                                                    onOpenAssistant={() => setIsAssistantOpen(true)}
+                                                    showPanelClose
+                                                    onClosePanel={() => setIsConfigPanelOpen(false)}
+                                                    state={tripConfig}
+                                                    multiSelectOptions={multiSelectOptions}
+                                                    dietaryMultiSelectOptions={dietaryMultiSelectOptions}
+                                                    selectedFlight={effectiveFlightOffer}
+                                                    selectedFlightCarrierName={effectiveFlightCarrierName}
+                                                    selectedHotel={effectiveHotelOffer}
+                                                    isFlightModalOpen={isFlightModalOpen}
+                                                    isHotelModalOpen={isHotelModalOpen}
+                                                    onOpenFlightSearch={() => setIsFlightModalOpen(true)}
+                                                    onCloseFlightSearch={() => setIsFlightModalOpen(false)}
+                                                    onOpenHotelSearch={() => setIsHotelModalOpen(true)}
+                                                    onCloseHotelSearch={() => setIsHotelModalOpen(false)}
+                                                    onFlightCardClick={() => setIsFlightDetailModalOpen(true)}
+                                                    onRemoveFlight={() => {
+                                                        setSelectedFlightOffer(null);
+                                                        setSelectedFlightCarrierName('');
+                                                        tripConfig.setManualFlightEntry(false);
+                                                        tripConfig.setManualFlightAirline('');
+                                                        tripConfig.setManualFlightNumber('');
+                                                        tripConfig.setManualFlightNumberReturn('');
+                                                        setIsFlightDetailModalOpen(false);
+                                                    }}
+                                                    onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
+                                                    onRemoveHotel={() => {
+                                                        setSelectedHotelOffer(null);
+                                                        tripConfig.setManualHotelEntry(false);
+                                                        tripConfig.setManualHotelName('');
+                                                        tripConfig.setManualHotelAddress('');
+                                                        tripConfig.setManualHotelCheckIn('');
+                                                        tripConfig.setManualHotelCheckOut('');
+                                                        setIsHotelDetailModalOpen(false);
+                                                    }}
+                                                    selectedDay={selectedDay}
+                                                    onSelectedDayChange={setSelectedDay}
+                                                    travelDays={travelDays}
+                                                    dayActivities={dayActivities}
+                                                    activityTimeAlertDragId={activityTimeAlertDragId}
+                                                    onRemoveDayActivity={handleRemoveDayActivity}
+                                                    onReorderDayActivities={handleReorderDayActivities}
+                                                    dayRoutes={dayRoutes}
+                                                    selectedRouteType={selectedRouteType}
+                                                    onSelectRouteType={setSelectedRouteType}
+                                                    legTransportModes={legTransportByDay[selectedDay] ?? []}
+                                                    onLegTransportChange={handleLegTransportChange}
+                                                    onComplete={handleGenerateTrip}
+                                                    onValidateChoices={handleValidateChoices}
+                                                    onDestinationGeoSelect={handleDestinationGeoSelect}
+                                                    planningMode={planningMode}
+                                                    onPlanningModeChange={handlePlanningModeChange}
+                                                    onBackToPlanningMode={handleBackToPlanningModeSelection}
+                                                    isConnected={isConnected}
+                                                    onLoginClick={handleLoginClick}
+                                                    onAppendHotelToDay={handleAppendHotelToDay}
+                                                    onAppendAirportOutbound={handleAppendAirportOutbound}
+                                                    onAppendAirportReturn={handleAppendAirportReturn}
+                                                    canAppendReturnAirport={Boolean(effectiveFlightOffer?.itineraries?.[1])}
+                                                    onRequestAiDaySuggestions={handleRequestAiDaySuggestions}
+                                                    onRequestAiAllDaysSuggestions={handleRequestAiAllDaysSuggestions}
+                                                    showAiSuggestionButton={
+                                                        planningMode === 'full_ai' || planningMode === 'semi_ai'
+                                                    }
+                                                    aiSuggestionsLoading={assistantRequestLoading}
+                                                    aiAllDaysSuggestionsLoading={assistantRequestLoading}
+                                                    onOpenValidateTrip={() => {
+                                                        setValidateTripError('');
+                                                        setValidateTripModalOpen(true);
+                                                    }}
+                                                    validateTripDisabled={!hasAnyPlannedActivity}
+                                                    geocodeAppendPending={geocodeAppendPending}
+                                                    onDayActivityDurationChange={(idx, h) =>
+                                                        handleDayActivityDurationChange(selectedDay, idx, h)
+                                                    }
+                                                    onRegenerateDayActivity={
+                                                        planningMode === 'full_ai' || planningMode === 'semi_ai'
+                                                            ? (idx) => void handleRegenerateDayActivity(selectedDay, idx)
+                                                            : undefined
+                                                    }
+                                                    regeneratingActivity={regeneratingActivity}
+                                                />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+
+                            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col xl:flex-row">
+                                <div className="relative min-h-0 min-w-0 flex-1">
+                                    <div
+                                        className="absolute inset-0 overflow-hidden max-lg:pb-[calc(4.25rem+env(safe-area-inset-bottom))]"
+                                        style={{ backgroundColor: 'var(--background, #222222)' }}
+                                    >
                             {hasMapboxToken ? (
                             <WorldMap
                                 accessToken={MAPBOX_TOKEN}
@@ -1635,13 +2142,13 @@ export default function Home() {
                                 width="100%"
                                 className="h-full w-full"
                                 padding={{
-                                    left: isConfigPanelOpen ? 440 : 0,
+                                    left: 16,
                                     top: 24,
-                                    bottom: 64,
-                                    right: isAssistantOpen ? 360 : 24,
+                                    bottom: isLgUp ? 72 : 96,
+                                    right: 16,
                                 }}
                                 onPoiClick={handlePoiClick}
-                                locations={mapLocations}
+                                locations={mapLocationsWithDayActivities}
                                 onAirportSelect={handleAirportSelect}
                                 routeSegments={mapDisplaySegments}
                                 routeData={
@@ -1714,8 +2221,8 @@ export default function Home() {
                                 setBudget={setHotelModalBudget}
                                 mealRegime={hotelMealRegime}
                                 setMealRegime={setHotelMealRegime}
-                                selectedOptions={hotelSelectedOptions}
-                                setSelectedOptions={setHotelSelectedOptions}
+                                selectedOptions={tripConfig.selectedOptions}
+                                setSelectedOptions={tripConfig.setSelectedOptions}
                                 multiSelectOptions={multiSelectOptions}
                                 onSearch={handleHotelSearch}
                                 onNewSearch={() => setHotelApiResponse(null)}
@@ -1752,7 +2259,7 @@ export default function Home() {
                                 return (
                                 <div
                                     ref={activityHoursEditRef}
-                                    className="absolute top-4 right-4 z-20 flex w-[min(92vw,380px)] min-w-70 flex-col gap-2 rounded-xl border border-white/15 px-4 py-3 shadow-lg backdrop-blur-sm sm:min-w-[320px]"
+                                    className="absolute left-4 right-auto top-4 z-20 flex max-lg:max-w-[min(92vw,20rem)] w-[min(92vw,380px)] min-w-0 flex-col gap-2 rounded-xl border border-white/15 px-4 py-3 shadow-lg backdrop-blur-sm lg:right-4 lg:left-auto sm:min-w-[280px]"
                                     style={{ backgroundColor: 'var(--background, #222222)' }}
                                 >
                                     <div className="flex items-center justify-between gap-2 text-[12px]">
@@ -1882,7 +2389,7 @@ export default function Home() {
                                 <button
                                     type="button"
                                     onClick={() => setIsConfigPanelOpen(true)}
-                                    className="absolute bottom-4 left-4 z-20 hidden items-center gap-2 rounded-full border border-white/15 bg-slate-900/95 px-4 py-2.5 text-sm font-medium text-slate-100 shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 sm:flex"
+                                    className="absolute bottom-4 left-4 z-20 hidden items-center gap-2 rounded-full border border-white/15 bg-slate-900/95 px-4 py-2.5 text-sm font-medium text-slate-100 shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:flex"
                                     title="Configurer votre voyage"
                                 >
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1894,12 +2401,15 @@ export default function Home() {
                             )}
 
                             {/* Boutons Assistant + Filtre + Vue - ancres en bas a droite */}
-                            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2" ref={mapViewMenuRef}>
+                            <div
+                                className="absolute bottom-4 right-4 z-20 flex max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:right-3 items-center gap-2"
+                                ref={mapViewMenuRef}
+                            >
                                 {planningMode != null && planningMode !== 'manual' && (
                                 <button
                                     type="button"
                                     onClick={() => setIsAssistantOpen((o) => !o)}
-                                    className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                                    className="hidden h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 lg:flex"
                                     title="Triply Assistant"
                                     aria-label="Ouvrir l'assistant"
                                 >
@@ -1922,7 +2432,7 @@ export default function Home() {
                                     <AnimatePresence>
                                         {hotelFilterMenuOpen && (
                                                 <div
-                                                className="absolute bottom-full right-0 mb-3 min-w-50 overflow-hidden rounded-xl border border-white/15 bg-background shadow-2xl"
+                                                className="absolute bottom-full right-0 mb-3 min-w-[12.5rem] overflow-hidden rounded-xl border border-white/15 bg-background shadow-2xl"
                                             >
                                                 <div className="border-b border-white/10 px-3 py-2">
                                                     <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Étoiles</span>
@@ -1963,7 +2473,7 @@ export default function Home() {
                                 <AnimatePresence>
                                     {mapViewMenuOpen && (
                                         <div
-                                            className="absolute right-0 bottom-full mb-3 rounded-xl overflow-hidden min-w-45"
+                                            className="absolute right-0 bottom-full mb-3 min-w-44 overflow-hidden rounded-xl"
                                             style={{
                                                 backgroundColor: 'var(--background, #222222)',
                                                 border: '1px solid rgba(148, 163, 184, 0.4)',
@@ -1994,19 +2504,22 @@ export default function Home() {
                                 </AnimatePresence>
                             </div>
 
-                            {/* Panneau Assistant (slide-up depuis bas droite) */}
+                        </div>
+                                </div>
+
                             <AnimatePresence>
-                                {isAssistantOpen && (
+                                {planningMode != null && planningMode !== 'manual' && isAssistantOpen && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 100, scale: 0.95 }}
+                                        key="assistant-shell"
+                                        initial={{ opacity: 0, y: 88, scale: 0.98 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: 100, scale: 0.95 }}
-                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                        className="fixed bottom-20 left-4 right-4 z-9999 flex h-[min(80vh,640px)] flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl sm:left-auto sm:right-4 sm:w-full sm:max-w-lg lg:max-w-xl"
+                                        exit={{ opacity: 0, y: 88, scale: 0.98 }}
+                                        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+                                        className="flex min-h-0 w-full flex-col overflow-hidden border-white/15 bg-[var(--background,#222222)] max-xl:fixed max-xl:left-4 max-xl:right-4 max-xl:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-xl:z-[80] max-xl:h-[min(80vh,640px)] max-xl:max-h-[80vh] max-xl:rounded-2xl max-xl:border max-xl:shadow-2xl xl:static xl:z-auto xl:h-full xl:max-h-none xl:w-[min(24rem,28vw)] xl:max-w-md xl:shrink-0 xl:rounded-none xl:border xl:border-l xl:border-y-0 xl:border-r-0 xl:shadow-none"
                                         style={{ backgroundColor: 'var(--background, #222222)' }}
                                     >
-                                        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-                                            <div>
+                                        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 xl:hidden">
+                                            <div className="min-w-0 pr-2">
                                                 <h3 className="text-sm font-semibold text-slate-100">Triply Assistant</h3>
                                                 <p className="mt-0.5 text-xs text-slate-400">
                                                     Posez vos questions voyage, nous structurons la réponse.
@@ -2015,7 +2528,7 @@ export default function Home() {
                                             <button
                                                 type="button"
                                                 onClick={() => setIsAssistantOpen(false)}
-                                                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                                                className="shrink-0 rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                                                 aria-label="Fermer"
                                             >
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-100">
@@ -2023,10 +2536,24 @@ export default function Home() {
                                                 </svg>
                                             </button>
                                         </div>
-                                        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                                        <div className="hidden border-b border-white/10 px-4 py-2 xl:flex xl:items-center xl:justify-between">
+                                            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Assistant</h3>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAssistantOpen(false)}
+                                                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200"
+                                                aria-label="Replier l&apos;assistant"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                                             {isConnected ? (
                                                 <Assistant
                                                     ref={assistantRef}
+                                                    chatOwnerId={getStoredSession()?.user?.id ?? null}
                                                     onUpdateLocations={handleAssistantUpdate}
                                                     destination={tripConfig.arrivalCityName || tripConfig.arrivalCity}
                                                     planningContext={assistantPlanningContext}
@@ -2051,103 +2578,65 @@ export default function Home() {
                                 )}
                             </AnimatePresence>
                         </div>
+                        </div>
 
-                            <AnimatePresence>
-                            {isConfigPanelOpen && (
-                                <motion.div
-                                    initial={{ x: -24, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    exit={{ x: -24, opacity: 0 }}
-                                    transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                                    className="pointer-events-auto absolute left-0 top-0 bottom-0 z-10 w-full max-w-105 p-2 sm:p-3"
+                        <nav
+                            className="fixed bottom-0 left-0 right-0 z-[55] flex items-stretch justify-around gap-1 border-t border-white/10 bg-slate-950/95 px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
+                            style={{ backgroundColor: 'color-mix(in srgb, var(--background,#222222) 92%, transparent)' }}
+                            aria-label="Navigation planification"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setIsMobileNavOpen(true)}
+                                className="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-100"
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                    <polyline points="9 22 9 12 15 12 15 22" />
+                                </svg>
+                                Menu
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsConfigPanelOpen(true)}
+                                className="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-100"
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                </svg>
+                                Plan
+                            </button>
+                            {planningMode != null && planningMode !== 'manual' ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAssistantOpen((o) => !o)}
+                                    className="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-slate-100"
                                 >
-                                    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/15 shadow-2xl backdrop-blur-md" style={{ backgroundColor: 'var(--background, #222222)' }}>
-                                        <TripCreationWizard
-                                            activeView={wizardView}
-                                            onActiveViewChange={setWizardView}
-                                            state={tripConfig}
-                                            multiSelectOptions={multiSelectOptions}
-                                            dietaryMultiSelectOptions={dietaryMultiSelectOptions}
-                                            selectedFlight={effectiveFlightOffer}
-                                            selectedFlightCarrierName={effectiveFlightCarrierName}
-                                            selectedHotel={effectiveHotelOffer}
-                                            isFlightModalOpen={isFlightModalOpen}
-                                            isHotelModalOpen={isHotelModalOpen}
-                                            onOpenFlightSearch={() => setIsFlightModalOpen(true)}
-                                            onCloseFlightSearch={() => setIsFlightModalOpen(false)}
-                                            onOpenHotelSearch={() => setIsHotelModalOpen(true)}
-                                            onCloseHotelSearch={() => setIsHotelModalOpen(false)}
-                                            onFlightCardClick={() => setIsFlightDetailModalOpen(true)}
-                                            onRemoveFlight={() => {
-                                                setSelectedFlightOffer(null);
-                                                setSelectedFlightCarrierName('');
-                                                tripConfig.setManualFlightEntry(false);
-                                                tripConfig.setManualFlightAirline('');
-                                                tripConfig.setManualFlightNumber('');
-                                                tripConfig.setManualFlightNumberReturn('');
-                                                setIsFlightDetailModalOpen(false);
-                                            }}
-                                            onHotelCardClick={() => setIsHotelDetailModalOpen(true)}
-                                            onRemoveHotel={() => {
-                                                setSelectedHotelOffer(null);
-                                                tripConfig.setManualHotelEntry(false);
-                                                tripConfig.setManualHotelName('');
-                                                tripConfig.setManualHotelAddress('');
-                                                tripConfig.setManualHotelCheckIn('');
-                                                tripConfig.setManualHotelCheckOut('');
-                                                setIsHotelDetailModalOpen(false);
-                                            }}
-                                            selectedDay={selectedDay}
-                                            onSelectedDayChange={setSelectedDay}
-                                            travelDays={travelDays}
-                                            dayActivities={dayActivities}
-                                            activityTimeAlertDragId={activityTimeAlertDragId}
-                                            onRemoveDayActivity={handleRemoveDayActivity}
-                                            onReorderDayActivities={handleReorderDayActivities}
-                                            dayRoutes={dayRoutes}
-                                            selectedRouteType={selectedRouteType}
-                                            onSelectRouteType={setSelectedRouteType}
-                                            legTransportModes={legTransportByDay[selectedDay] ?? []}
-                                            onLegTransportChange={handleLegTransportChange}
-                                            onComplete={handleGenerateTrip}
-                                            onValidateChoices={handleValidateChoices}
-                                            onDestinationGeoSelect={handleDestinationGeoSelect}
-                                            planningMode={planningMode}
-                                            onPlanningModeChange={handlePlanningModeChange}
-                                            onBackToPlanningMode={handleBackToPlanningModeSelection}
-                                            isConnected={isConnected}
-                                            onLoginClick={handleLoginClick}
-                                            onAppendHotelToDay={handleAppendHotelToDay}
-                                            onAppendAirportOutbound={handleAppendAirportOutbound}
-                                            onAppendAirportReturn={handleAppendAirportReturn}
-                                            canAppendReturnAirport={Boolean(effectiveFlightOffer?.itineraries?.[1])}
-                                            onRequestAiDaySuggestions={handleRequestAiDaySuggestions}
-                                            onRequestAiAllDaysSuggestions={handleRequestAiAllDaysSuggestions}
-                                            showAiSuggestionButton={
-                                                planningMode === 'full_ai' || planningMode === 'semi_ai'
-                                            }
-                                            aiSuggestionsLoading={assistantRequestLoading}
-                                            aiAllDaysSuggestionsLoading={assistantRequestLoading}
-                                            onOpenValidateTrip={() => {
-                                                setValidateTripError('');
-                                                setValidateTripModalOpen(true);
-                                            }}
-                                            validateTripDisabled={!hasAnyPlannedActivity}
-                                            geocodeAppendPending={geocodeAppendPending}
-                                            onDayActivityDurationChange={(idx, h) =>
-                                                handleDayActivityDurationChange(selectedDay, idx, h)
-                                            }
-                                            onRegenerateDayActivity={
-                                                planningMode === 'full_ai' || planningMode === 'semi_ai'
-                                                    ? (idx) => void handleRegenerateDayActivity(selectedDay, idx)
-                                                    : undefined
-                                            }
-                                            regeneratingActivity={regeneratingActivity}
-                                        />
-                                    </div>
-                                </motion.div>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                    Assistant
+                                </button>
+                            ) : (
+                                <span className="min-w-0 flex-1" aria-hidden />
                             )}
-                        </AnimatePresence>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setValidateTripError('');
+                                    setValidateTripModalOpen(true);
+                                }}
+                                disabled={!hasAnyPlannedActivity}
+                                className="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                                Valider
+                            </button>
+                        </nav>
                     </>
                 )}
             </div>
@@ -2158,7 +2647,7 @@ export default function Home() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-10000 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+                        className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="validate-trip-title"

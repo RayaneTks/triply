@@ -656,8 +656,41 @@ export const WorldMap: React.FC<MapProps> = ({
                 {isMapLoaded && isStyleReady && locationsGeoJson && (
                     <Source id="locations-source" type="geojson" data={locationsGeoJson as GeoJSON.FeatureCollection}>
                         <Layer
+                            id="locations-itinerary-circles"
+                            type="circle"
+                            filter={['==', ['get', 'type'], 'itinerary-activity']}
+                            paint={{
+                                'circle-radius': 7,
+                                'circle-color': '#06b6d4',
+                                'circle-stroke-width': 2,
+                                'circle-stroke-color': '#ffffff',
+                                'circle-opacity': 0.95,
+                            }}
+                            minzoom={3}
+                        />
+                        <Layer
+                            id="locations-itinerary-labels"
+                            type="symbol"
+                            filter={['==', ['get', 'type'], 'itinerary-activity']}
+                            layout={{
+                                'text-field': ['get', 'title'],
+                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                                'text-size': 11,
+                                'text-offset': [0, 1.45],
+                                'text-anchor': 'top',
+                                'text-max-width': 16,
+                            }}
+                            paint={{
+                                'text-color': '#67e8f9',
+                                'text-halo-color': '#0f172a',
+                                'text-halo-width': 2,
+                            }}
+                            minzoom={9}
+                        />
+                        <Layer
                             id="locations-layer-labels"
                             type="symbol"
+                            filter={['!=', ['get', 'type'], 'itinerary-activity']}
                             layout={{
                                 'text-field': ['get', 'title'],
                                 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
