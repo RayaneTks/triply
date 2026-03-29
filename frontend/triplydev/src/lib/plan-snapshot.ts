@@ -15,13 +15,28 @@ export interface PlanSnapshotDay {
 export interface PlanSnapshot {
     days: PlanSnapshotDay[];
     planningMode?: string;
-    flightSummary?: { carrier?: string; price?: string; currency?: string };
+    flightSummary?: {
+        carrier?: string;
+        price?: string;
+        currency?: string;
+        originIata?: string;
+        destinationIata?: string;
+        outboundAt?: string;
+        returnAt?: string;
+        bookingUrl?: string;
+    };
     hotelSummary?: {
         name?: string;
+        address?: string;
+        latitude?: number;
+        longitude?: number;
         cityCode?: string;
         cityName?: string;
         totalPrice?: string;
         currency?: string;
+        checkInDate?: string;
+        checkOutDate?: string;
+        bookingUrl?: string;
     };
     destinationSummary?: {
         cityName?: string;

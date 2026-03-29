@@ -631,6 +631,31 @@ class TripService implements TripServiceInterface
             }
         }
 
+        $hotelSummary = Arr::get($snapshot, 'hotelSummary');
+        if (is_array($hotelSummary)) {
+            $compactHotel = [];
+            foreach (['name', 'address', 'cityCode', 'cityName', 'totalPrice', 'currency', 'checkInDate', 'checkOutDate', 'bookingUrl'] as $key) {
+                $val = $this->asNullableString($hotelSummary[$key] ?? null);
+                if ($val !== null) {
+                    $compactHotel[$key] = $val;
+                }
+            }
+
+            $latitude = $hotelSummary['latitude'] ?? null;
+            if (is_numeric($latitude)) {
+                $compactHotel['latitude'] = (float) $latitude;
+            }
+
+            $longitude = $hotelSummary['longitude'] ?? null;
+            if (is_numeric($longitude)) {
+                $compactHotel['longitude'] = (float) $longitude;
+            }
+
+            if ($compactHotel !== []) {
+                $stored['hotelSummary'] = $compactHotel;
+            }
+        }
+
         return $stored !== [] ? $stored : null;
     }
 

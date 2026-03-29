@@ -18,6 +18,8 @@ export interface TripSummary {
         price?: number | null;
     };
     plan_snapshot?: PlanSnapshot | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export type CreateTripPayload = {

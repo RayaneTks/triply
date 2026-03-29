@@ -55,7 +55,6 @@ import {
 import {
     applyTripConfigPartial,
     loadTripConfigDraft,
-    migrateTripConfigDraftAnonToUser,
     saveTripConfigDraft,
 } from '@/src/features/trip-creation/trip-config-draft';
 import { clampPlanFormStep } from '@/src/features/trip-creation/plan-form-wizard';
@@ -1002,10 +1001,22 @@ export default function Home() {
                     const offers = item.offers || [];
 
                     for (const off of offers) {
+                        const lines = Array.isArray(hotel?.address?.lines)
+                            ? hotel.address.lines.filter((line): line is string => typeof line === 'string' && line.trim() !== '')
+                            : [];
+                        const cityFromAddress = typeof hotel?.address?.cityName === 'string' ? hotel.address.cityName.trim() : '';
+                        const zipFromAddress = typeof hotel?.address?.postalCode === 'string' ? hotel.address.postalCode.trim() : '';
+                        const countryFromAddress = typeof hotel?.address?.countryCode === 'string' ? hotel.address.countryCode.trim() : '';
+                        const cityBlock = [zipFromAddress, cityFromAddress].filter(Boolean).join(' ');
+                        const mergedAddress = [...lines, cityBlock, countryFromAddress].filter(Boolean).join(', ');
+
                         const offer: HotelOffer = {
                             id: off.id || `${hotel?.hotelId}-${off.checkInDate}-${off.checkOutDate}`,
                             hotelId: hotel?.hotelId || '',
                             hotelName: hotel?.name || 'Hotel',
+                            hotelAddress: (hotel?.formattedAddress || mergedAddress || '').trim() || undefined,
+                            hotelLatitude: typeof hotel?.latitude === 'number' ? hotel.latitude : undefined,
+                            hotelLongitude: typeof hotel?.longitude === 'number' ? hotel.longitude : undefined,
                             cityCode: hotel?.cityCode || city,
                             checkInDate: off.checkInDate || checkIn,
                             checkOutDate: off.checkOutDate || checkOut,
@@ -1348,6 +1359,9 @@ export default function Home() {
             hotelSummary: effectiveHotelOffer
                 ? {
                       name: effectiveHotelOffer.hotelName,
+                                            address: effectiveHotelOffer.hotelAddress,
+                      latitude: effectiveHotelOffer.hotelLatitude,
+                      longitude: effectiveHotelOffer.hotelLongitude,
                       cityCode: effectiveHotelOffer.cityCode,
                       cityName: tripConfig.arrivalCityName || undefined,
                                             totalPrice: effectiveHotelOffer.price?.total,
@@ -1415,6 +1429,7 @@ export default function Home() {
         if (effectiveHotelOffer) {
             extra.selectedHotelPlanning = {
                 name: effectiveHotelOffer.hotelName,
+                address: effectiveHotelOffer.hotelAddress,
                 cityCode: effectiveHotelOffer.cityCode,
                 checkIn: effectiveHotelOffer.checkInDate,
                 checkOut: effectiveHotelOffer.checkOutDate,

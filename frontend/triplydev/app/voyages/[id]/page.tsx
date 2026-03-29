@@ -36,6 +36,36 @@ const formatDate = (dateStr: string) => {
     });
 };
 
+const formatDateTime = (dateStr: string | undefined): string => {
+    const parsed = parseTripDate(dateStr || '');
+    if (!parsed) return '-';
+    return parsed.toLocaleString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+const buildHotelMapUrl = (latitude?: number, longitude?: number, address?: string): string | null => {
+    if (typeof latitude === 'number' && Number.isFinite(latitude) && typeof longitude === 'number' && Number.isFinite(longitude)) {
+        return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    }
+    const query = (address || '').trim();
+    if (!query) return null;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+};
+
+const getStayNights = (checkInDate?: string, checkOutDate?: string): number | null => {
+    const inDate = parseTripDate(checkInDate || '');
+    const outDate = parseTripDate(checkOutDate || '');
+    if (!inDate || !outDate) return null;
+    const diffMs = outDate.getTime() - inDate.getTime();
+    const nights = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    return nights >= 0 ? nights : null;
+};
+
 const getComputedBudget = (trip: TripSummary): { amount: number; currency: string } => {
     const persisted = parseAmount(trip.budget_total);
     const snapshot = trip.plan_snapshot;
@@ -71,6 +101,10 @@ export default function VoyageDetailPage() {
     const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY;
     const tripBudget = trip ? getComputedBudget(trip) : null;
     const tripDestination = trip ? getDisplayDestination(trip) : 'Destination';
+    const flightSummary = trip?.plan_snapshot?.flightSummary;
+    const hotelSummary = trip?.plan_snapshot?.hotelSummary;
+    const stayNights = getStayNights(hotelSummary?.checkInDate, hotelSummary?.checkOutDate);
+    const hotelMapUrl = buildHotelMapUrl(hotelSummary?.latitude, hotelSummary?.longitude, hotelSummary?.address);
 
     useEffect(() => {
         let active = true;
@@ -227,21 +261,148 @@ export default function VoyageDetailPage() {
 
                             <section className="mb-8">
                                 <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-                                    Transport
+                                    Details du vol
                                 </h3>
                                 <div
-                                    className="rounded-2xl p-6"
+                                    className="rounded-2xl p-6 grid gap-4 sm:grid-cols-2"
                                     style={{
                                         backgroundColor: 'rgba(255, 255, 255, 0.05)',
                                         border: '1px solid rgba(255, 255, 255, 0.1)',
                                     }}
                                 >
-                                    <p className="font-medium" style={{ color: 'var(--foreground)' }}>
-                                        {trip.flight?.carrier || 'Aucun transport renseigne'}
-                                    </p>
-                                    <p className="text-sm mt-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                        Prix: {trip.flight?.price ?? '-'} {trip.currency}
-                                    </p>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Compagnie</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {flightSummary?.carrier || trip.flight?.carrier || 'Non renseignee'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Prix du vol</span>
+                                        <p className="font-medium" style={{ color: 'var(--primary)' }}>
+                                            {flightSummary?.price || trip.flight?.price || '-'} {flightSummary?.currency || trip.currency}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Trajet</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {(flightSummary?.originIata || '---')} → {(flightSummary?.destinationIata || '---')}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Depart (heure)</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {formatDateTime(flightSummary?.outboundAt)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Retour (heure)</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {formatDateTime(flightSummary?.returnAt)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Reference destination</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {tripDestination}
+                                        </p>
+                                    </div>
+                                    {flightSummary?.bookingUrl && (
+                                        <div className="sm:col-span-2">
+                                            <a
+                                                href={flightSummary.bookingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm font-medium text-cyan-400 hover:underline"
+                                            >
+                                                Ouvrir le lien de reservation du vol
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            <section className="mb-8">
+                                <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
+                                    Details de l&apos;hebergement
+                                </h3>
+                                <div
+                                    className="rounded-2xl p-6 grid gap-4 sm:grid-cols-2"
+                                    style={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    }}
+                                >
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Nom</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {hotelSummary?.name || 'Non renseigne'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Prix total</span>
+                                        <p className="font-medium" style={{ color: 'var(--primary)' }}>
+                                            {hotelSummary?.totalPrice || '-'} {hotelSummary?.currency || trip.currency}
+                                        </p>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Adresse</span>
+                                        <div className="mt-0.5 flex items-center gap-2">
+                                            <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                                {hotelSummary?.address || hotelSummary?.cityName || 'Non renseignee'}
+                                            </p>
+                                            {hotelMapUrl && (
+                                                <a
+                                                    href={hotelMapUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-400/40 text-cyan-400 hover:bg-cyan-400/10"
+                                                    aria-label="Ouvrir l'adresse dans Google Maps"
+                                                    title="Ouvrir l'adresse dans Google Maps"
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M12 22s7-5.7 7-12a7 7 0 1 0-14 0c0 6.3 7 12 7 12Z" />
+                                                        <circle cx="12" cy="10" r="2.5" />
+                                                    </svg>
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Check-in</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {formatDate(hotelSummary?.checkInDate || '')}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Check-out</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {formatDate(hotelSummary?.checkOutDate || '')}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Duree du sejour</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {stayNights != null ? `${stayNights} nuit${stayNights > 1 ? 's' : ''}` : '-'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Localisation</span>
+                                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                            {hotelSummary?.cityName || tripDestination}
+                                        </p>
+                                    </div>
+                                    <div className="sm:col-span-2 flex flex-wrap gap-3">
+                                        {hotelSummary?.bookingUrl && (
+                                            <a
+                                                href={hotelSummary.bookingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm font-medium text-cyan-400 hover:underline"
+                                            >
+                                                Ouvrir le lien de reservation de l&apos;hebergement
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </section>
 
