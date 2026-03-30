@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDownIcon, CakeIcon } from '@heroicons/react/24/outline';
+import { ChevronDown, Cake } from 'lucide-react';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
@@ -47,7 +47,7 @@ function MealRegimeSelector({ value, onChange }: { value: string; onChange: (nex
 
     return (
         <div className="flex items-center gap-2" ref={containerRef}>
-            <CakeIcon className="h-5 w-5 shrink-0 text-cyan-400" aria-hidden />
+            <Cake className="h-5 w-5 shrink-0 text-cyan-400" aria-hidden />
             <div className="relative min-w-0 flex-1">
                 <button
                     type="button"
@@ -60,7 +60,7 @@ function MealRegimeSelector({ value, onChange }: { value: string; onChange: (nex
                     aria-labelledby="hotel-meal-regime-label"
                 >
                     <span className="truncate">{selectedLabel}</span>
-                    <ChevronDownIcon
+                    <ChevronDown
                         className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 shrink-0 -translate-y-1/2 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                         aria-hidden
                     />

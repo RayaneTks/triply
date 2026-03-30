@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon, BanknotesIcon, ExclamationTriangleIcon, ArrowLongDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { Bike } from 'lucide-react';
+import { Truck, User, MapPin, Clock, MessageSquare, Menu, Calendar, ChevronDown, Banknote, AlertTriangle, ArrowDown, RefreshCw, Bike } from 'lucide-react';
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
@@ -41,7 +40,7 @@ function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: numbe
 
     return (
         <div className="flex items-center gap-2" ref={containerRef}>
-            <CalendarDaysIcon className="h-5 w-5 shrink-0 text-cyan-400" />
+            <Calendar className="h-5 w-5 shrink-0 text-cyan-400" />
             <div className="relative flex-1">
                 <button
                     type="button"
@@ -50,7 +49,7 @@ function DaySelector({ selectedDay, travelDays, onSelect }: { selectedDay: numbe
                     style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
                 >
                     <span>Jour {selectedDay}</span>
-                    <ChevronDownIcon className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {isOpen && (
                     <div
@@ -206,7 +205,7 @@ function DayPlanActionsDropdown({
                 style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
             >
                 <span>Vol et hébergement</span>
-                <ChevronDownIcon
+                <ChevronDown
                     className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
                     aria-hidden
                 />
@@ -405,7 +404,7 @@ function ActivityCard({
                     role="group"
                     aria-label="Trajet depuis l’activité précédente"
                 >
-                    <ArrowLongDownIcon className="h-4 w-4 shrink-0 text-cyan-400" aria-hidden />
+                    <ArrowDown className="h-4 w-4 shrink-0 text-cyan-400" aria-hidden />
                     <span className="font-medium text-cyan-100">Trajet</span>
                     <div
                         className="flex shrink-0 items-center gap-0.5 rounded-lg border border-cyan-500/30 bg-black/20 p-0.5"
@@ -443,8 +442,8 @@ function ActivityCard({
                                                 : 'text-cyan-300/80 hover:bg-white/10 hover:text-cyan-100'
                                     }`}
                                 >
-                                    {type === 'driving' && <TruckIcon className="h-4 w-4" aria-hidden />}
-                                    {type === 'walking' && <UserIcon className="h-4 w-4" aria-hidden />}
+                                    {type === 'driving' && <Truck className="h-4 w-4" aria-hidden />}
+                                    {type === 'walking' && <User className="h-4 w-4" aria-hidden />}
                                     {type === 'cycling' && <Bike className="h-4 w-4" aria-hidden />}
                                 </button>
                             );
@@ -468,7 +467,7 @@ function ActivityCard({
                         title="Glisser pour réordonner"
                         aria-label="Glisser pour réordonner"
                     >
-                        <Bars3Icon className="h-5 w-5" />
+                        <Menu className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="mb-1.5 flex flex-wrap items-center gap-2">
@@ -482,7 +481,7 @@ function ActivityCard({
                                     className="inline-flex items-center gap-1 rounded-md border border-red-500/50 bg-red-950/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-300"
                                     role="alert"
                                 >
-                                    <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                     Alerte temps
                                 </span>
                             )}
@@ -492,17 +491,17 @@ function ActivityCard({
                         <span
                             className={`flex items-center gap-1.5 ${isTimeAlert ? 'font-medium text-red-300' : 'text-cyan-400'}`}
                         >
-                            <ClockIcon className="h-3.5 w-3.5" />
+                            <Clock className="h-3.5 w-3.5" />
                             Temps : {durationLabel}
                         </span>
                         <span className="flex items-center gap-1.5 text-cyan-400">
-                            <BanknotesIcon className="h-3.5 w-3.5" />
+                            <Banknote className="h-3.5 w-3.5" />
                             Coût moyen : {cost}
                         </span>
                     </div>
                     )}
                     <div className="flex items-start gap-2 text-[12px] text-slate-400">
-                        <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                         {addressLoading ? (
                             <span className="animate-pulse">Chargement de l&apos;adresse...</span>
                         ) : address ? (
@@ -517,7 +516,7 @@ function ActivityCard({
                             rel="noopener noreferrer"
                             className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-[12px] font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20 hover:border-cyan-500/40"
                         >
-                            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                            <MessageSquare className="h-4 w-4" />
                             Laisser un avis
                         </a>
                         {onDurationHoursChange && !hideActivityMeta && (
@@ -568,7 +567,7 @@ function ActivityCard({
                                 title="Régénérer avec l’IA"
                                 aria-label="Régénérer cette activité avec l’IA"
                             >
-                                <ArrowPathIcon
+                                <RefreshCw
                                     className={`h-[18px] w-[18px] ${regenerateLoading ? 'animate-spin' : ''}`}
                                     aria-hidden
                                 />
@@ -894,7 +893,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                   : 'border-white/10 bg-white/3 text-slate-300 hover:border-white/20 hover:bg-white/6'
                         }`}
                     >
-                        {warn ? <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-amber-400" aria-hidden /> : null}
+                        {warn ? <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden /> : null}
                         <span className="min-w-0 flex-1 truncate text-left">{label}</span>
                     </button>
                 );
@@ -971,7 +970,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                                 onClick={() => setMobileStepsOpen(true)}
                                                 className="flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-[12px] font-semibold text-slate-200 transition-colors hover:bg-white/10"
                                             >
-                                                <Bars3Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                                                <Menu className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
                                                 Étapes du formulaire
                                             </button>
                                         </div>
@@ -1015,7 +1014,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                             selectedFlightCarrierName={selectedFlightCarrierName}
                                             onFlightCardClick={onFlightCardClick}
                                             onRemoveFlight={onRemoveFlight}
-                                            onOpenHotelSearch={onOpenHotelSearch}
+                                            onOpenHotelSearch={onOpenFlightSearch}
                                             onCloseHotelSearch={onCloseHotelSearch}
                                             hotelSearchChecked={isHotelModalOpen}
                                             selectedHotel={selectedHotel}
@@ -1207,7 +1206,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 isFirstTripDay={isFirstTripDay}
                                 selectedFlight={selectedFlight}
                                 onAppendAirportOutbound={onAppendAirportOutbound}
-                                onOpenFlightSearch={onOpenFlightSearch}
+                                onOpenFlightSearch={onOpenHotelSearch}
                                 isLastTripDay={isLastTripDay}
                                 canAppendReturnAirport={canAppendReturnAirport}
                                 onAppendAirportReturn={onAppendAirportReturn}
@@ -1243,10 +1242,10 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                                 }`}
                                             >
                                                 {type === 'driving' && (
-                                                    <TruckIcon className={`h-6 w-6 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                                                    <Truck className={`h-6 w-6 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
                                                 )}
                                                 {type === 'walking' && (
-                                                    <UserIcon className={`h-6 w-6 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                                                    <User className={`h-6 w-6 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
                                                 )}
                                                 {type === 'cycling' && (
                                                     <Bike className={`h-6 w-6 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
