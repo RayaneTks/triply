@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { v4 as uuid } from 'uuid';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Send, Trash2, RotateCcw, StopCircle, MessageSquare, Map as MapIcon } from 'lucide-react';
 import MessageList from '@/src/components/Messages/MessageList';
-import { SearchBar } from '@/src/components/Searchbar/Searchbar';
-import { Button } from '@/src/components/Button/Button';
 import { getStoredSession, type UserPreferences } from '@/src/lib/auth-client';
 import { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
 import {
@@ -21,16 +21,8 @@ function chatStorageKeyForUser(userId: string | number | null | undefined): stri
 
 export type AssistantChatMode = 'itinerary' | 'qa';
 
-interface Coordinates {
-    latitude: number;
-    longitude: number;
-}
-
-interface Location {
-    id: string;
-    title: string;
-    coordinates: Coordinates;
-}
+interface Coordinates { latitude: number; longitude: number; }
+interface Location { id: string; title: string; coordinates: Coordinates; }
 
 export interface SuggestedActivityPin {
     title: string;
@@ -47,12 +39,7 @@ interface AssistantResponse {
 }
 
 export type Role = 'user' | 'assistant';
-
-export interface ChatMessage {
-    id: string;
-    role: Role;
-    content: string;
-}
+export interface ChatMessage { id: string; role: Role; content: string; }
 
 export interface AssistantPlanningContext {
     maxActivityHoursPerDay: number;
@@ -68,7 +55,6 @@ export type AssistantHandle = {
 };
 
 interface AssistantProps {
-    /** Identifiant du compte connecté : historique du chat isolé par utilisateur (localStorage). */
     chatOwnerId: string | number | null;
     onUpdateLocations?: (locations: Location[]) => void;
     destination?: string;
@@ -83,473 +69,185 @@ interface AssistantProps {
     onApplyStep1Form?: (patch: AssistantStep1FormPatch) => void;
 }
 
-function loadStoredMessages(userId: string | number | null | undefined): ChatMessage[] {
-    if (typeof window === 'undefined') return [];
-    const key = chatStorageKeyForUser(userId);
-    if (!key) return [];
-    try {
-        const raw = window.localStorage.getItem(key);
-        if (raw) {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        }
-        const legacyRaw = window.localStorage.getItem(LEGACY_CHAT_STORAGE_KEY);
-        if (legacyRaw) {
-            const legacyParsed = JSON.parse(legacyRaw);
-            if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
-                window.localStorage.setItem(key, legacyRaw);
-                window.localStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
-                return legacyParsed;
-            }
-        }
-    } catch {
-        return [];
-    }
-    return [];
-}
+const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(props, ref) {
+    const {
+        chatOwnerId, onUpdateLocations, destination, onClearChat, planningContext,
+        onSuggestedActivities, onSuggestedActivitiesForDay, onLoadingChange,
+        step1FormSnapshot, step1HotelOptionLabels, step1DietaryLabels, onApplyStep1Form
+    } = props;
 
-function saveMessages(messages: ChatMessage[], userId: string | number | null | undefined) {
-    if (typeof window === 'undefined') return;
-    const key = chatStorageKeyForUser(userId);
-    if (!key) return;
-    try {
-        window.localStorage.setItem(key, JSON.stringify(messages));
-    } catch {
-        // ignore
-    }
-}
-
-function clearStoredMessagesForUser(userId: string | number | null | undefined) {
-    if (typeof window === 'undefined') return;
-    const key = chatStorageKeyForUser(userId);
-    if (!key) return;
-    try {
-        window.localStorage.removeItem(key);
-    } catch {
-        // ignore
-    }
-}
-
-function toAssistantPreferences(preferences: UserPreferences | string[] | null | undefined): string[] {
-    if (Array.isArray(preferences)) {
-        return [...new Set(preferences.filter((value): value is string => typeof value === 'string' && value.trim() !== ''))];
-    }
-    if (!preferences || typeof preferences !== 'object') {
-        return [];
-    }
-
-    const values = [
-        ...(preferences.environments ?? []),
-        ...(preferences.interests ?? []),
-        ...(preferences.diet ?? []),
-        ...(preferences.visited_cities ?? []),
-        preferences.traveler_profile,
-        preferences.pace,
-        preferences.food_preference,
-    ];
-
-    return [...new Set(values.filter((value): value is string => typeof value === 'string' && value.trim() !== ''))];
-}
-
-const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(
-    {
-        chatOwnerId,
-        onUpdateLocations,
-        destination,
-        onClearChat,
-        planningContext,
-        onSuggestedActivities,
-        onSuggestedActivitiesForDay,
-        onLoadingChange,
-        step1FormSnapshot,
-        step1HotelOptionLabels,
-        step1DietaryLabels,
-        onApplyStep1Form,
-    },
-    ref
-) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [pendingAssistantMessage, setPendingAssistantMessage] = useState<string | null>(null);
     const [chatMode, setChatMode] = useState<AssistantChatMode>('itinerary');
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const planningContextRef = useRef(planningContext);
-    planningContextRef.current = planningContext;
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const step1ApiRef = useRef({
-        snapshot: {} as Record<string, unknown>,
-        hotelLabels: [] as string[],
-        dietaryLabels: [] as string[],
-    });
-    step1ApiRef.current = {
-        snapshot: step1FormSnapshot ?? {},
-        hotelLabels: step1HotelOptionLabels ?? [],
-        dietaryLabels: step1DietaryLabels ?? [],
-    };
-
     useLayoutEffect(() => {
-        setMessages(loadStoredMessages(chatOwnerId));
+        if (typeof window !== 'undefined') {
+            const key = chatStorageKeyForUser(chatOwnerId);
+            if (key) {
+                const raw = window.localStorage.getItem(key);
+                if (raw) setMessages(JSON.parse(raw));
+            }
+        }
     }, [chatOwnerId]);
 
     useEffect(() => {
-        if (chatOwnerId == null || chatOwnerId === '') return;
-        if (messages.length > 0) {
-            saveMessages(messages, chatOwnerId);
+        const key = chatStorageKeyForUser(chatOwnerId);
+        if (key && messages.length > 0) {
+            window.localStorage.setItem(key, JSON.stringify(messages));
         }
     }, [messages, chatOwnerId]);
 
-    const clearChat = () => {
-        setMessages([]);
-        clearStoredMessagesForUser(chatOwnerId);
-        onClearChat?.();
-    };
-
     useEffect(() => {
-        scrollContainerRef.current?.scrollTo({
-            top: scrollContainerRef.current.scrollHeight,
-            behavior: 'smooth',
-        });
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
     }, [messages, loading, pendingAssistantMessage]);
 
-    const placeholderText =
-        chatMode === 'qa'
-            ? 'Posez votre question voyage…'
-            : destination
-              ? `Rechercher des activites a ${destination}...`
-              : 'Ou souhaitez-vous aller ? (ex: Tokyo...)';
+    const postUserMessage = useCallback(async (text: string, opts?: { forceItinerary?: boolean }, targetDay?: number) => {
+        if (!text.trim() || loading) return;
+        const session = getStoredSession();
+        if (!session?.token) return;
 
-    const stopRequest = useCallback(() => {
-        abortControllerRef.current?.abort();
-    }, []);
+        const userMsg: ChatMessage = { id: uuid(), role: 'user', content: text.trim() };
+        const newHistory = [...messages, userMsg];
+        setMessages(newHistory);
+        setLoading(true);
+        onLoadingChange?.(true);
+        setPendingAssistantMessage("Analyse de votre demande...");
 
-    const undoLastExchange = useCallback(() => {
-        if (loading) {
-            stopRequest();
-            return;
+        const ac = new AbortController();
+        abortControllerRef.current = ac;
+
+        try {
+            const res = await fetch('/api/assistant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+                signal: ac.signal,
+                body: JSON.stringify({
+                    messages: newHistory.map(({ role, content }) => ({ role, content })),
+                    destinationContext: destination,
+                    chatMode: opts?.forceItinerary ? 'itinerary' : chatMode,
+                    maxActivityHoursPerDay: planningContext?.maxActivityHoursPerDay,
+                    selectedDay: targetDay ?? planningContext?.selectedDay,
+                    travelDays: planningContext?.travelDays,
+                    planningMode: planningContext?.planningMode,
+                    step1FormSnapshot
+                }),
+            });
+
+            const data: AssistantResponse = await res.json();
+            setMessages(prev => [...prev, { id: uuid(), role: 'assistant', content: data.reply }]);
+
+            if (data.locations?.length && onUpdateLocations) onUpdateLocations(data.locations);
+            if (data.suggestedActivities?.length) {
+                if (targetDay && onSuggestedActivitiesForDay) onSuggestedActivitiesForDay(targetDay, data.suggestedActivities);
+                else if (onSuggestedActivities) onSuggestedActivities(data.suggestedActivities);
+            }
+            if (data.step1FormPatch && onApplyStep1Form) onApplyStep1Form(data.step1FormPatch);
+
+        } catch (e) {
+            const isAbortError =
+                (e instanceof DOMException && e.name === 'AbortError') ||
+                (e instanceof Error && e.name === 'AbortError');
+            if (!isAbortError) {
+                setMessages(prev => [...prev, { id: uuid(), role: 'assistant', content: "Désolé, je rencontre une petite turbulence technique." }]);
+            }
+        } finally {
+            setLoading(false);
+            onLoadingChange?.(false);
+            setPendingAssistantMessage(null);
         }
-        setMessages((prev) => {
-            if (prev.length < 2) return prev;
-            const last = prev[prev.length - 1];
-            const prev2 = prev[prev.length - 2];
-            if (last.role === 'assistant' && prev2.role === 'user') return prev.slice(0, -2);
-            if (last.role === 'user') return prev.slice(0, -1);
-            return prev;
-        });
-    }, [loading, stopRequest]);
+    }, [messages, loading, chatMode, destination, planningContext, step1FormSnapshot, onLoadingChange, onUpdateLocations, onSuggestedActivities, onSuggestedActivitiesForDay, onApplyStep1Form]);
 
-    const postUserMessage = useCallback(
-        async (currentMessageText: string, opts?: { forceItinerary?: boolean }, targetDay?: number) => {
-            if (!currentMessageText.trim() || loading) return;
-
-            const session = getStoredSession();
-            if (!session?.token) {
-                const authRequired: ChatMessage = {
-                    id: uuid(),
-                    role: 'assistant',
-                    content: "Connexion requise pour utiliser l'assistant.",
-                };
-                setMessages((prev) => [...prev, authRequired]);
-                return;
-            }
-
-            const userMessage: ChatMessage = {
-                id: uuid(),
-                role: 'user',
-                content: currentMessageText.trim(),
-            };
-
-            const newHistory = [...messages, userMessage];
-            setMessages(newHistory);
-            setLoading(true);
-            onLoadingChange?.(true);
-            setPendingAssistantMessage("Triply réfléchit à la meilleure façon d'organiser votre voyage...");
-
-            const effectiveMode: AssistantChatMode = opts?.forceItinerary ? 'itinerary' : chatMode;
-
-            const ac = new AbortController();
-            abortControllerRef.current = ac;
-
-            try {
-                const apiMessages = newHistory.map(({ role, content }) => ({ role, content }));
-
-                const prefs: string[] = (() => {
-                    try {
-                        const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFERENCES_STORAGE_KEY) : null;
-                        if (!raw) return [];
-                        const parsed: unknown = JSON.parse(raw);
-                        if (Array.isArray(parsed)) {
-                            return toAssistantPreferences(parsed);
-                        }
-                        return toAssistantPreferences(parsed as UserPreferences);
-                    } catch {
-                        return [];
-                    }
-                })();
-
-                const ctx = planningContextRef.current;
-                const s1 = step1ApiRef.current;
-                const requestSelectedDay = targetDay ?? ctx?.selectedDay;
-
-                const res = await fetch('/api/assistant', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${session.token}`,
-                    },
-                    signal: ac.signal,
-                    body: JSON.stringify({
-                        messages: apiMessages,
-                        destinationContext: destination,
-                        userPreferences: prefs,
-                        chatMode: effectiveMode,
-                        maxActivityHoursPerDay: ctx?.maxActivityHoursPerDay,
-                        selectedDay: requestSelectedDay,
-                        travelDays: ctx?.travelDays,
-                        planningMode: ctx?.planningMode,
-                        currentDayActivityTitles: ctx?.currentDayActivityTitles,
-                        step1FormSnapshot: s1.snapshot,
-                        step1HotelOptionLabels: s1.hotelLabels,
-                        step1DietaryLabels: s1.dietaryLabels,
-                    }),
-                });
-
-                const payload = await res.json().catch(() => null);
-
-                if (!res.ok) {
-                    const errorText =
-                        payload?.error ||
-                        payload?.message ||
-                        'Désolé, une erreur est survenue. Réessaie dans un instant.';
-                    throw new Error(errorText);
-                }
-
-                const data: AssistantResponse = payload;
-
-                const assistantMessage: ChatMessage = {
-                    id: uuid(),
-                    role: 'assistant',
-                    content: data.reply,
-                };
-
-                setMessages((prev) => [...prev, assistantMessage]);
-
-                const applyItineraryEffects = effectiveMode === 'itinerary';
-
-                if (applyItineraryEffects && data.locations && data.locations.length > 0 && onUpdateLocations) {
-                    onUpdateLocations(data.locations);
-                }
-
-                if (applyItineraryEffects && data.suggestedActivities && data.suggestedActivities.length > 0) {
-                    if (targetDay != null && onSuggestedActivitiesForDay) {
-                        onSuggestedActivitiesForDay(targetDay, data.suggestedActivities);
-                    } else if (onSuggestedActivities) {
-                        onSuggestedActivities(data.suggestedActivities);
-                    }
-                }
-
-                if (applyItineraryEffects && data.step1FormPatch && onApplyStep1Form) {
-                    onApplyStep1Form(data.step1FormPatch);
-                }
-            } catch (error) {
-                if (error instanceof Error && error.name === 'AbortError') {
-                    setMessages((prev) => (prev.length > 0 && prev[prev.length - 1]?.role === 'user' ? prev.slice(0, -1) : prev));
-                    return;
-                }
-                console.error('Erreur API', error);
-                const errorMessage: ChatMessage = {
-                    id: uuid(),
-                    role: 'assistant',
-                    content:
-                        error instanceof Error
-                            ? error.message
-                            : 'Désolé, une erreur est survenue. Réessaie dans un instant.',
-                };
-                setMessages((prev) => [...prev, errorMessage]);
-            } finally {
-                abortControllerRef.current = null;
-                setLoading(false);
-                onLoadingChange?.(false);
-                setPendingAssistantMessage(null);
-            }
+    useImperativeHandle(ref, () => ({
+        suggestActivitiesForDay: () => {
+            const day = planningContext?.selectedDay ?? 1;
+            postUserMessage(`Propose-moi des activités pour le jour ${day} à ${destination || 'ma destination'}.`, { forceItinerary: true }, day);
         },
-        [
-            chatMode,
-            destination,
-            loading,
-            messages,
-            onApplyStep1Form,
-            onLoadingChange,
-            onSuggestedActivities,
-            onSuggestedActivitiesForDay, onUpdateLocations,
-        ]
-    );
-
-    useImperativeHandle(
-        ref,
-        () => ({
-            suggestActivitiesForDay: () => {
-                const dest = destination?.trim() || 'la destination';
-                const ctx = planningContextRef.current;
-                const day = ctx?.selectedDay ?? 1;
-                const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
-                const step1Line = buildStep1ActivityConstraintsPromptFragment(step1ApiRef.current.snapshot);
-                const prefix = step1Line ? `${step1Line} ` : '';
-                void postUserMessage(
-                    `${prefix}Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
-                    undefined,
-                    day
-                );
-            },
-            suggestActivitiesForAllDays: async () => {
-                const dest = destination?.trim() || 'la destination';
-                const ctx = planningContextRef.current;
-                const maxH = ctx && ctx.maxActivityHoursPerDay > 0 ? ctx.maxActivityHoursPerDay : 6;
-                const travelDays = Math.max(1, ctx?.travelDays ?? 1);
-                const dayIndexes = Array.from({ length: travelDays }, (_, i) => i + 1);
-                const step1Line = buildStep1ActivityConstraintsPromptFragment(step1ApiRef.current.snapshot);
-                const prefix = step1Line ? `${step1Line} ` : '';
-
-                await dayIndexes.reduce(
-                    (chain, day) =>
-                        chain.then(() =>
-                            postUserMessage(
-                                `${prefix}Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
-                                undefined,
-                                day
-                            )
-                        ),
-                    Promise.resolve()
-                );
-            },
-        }),
-        [destination, postUserMessage]
-    );
-
-    const sendMessage = async () => {
-        if ((!message.trim() && !destination) || loading) return;
-        const currentMessageText =
-            message.trim() ||
-            (chatMode === 'qa'
-                ? 'Bonjour, j’ai une question sur mon voyage.'
-                : `Montre-moi les hotels et activites a ${destination}`);
-        setMessage('');
-        await postUserMessage(currentMessageText);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            void sendMessage();
+        suggestActivitiesForAllDays: async () => {
+            const days = Array.from({ length: planningContext?.travelDays ?? 1 }, (_, i) => i + 1);
+            for (const d of days) {
+                await postUserMessage(`Activités Jour ${d}`, { forceItinerary: true }, d);
+            }
         }
-    };
-
-    const canUndo = messages.length >= 2 || loading;
+    }), [destination, planningContext, postUserMessage]);
 
     return (
-        <div className="flex h-full min-h-0 flex-col" style={{ backgroundColor: 'var(--background, #222222)' }}>
-            <div className="shrink-0 space-y-2 border-b border-white/10 px-4 py-2">
-                <div className="flex gap-1 rounded-lg bg-white/6 p-0.5">
-                    <button
-                        type="button"
+        <div className="flex h-full flex-col bg-[#020617] text-slate-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/5 p-4">
+                <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
+                        <Sparkles size={18} />
+                    </div>
+                    <span className="text-sm font-bold text-white">Assistant Triply</span>
+                </div>
+                <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+                    <button 
                         onClick={() => setChatMode('itinerary')}
-                        className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                            chatMode === 'itinerary' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                        }`}
+                        className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase transition-all ${chatMode === 'itinerary' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-900/40' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        Itinéraire
+                        Plan
                     </button>
-                    <button
-                        type="button"
+                    <button 
                         onClick={() => setChatMode('qa')}
-                        className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                            chatMode === 'qa' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                        }`}
+                        className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase transition-all ${chatMode === 'qa' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-900/40' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        Q&amp;A
+                        Aide
                     </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+            </div>
+
+            {/* Chat Area */}
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+                <MessageList messages={messages} loading={loading} />
+                <AnimatePresence>
+                    {pendingAssistantMessage && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
+                            <div className="h-8 w-8 shrink-0 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 animate-pulse">
+                                <Sparkles size={14} />
+                            </div>
+                            <div className="rounded-2xl bg-white/5 p-3 text-xs text-slate-400 italic">
+                                {pendingAssistantMessage}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* Input Area */}
+            <div className="border-t border-white/5 p-4 bg-[#020617]/50 backdrop-blur-md">
+                <div className="mb-3 flex justify-between">
+                    <button 
+                        onClick={() => { setMessages([]); window.localStorage.removeItem(chatStorageKeyForUser(chatOwnerId) || ''); onClearChat?.(); }}
+                        className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                        <Trash2 size={12} /> Effacer
+                    </button>
                     {loading && (
-                        <button
-                            type="button"
-                            onClick={stopRequest}
-                            className="rounded-md border border-red-500/40 bg-red-500/15 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/25"
-                        >
-                            Arrêter
+                        <button onClick={() => abortControllerRef.current?.abort()} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
+                            <StopCircle size={12} /> Arrêter
                         </button>
                     )}
-                    <button
-                        type="button"
-                        onClick={undoLastExchange}
-                        disabled={!canUndo}
-                        className="rounded-md border border-white/15 bg-white/4 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                        title="Annuler le dernier échange ou arrêter la génération"
-                    >
-                        Annuler le dernier échange
-                    </button>
                 </div>
-                {chatMode === 'qa' && (
-                    <p className="text-[10px] leading-snug text-slate-500">
-                        Questions uniquement : pas de mise à jour de la carte ni du formulaire.
-                    </p>
-                )}
-            </div>
-            <div
-                ref={scrollContainerRef}
-                className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
-                aria-label="Historique de la conversation avec Triply Assistant"
-            >
-                <MessageList messages={messages} loading={loading} />
-                {pendingAssistantMessage && (
-                    <div className="mt-1">
-                        <MessageList
-                            messages={[
-                                {
-                                    id: 'pending-assistant',
-                                    role: 'assistant',
-                                    content: pendingAssistantMessage,
-                                },
-                            ]}
-                            loading={false}
-                        />
-                    </div>
-                )}
-            </div>
-            <div
-                className="flex shrink-0 flex-col gap-2 border-t border-white/10 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]"
-                style={{ backgroundColor: 'var(--background, #222222)' }}
-            >
-                <div className="flex justify-between items-center">
-                    <button
-                        type="button"
-                        onClick={clearChat}
-                        className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-                        title="Effacer l'historique de la conversation"
+                <div className="relative flex items-center">
+                    <input
+                        type="text" value={message} onChange={e => setMessage(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && postUserMessage(message)}
+                        placeholder={chatMode === 'qa' ? "Posez une question..." : "Une destination, une envie ?"}
+                        className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-4 pr-12 text-sm text-white placeholder:text-slate-600 focus:border-cyan-500/50 outline-none transition-all"
+                    />
+                    <button 
+                        onClick={() => { postUserMessage(message); setMessage(''); }}
+                        disabled={loading || !message.trim()}
+                        className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500 text-white shadow-lg hover:bg-cyan-400 disabled:opacity-30 transition-all active:scale-90"
                     >
-                        Nettoyer le chat
+                        <Send size={16} />
                     </button>
-                </div>
-                <div className="flex gap-2 items-end">
-                    <SearchBar
-                        placeholder={placeholderText}
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="flex-1"
-                    />
-                    <Button
-                        label="Envoyer"
-                        onClick={() => {
-                            void sendMessage();
-                        }}
-                        variant="dark"
-                        tone="tone1"
-                        disabled={loading}
-                        loading={loading}
-                        className="h-11 px-4"
-                    />
                 </div>
             </div>
         </div>

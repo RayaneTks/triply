@@ -1,9 +1,5 @@
 import React from 'react';
 import Image from 'next/image';
-import logoLight from '../../assets/Logo-light.png';
-import logoLightColorless from '../../assets/Logo-light-colorless.png';
-import logoDark from '../../assets/Logo-dark.png';
-import logoDarkColorless from '../../assets/Logo-dark-colorless.png';
 
 interface LogoProps {
     width?: number;
@@ -19,13 +15,6 @@ export const logoSizeVariants = {
     large: { width: 180, height: 180 },
 };
 
-export const logoToneVariants = {
-    'light': logoLight,
-    'light-colorless': logoLightColorless,
-    'dark': logoDark,
-    'dark-colorless': logoDarkColorless,
-};
-
 export const Logo: React.FC<LogoProps> = ({
                                               width,
                                               height,
@@ -36,8 +25,9 @@ export const Logo: React.FC<LogoProps> = ({
     const sizeConfig = logoSizeVariants[size];
     const finalWidth = width ?? sizeConfig.width;
     const finalHeight = height ?? sizeConfig.height;
-    const logoSrc = logoToneVariants[tone];
 
-    const src = typeof logoSrc === 'string' ? logoSrc : logoSrc.src;
-    return <Image src={src} width={finalWidth} height={finalHeight} alt={alt} />;
+    // Robustesse build: les PNG de variantes n'existent pas toujours.
+    // On utilise une source unique (SVG) déjà disponible dans `public`.
+    // `tone` est conservé pour compatibilité API, mais n'affecte pas l'image pour l'instant.
+    return <Image src="/Logo-triply.svg" width={finalWidth} height={finalHeight} alt={alt} />;
 };

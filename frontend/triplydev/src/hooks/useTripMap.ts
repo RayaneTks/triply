@@ -52,8 +52,12 @@ export function useTripMap({
 
     const dayActivitiesByDayForMapRef = useRef(dayActivitiesByDay);
     const legTransportByDayForMapRef = useRef(legTransportByDay);
-    dayActivitiesByDayForMapRef.current = dayActivitiesByDay;
-    legTransportByDayForMapRef.current = legTransportByDay;
+
+    // Met à jour les "refs latest" en dehors du render.
+    useEffect(() => {
+        dayActivitiesByDayForMapRef.current = dayActivitiesByDay;
+        legTransportByDayForMapRef.current = legTransportByDay;
+    }, [dayActivitiesByDay, legTransportByDay]);
 
     /** Étapes du jour sur la carte */
     const mapLocationsWithDayActivities = useMemo(() => {
@@ -79,12 +83,12 @@ export function useTripMap({
     // Directions par tronçon (A→B) pour chaque profil
     useEffect(() => {
         if (!routeDepsKey || !mapboxToken) {
-            setDayRoutes({});
+            void Promise.resolve().then(() => setDayRoutes({}));
             return;
         }
         const points = parseLngLatPointsFromRouteDepsKey(routeDepsKey);
         if (!points) {
-            setDayRoutes({});
+            void Promise.resolve().then(() => setDayRoutes({}));
             return;
         }
         const profiles = ['driving', 'walking', 'cycling'] as const;
@@ -159,13 +163,13 @@ export function useTripMap({
     // Tracé carte par tronçon
     useEffect(() => {
         if (!mapboxToken || !selectedDayActivityCoordsKey) {
-            setMapDisplaySegments([]);
+            void Promise.resolve().then(() => setMapDisplaySegments([]));
             return;
         }
         const activities = dayActivitiesByDayForMapRef.current[selectedDay] ?? [];
         const modes = legTransportByDayForMapRef.current[selectedDay] ?? [];
         if (activities.length < 2) {
-            setMapDisplaySegments([]);
+            void Promise.resolve().then(() => setMapDisplaySegments([]));
             return;
         }
 

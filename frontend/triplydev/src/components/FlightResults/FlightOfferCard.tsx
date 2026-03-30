@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Button } from '@/src/components/Button/Button';
+import { motion } from 'framer-motion';
+import { PlaneTakeoff, PlaneLanding, Clock, Luggage, ChevronRight, Info } from 'lucide-react';
 
 export interface FlightSegment {
     departure: { iataCode?: string; at: string; terminal?: string };
@@ -10,9 +11,8 @@ export interface FlightSegment {
     carrierCode?: string;
     number?: string;
     aircraft?: { code?: string };
-    operating?: { carrierCode?: string };
-    numberOfStops?: number;
     duration?: string;
+    numberOfStops?: number;
 }
 
 export interface FlightItinerary {
@@ -22,28 +22,13 @@ export interface FlightItinerary {
 
 export interface FlightOffer {
     id: string;
-    price: {
-        grandTotal: string;
-        currency: string;
-        total?: string;
-        base?: string;
-        fees?: Array<{ amount: string; type: string }>;
-        taxes?: Array<{ amount: string; code: string }>;
-    };
+    price: { grandTotal: string; currency: string; total?: string; base?: string; };
     validatingAirlineCodes?: string[];
     itineraries: FlightItinerary[];
     travelerPricings?: Array<{
-        travelerId: string;
-        fareOption: string;
         travelerType: string;
         price: { total: string; currency: string };
-        fareDetailsBySegment?: Array<{
-            segmentId: string;
-            cabin: string;
-            fareBasis: string;
-            class: string;
-            includedCheckedBags?: { quantity?: number };
-        }>;
+        fareDetailsBySegment?: Array<{ cabin: string; includedCheckedBags?: { quantity?: number }; }>;
     }>;
 }
 
@@ -54,219 +39,111 @@ export interface FlightOfferCardProps {
     className?: string;
 }
 
-const formatDuration = (isoDuration: string) => {
-    if (!isoDuration) return '';
-    const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-    if (!match) return isoDuration;
-    const hours = match[1] ? `${match[1]}h` : '';
-    const minutes = match[2] ? `${match[2]}m` : '';
-    return `${hours} ${minutes}`.trim();
+const formatDuration = (iso: string) => {
+    const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+    return m ? `${m[1] || 0}h ${m[2] || 0}m` : iso;
 };
 
-const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('fr-FR', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-};
+const formatTime = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-export const FlightOfferCard: React.FC<FlightOfferCardProps> = ({
-    offer,
-    carrierName,
-    onSelect,
-    className = '',
-}) => {
-    const carrierCode = offer.validatingAirlineCodes?.[0] || '';
-    const logoUrl = `https://pics.avs.io/200/200/${carrierCode}.png`;
-    const outbound = offer.itineraries?.[0];
-    const returnItinerary = offer.itineraries?.[1];
-    const totalStops = (offer.itineraries || []).reduce((acc, it) => {
-        return acc + (it.segments || []).reduce((s, seg) => s + (seg.numberOfStops || 0), 0);
-    }, 0);
+const ItinerarySection = ({ itin, label }: { itin: FlightItinerary; label: string }) => {
+    const first = itin.segments[0];
+    const last = itin.segments[itin.segments.length - 1];
+    const stops = itin.segments.length - 1;
 
     return (
-        <div
-            className={`rounded-xl overflow-hidden border ${className}`}
-            style={{
-                backgroundColor: 'var(--background, #222222)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: '#e5e5e5',
-            }}
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-500/80">{label}</span>
+                <div className="flex items-center gap-1.5 text-slate-500">
+                    <Clock size={12} />
+                    <span className="text-[11px] font-medium">{formatDuration(itin.duration || '')}</span>
+                </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-white">{formatTime(first.departure.at)}</span>
+                        <div className="flex-1 flex items-center gap-1">
+                            <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent" />
+                            <div className="flex flex-col items-center gap-1 px-2">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase">{stops === 0 ? 'Direct' : `${stops} escale${stops > 1 ? 's' : ''}`}</span>
+                                <PlaneTakeoff size={14} className="text-cyan-400 rotate-45" />
+                            </div>
+                            <div className="h-px flex-1 bg-gradient-to-l from-cyan-500/50 to-transparent" />
+                        </div>
+                        <span className="text-lg font-bold text-white">{formatTime(last.arrival.at)}</span>
+                    </div>
+                    <div className="flex justify-between mt-1 px-1">
+                        <span className="text-xs font-bold text-slate-400">{first.departure.iataCode}</span>
+                        <span className="text-xs font-bold text-slate-400">{last.arrival.iataCode}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const FlightOfferCard: React.FC<FlightOfferCardProps> = ({ offer, carrierName, onSelect, className = '' }) => {
+    const carrierCode = offer.validatingAirlineCodes?.[0] || '';
+    const logoUrl = `https://pics.avs.io/200/200/${carrierCode}.png`;
+    const traveler = offer.travelerPricings?.[0];
+    const cabin = traveler?.fareDetailsBySegment?.[0]?.cabin;
+    const bags = traveler?.fareDetailsBySegment?.[0]?.includedCheckedBags?.quantity;
+
+    return (
+        <motion.div 
+            whileHover={{ y: -4, scale: 1.01 }}
+            className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 transition-all hover:border-cyan-500/30 hover:bg-white/10 shadow-xl ${className}`}
         >
-            {/* En-tête : Compagnie + Prix */}
-            <div
-                className="flex items-center justify-between px-4 py-3 border-b"
-                style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
-            >
-                <div className="flex items-center gap-3">
-                    <Image
-                        src={logoUrl}
-                        alt={carrierName}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-lg object-contain bg-white/10"
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                    />
-                    <div>
-                        <div className="font-semibold" style={{ color: '#f5f5f5' }}>
-                            {carrierName}
+            <div className="flex flex-col md:flex-row gap-6">
+                {/* Info Left */}
+                <div className="flex-1 space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white p-1.5 shadow-inner">
+                            <Image src={logoUrl} alt={carrierName} fill className="object-contain p-1" />
                         </div>
-                        <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>
-                            {(offer.validatingAirlineCodes || []).join(', ')} •{' '}
-                            {totalStops === 0 ? 'Vol direct' : `${totalStops} escale${totalStops > 1 ? 's' : ''}`}
-                        </div>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <div className="text-2xl font-bold" style={{ color: '#22c55e' }}>
-                        {offer.price.grandTotal} {offer.price.currency}
-                    </div>
-                    {offer.price.base && offer.price.base !== offer.price.grandTotal && (
-                        <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>
-                            base {offer.price.base} {offer.price.currency}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Aller */}
-            <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#0096c7' }}>
-                        Aller
-                    </span>
-                    <span className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        {formatDuration(outbound?.duration || '')}
-                    </span>
-                </div>
-                {(outbound?.segments || []).map((seg, i) => (
-                    <div key={i} className="flex items-center justify-between gap-4 py-2">
-                        <div className="flex-1 min-w-0">
-                            <div className="font-medium" style={{ color: '#f5f5f5' }}>
-                                {formatTime(seg.departure?.at || '')} — {formatTime(seg.arrival?.at || '')}
-                            </div>
-                            <div className="text-sm flex items-center gap-2 mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.75)' }}>
-                                <span>{seg.departure?.iataCode || '–'}</span>
-                                <span className="text-xs">
-                                    {(seg.numberOfStops || 0) > 0 ? `→ ${seg.numberOfStops} escale${(seg.numberOfStops || 0) > 1 ? 's' : ''} →` : '→'}
-                                </span>
-                                <span>{seg.arrival?.iataCode || '–'}</span>
-                                {((seg.departure?.terminal || seg.arrival?.terminal)) && (
-                                    <span className="text-xs">
-                                        Term. {seg.departure?.terminal || seg.arrival?.terminal}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <div className="text-sm font-mono" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
-                                {seg.carrierCode || ''} {seg.number || ''}
-                            </div>
-                            {seg.aircraft?.code && (
-                                <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>
-                                    {seg.aircraft.code}
-                                </div>
-                            )}
-                            {seg.duration && (
-                                <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>
-                                    {formatDuration(seg.duration)}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Retour */}
-            {returnItinerary && (
-                <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#0096c7' }}>
-                            Retour
-                        </span>
-                        <span className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            {formatDuration(returnItinerary?.duration || '')}
-                        </span>
-                    </div>
-                    {(returnItinerary?.segments || []).map((seg, i) => (
-                        <div key={i} className="flex items-center justify-between gap-4 py-2">
-                            <div className="flex-1 min-w-0">
-                                <div className="font-medium" style={{ color: 'var(--foreground, #ededed)' }}>
-                                    {formatTime(seg.departure?.at || '')} — {formatTime(seg.arrival?.at || '')}
-                                </div>
-                                <div className="text-sm flex items-center gap-2 mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                    <span>{seg.departure?.iataCode || '–'}</span>
-                                    <span className="text-xs">
-                                        {(seg.numberOfStops || 0) > 0 ? `→ ${seg.numberOfStops} escale${(seg.numberOfStops || 0) > 1 ? 's' : ''} →` : '→'}
-                                    </span>
-                                    <span>{seg.arrival?.iataCode || '–'}</span>
-                                </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                                <div className="text-sm font-mono" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                                    {seg.carrierCode || ''} {seg.number || ''}
-                                </div>
-                                {seg.aircraft?.code && (
-                                    <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>
-                                        {seg.aircraft.code}
+                        <div>
+                            <h4 className="text-sm font-bold text-white">{carrierName}</h4>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                {cabin && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/5">{cabin}</span>}
+                                {bags !== undefined && (
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                        <Luggage size={10} />
+                                        <span>{bags > 0 ? `${bags} bagage(s)` : 'Sans bagage'}</span>
                                     </div>
                                 )}
                             </div>
                         </div>
-                    ))}
-                </div>
-            )}
+                    </div>
 
-            {/* Détails tarifaires (si disponibles) */}
-            {offer.travelerPricings && offer.travelerPricings.length > 0 && (
-                <div className="px-4 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                    <div className="text-xs space-y-1" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        {offer.travelerPricings.map((tp, i) => (
-                            <div key={i} className="flex justify-between">
-                                <span>
-                                    {tp.travelerType === 'ADULT' ? 'Adulte' : tp.travelerType === 'CHILD' ? 'Enfant' : tp.travelerType}
-                                    {tp.fareDetailsBySegment?.[0]?.cabin && ` • ${tp.fareDetailsBySegment[0].cabin}`}
-                                    {tp.fareDetailsBySegment?.[0]?.includedCheckedBags?.quantity !== undefined && (
-                                        ` • ${tp.fareDetailsBySegment[0].includedCheckedBags.quantity} bagage(s)`
-                                    )}
-                                </span>
-                                <span>{tp.price.total} {tp.price.currency}</span>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-1 gap-6">
+                        <ItinerarySection itin={offer.itineraries[0]} label="Aller" />
+                        {offer.itineraries[1] && <ItinerarySection itin={offer.itineraries[1]} label="Retour" />}
                     </div>
                 </div>
-            )}
 
-            {/* Prix détaillé (base + taxes) */}
-            {offer.price.base && (
-                <div className="px-4 py-2 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                    <div className="text-xs space-y-1" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                        <div className="flex justify-between">
-                            <span>Tarif de base</span>
-                            <span>{offer.price.base} {offer.price.currency}</span>
+                {/* Price Right */}
+                <div className="flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6 min-w-[140px]">
+                    <div className="text-right">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prix Total</span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                            <span className="text-3xl font-black text-emerald-400 font-chillax tracking-tight">{offer.price.grandTotal}</span>
+                            <span className="text-sm font-bold text-emerald-500/80">{offer.price.currency}</span>
                         </div>
-                        {offer.price.taxes?.map((t, i) => (
-                            <div key={i} className="flex justify-between">
-                                <span>Taxe {t.code}</span>
-                                <span>{t.amount} {offer.price.currency}</span>
-                            </div>
-                        ))}
                     </div>
+                    
+                    <button 
+                        onClick={() => onSelect?.(offer)}
+                        className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl bg-cyan-500 py-3 text-xs font-bold text-white shadow-lg shadow-cyan-900/20 group-hover:bg-cyan-400 transition-all active:scale-95"
+                    >
+                        Choisir <ChevronRight size={14} />
+                    </button>
                 </div>
-            )}
-
-            {/* Bouton */}
-            <div className="px-4 py-3">
-                <Button
-                    label="Sélectionner cette offre"
-                    onClick={() => onSelect?.(offer)}
-                    variant="light"
-                    tone="tone1"
-                    className="w-full"
-                />
             </div>
-        </div>
+
+            {/* Decorative Corner */}
+            <div className="absolute -right-8 -top-8 h-16 w-16 rotate-45 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        </motion.div>
     );
 };

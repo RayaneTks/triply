@@ -1,43 +1,22 @@
+'use client';
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-// AJOUT : Import de Source et Layer
 import { Map, Source, Layer } from 'react-map-gl/mapbox';
 import type { ViewState, MapRef } from 'react-map-gl/mapbox';
 import type { Map as MapboxMap, MapMouseEvent } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-/** Id de la couche fill-extrusion pour les bâtiments 3D (uniquement pour styles classiques) */
-const LAYER_3D_BUILDINGS_ID = 'add-3d-buildings';
-
 const AIRPORTS_DATA_SOURCE = 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_airports.geojson';
 
-/** Styles classiques pour lesquels on ajoute la couche bâtiments 3D. Mapbox Standard a des bâtiments 3D intégrés. */
-const STYLES_WITH_3D_BUILDINGS = [
-    'mapbox://styles/mapbox/light-v11',
-    'mapbox://styles/mapbox/dark-v11',
-    'mapbox://styles/mapbox/streets-v12',
-];
-
-/** Styles Mapbox Standard (bâtiments 3D intégrés, pas besoin de couche custom) */
 const IS_MAPBOX_STANDARD = (url: string) =>
     url.includes('mapbox/standard') || url.includes('mapbox/standard-satellite');
 
-/** Couches du style Mapbox classique considérées comme POI / lieux */
 const POI_LAYER_IDS_CLASSIC = [
-    'poi-label',
-    'poi',
-    'place-label',
-    'place-village',
-    'place-town',
-    'place-city',
-    'place-country',
-    'poi-scalerank2',
-    'poi-scalerank3',
-    'poi-scalerank4',
+    'poi-label', 'poi', 'place-label', 'place-village', 'place-town', 'place-city', 'place-country'
 ];
 
 type PoiFeatureInput = { id?: string | number; layer?: { id?: string }; source?: string; sourceLayer?: string; properties?: Record<string, unknown> | null; geometry?: GeoJSON.Geometry };
 
-/** Retourne la feature POI la plus pertinente (classic ou Standard) */
 function pickPoiFeature<T extends PoiFeatureInput>(features: T[]): T | undefined {
     if (!features.length) return undefined;
     const byLayer = features.find((f) => f.layer?.id && POI_LAYER_IDS_CLASSIC.includes(f.layer.id));
@@ -55,10 +34,7 @@ export interface MapboxPoiFeature {
     geometry?: GeoJSON.Geometry;
 }
 
-interface Coordinates {
-    latitude: number;
-    longitude: number;
-}
+interface Coordinates { latitude: number; longitude: number; }
 
 interface Location {
     id: string;
@@ -68,116 +44,68 @@ interface Location {
     zoom?: number;
 }
 
-/** Tronçon d’itinéraire affiché sur la carte (mode + géométrie d’un leg) */
 export type RouteMapSegment = {
     id: string;
     profile: 'driving' | 'walking' | 'cycling';
     geometry: GeoJSON.LineString;
-    /** Durée du tronçon en secondes */
     durationSec: number;
 };
 
 export interface MapProps {
-    /** Token d'accès API (requis) */
     accessToken: string;
-    /** Latitude initiale */
     initialLatitude?: number;
-    /** Longitude initiale */
     initialLongitude?: number;
-    /** Niveau de zoom initial */
     initialZoom?: number;
-    /** Style de la carte (par défaut: 'mapbox://styles/mapbox/standard') */
     mapStyle?: string;
-    /** Config pour Mapbox Standard (lightPreset, theme, etc.). Appliqué via setConfigProperty. */
     mapConfig?: { lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' };
-    /** Inclinaison de la carte (0 = 2D, 60 = 3D). Contrôlée par le parent si fourni. */
     pitch?: number;
-    /** Orientation de la carte en degrés (0-360). Contrôlée par le parent si fourni. */
     bearing?: number;
-    /** Désactive zoom, pan, rotation (carte non interactive). */
     interactive?: boolean;
-    /** Vitesse de rotation auto en degrés/seconde (animation fluide, sans passer par React). */
     autoRotateSpeed?: number;
-    /** Hauteur de la carte */
     height?: string;
-    /** Largeur de la carte */
     width?: string;
-    /** Classe CSS personnalisée */
     className?: string;
-    /** Callback appelé lors du changement de vue */
     onMove?: (viewState: ViewState) => void;
-    /** Padding pour décaler le centre visuel de la carte */
     padding?: { top?: number; bottom?: number; left?: number; right?: number };
-    /** Callback appelé quand on clique sur un POI (restaurant, musée, lieu) */
     onPoiClick?: (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }) => void;
-    /** Callback appelé au survol d'un POI (pour afficher une modal d'avis) */
     onPoiHover?: (feature: MapboxPoiFeature, lngLat: { lng: number; lat: number }, point: { x: number; y: number }) => void;
-    /** Callback appelé quand la souris quitte un POI */
     onPoiLeave?: () => void;
-    /** Callback appelé quand on clique sur un aéroport */
     onAirportSelect?: (iataCode: string, name: string, lat: number, lng: number) => void;
-    /** Afficher les contrôles de navigation */
-    showNavigationControls?: boolean;
-    /** Afficher le contrôle de géolocalisation */
-    showGeolocateControl?: boolean;
-    /** Afficher le contrôle de plein écran */
-    showFullscreenControl?: boolean;
-    /** Afficher les attributions Mapbox */
     showAttribution?: boolean;
-    /** Afficher le logo Mapbox */
     showLogo?: boolean;
-
     locations?: Location[];
-    /** Routes par profil (voiture, vélo, à pied) avec géométrie et durée en secondes ; legs = tronçons entre waypoints */
-    routeData?: Partial<
-        Record<
-            'driving' | 'walking' | 'cycling',
-            {
-                geometry: GeoJSON.LineString;
-                duration: number;
-                legs?: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>;
-            }
-        >
-    >;
-    /** Tronçons successifs avec un mode chacun (prioritaire sur routeData pour l’affichage) */
+    routeData?: Partial<Record<'driving' | 'walking' | 'cycling', { geometry: GeoJSON.LineString; duration: number; legs?: Array<{ duration: number; distance: number; geometry?: GeoJSON.LineString }>; }>>;
     routeSegments?: RouteMapSegment[];
 }
 
 export const WorldMap: React.FC<MapProps> = ({
-                                                 accessToken,
-                                                 initialLatitude = 0,
-                                                 initialLongitude = 0,
-                                                 initialZoom = 1,
-                                                 mapStyle = 'mapbox://styles/mapbox/standard',
-                                                 mapConfig,
-                                                 pitch,
-                                                 bearing,
-                                                 interactive = true,
-                                                 autoRotateSpeed,
-                                                 height = '100%',
-                                                 width = '100%',
-                                                 className = '',
-                                                 onMove,
-                                                 padding,
-                                                 onPoiClick,
-                                                 onPoiHover,
-                                                 onPoiLeave,
-                                                 onAirportSelect,
-                                                 showNavigationControls: _showNavigationControls = true,
-                                                 showGeolocateControl: _showGeolocateControl = false,
-                                                 showFullscreenControl: _showFullscreenControl = false,
-                                                 showAttribution = false,
-                                                 showLogo = false,
-                                                 locations = [],
-                                                 routeData = {},
-                                                 routeSegments = [],
-                                             }: MapProps) => {
+    accessToken,
+    initialLatitude = 46.6,
+    initialLongitude = 1.8,
+    initialZoom = 5,
+    mapStyle = 'mapbox://styles/mapbox/standard',
+    mapConfig = { lightPreset: 'night' },
+    pitch = 45,
+    bearing = 0,
+    interactive = true,
+    autoRotateSpeed,
+    height = '100%',
+    width = '100%',
+    className = '',
+    onMove,
+    padding,
+    onPoiClick,
+    onPoiHover,
+    onPoiLeave,
+    onAirportSelect,
+    showAttribution = false,
+    showLogo = false,
+    locations = [],
+    routeData = {},
+    routeSegments = [],
+}) => {
     const mapRef = useRef<MapRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const mapStyleRef = useRef(mapStyle);
-    useEffect(() => {
-        mapStyleRef.current = mapStyle;
-    }, [mapStyle]);
     const [cursor, setCursor] = useState<string>('');
     const [hoveredRoute, setHoveredRoute] = useState<{ profile: string; duration: number; x: number; y: number } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -187,670 +115,198 @@ export const WorldMap: React.FC<MapProps> = ({
         longitude: initialLongitude,
         latitude: initialLatitude,
         zoom: initialZoom,
-        bearing: bearing ?? 0,
-        pitch: pitch ?? 0,
+        bearing: bearing,
+        pitch: pitch,
         padding: padding || { top: 0, bottom: 0, left: 0, right: 0 },
     });
 
+    // Auto-resize
     useEffect(() => {
-        if (typeof bearing !== 'number' || !isMapLoaded || !mapRef.current) return;
-        if (autoRotateSpeed != null) return;
-        mapRef.current.getMap().setBearing(bearing);
-        if (interactive) queueMicrotask(() => setViewState((prev) => ({ ...prev, bearing })));
-    }, [bearing, isMapLoaded, interactive, autoRotateSpeed]);
-
-    useEffect(() => {
-        if (autoRotateSpeed == null || !isMapLoaded || !mapRef.current) return;
-        const map = mapRef.current.getMap();
-        const start = performance.now();
-        let rafId: number;
-        const tick = () => {
-            const elapsed = (performance.now() - start) / 1000;
-            map.setBearing((elapsed * autoRotateSpeed) % 360);
-            rafId = requestAnimationFrame(tick);
-        };
-        rafId = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(rafId);
-    }, [autoRotateSpeed, isMapLoaded]);
-
-    useEffect(() => {
-        if (!isMapLoaded || !mapRef.current) return;
-        const map = mapRef.current.getMap();
-        if (!interactive) {
-            map.scrollZoom.disable();
-            map.dragPan.disable();
-            map.dragRotate.disable();
-            map.doubleClickZoom.disable();
-            map.touchZoomRotate.disable();
-        }
-        return () => {
-            if (interactive) return;
-            map.scrollZoom.enable();
-            map.dragPan.enable();
-            map.dragRotate.enable();
-            map.doubleClickZoom.enable();
-            map.touchZoomRotate.enable();
-        };
-    }, [interactive, isMapLoaded]);
-
-    useEffect(() => {
-        if (typeof pitch !== 'number' || !isMapLoaded || !mapRef.current) return;
-        mapRef.current.getMap().setPitch(pitch);
-        if (interactive) queueMicrotask(() => setViewState((prev) => ({ ...prev, pitch })));
-    }, [pitch, isMapLoaded, interactive]);
-
-    // Redimensionner la carte quand le conteneur change (ex: sidebar ouverte/fermée)
-    useEffect(() => {
-        const container = containerRef.current;
-        const map = mapRef.current?.getMap();
-        if (!container || !map || !isMapLoaded) return;
-
-        const resizeMap = () => {
-            requestAnimationFrame(() => {
-                try {
-                    map.resize();
-                } catch {
-                    // Ignorer si la carte n'est pas encore prête
-                }
-            });
-        };
-
-        const ro = new ResizeObserver(resizeMap);
-        ro.observe(container);
-
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(() => mapRef.current?.getMap().resize());
+        ro.observe(el);
         return () => ro.disconnect();
-    }, [isMapLoaded]);
+    }, []);
 
+    // Fly to locations
     useEffect(() => {
-        if (!isMapLoaded || !mapRef.current || !mapConfig) return;
-        const map = mapRef.current.getMap();
-        if (typeof (map as { setConfigProperty?: unknown }).setConfigProperty !== 'function') return;
-        if (!IS_MAPBOX_STANDARD(mapStyle)) return;
-        try {
-            if (mapConfig.lightPreset) {
-                (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty('basemap', 'lightPreset', mapConfig.lightPreset);
-            }
-            if (mapConfig.theme) {
-                (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty('basemap', 'theme', mapConfig.theme);
-            }
-        } catch {
-            // Style non-Standard ou config non supportée
-        }
-    }, [mapConfig, mapStyle, isMapLoaded]);
-
-    const prevLocationsRef = useRef<typeof locations>([]);
-
-    // Dans src/components/Map/Map.tsx
-
-    useEffect(() => {
-        if (!isMapLoaded || !mapRef.current) return;
-
-        if (locations.length === 0) {
-            prevLocationsRef.current = locations;
-            mapRef.current.flyTo({
-                center: [0, 0],
-                zoom: 1,
-                duration: 4000,
-                essential: true
-            });
-            return;
-        }
-
-        // --- AJUSTEMENT FONCTIONNEL ICI ---
-
-        // Cas 1 : Une seule destination (ex: réponse Assistant "France" ou "Paris")
-        // On respecte strictement le zoom défini par l'IA/Backend
+        if (!isMapLoaded || !mapRef.current || locations.length === 0) return;
         if (locations.length === 1) {
-            const loc = locations[0];
-
-            // On utilise flyTo au lieu de fitBounds pour contrôler le niveau de zoom précis
             mapRef.current.flyTo({
-                center: [loc.coordinates.longitude, loc.coordinates.latitude],
-                zoom: loc.zoom ?? 11, // Utilise le zoom du backend (5 ou 12), sinon 11 par défaut
+                center: [locations[0].coordinates.longitude, locations[0].coordinates.latitude],
+                zoom: locations[0].zoom ?? 12,
                 duration: 2000,
                 essential: true
             });
-
-            prevLocationsRef.current = locations;
-            return;
-        }
-
-        // Cas 2 : Plusieurs points (ex: Hôtels chargés)
-        // On garde la logique fitBounds pour englober tous les points
-        const lngs = locations.map(l => l.coordinates.longitude);
-        const lats = locations.map(l => l.coordinates.latitude);
-        const minLng = Math.min(...lngs);
-        const maxLng = Math.max(...lngs);
-        const minLat = Math.min(...lats);
-        const maxLat = Math.max(...lats);
-
-        const isRefresh = prevLocationsRef.current.length > 0 && locations.length > prevLocationsRef.current.length;
-        prevLocationsRef.current = locations;
-
-        mapRef.current.fitBounds(
-            [
-                [minLng, minLat],
-                [maxLng, maxLat]
-            ],
-            {
-                padding: { top: 100, bottom: 100, left: 100, right: 100 },
-                duration: isRefresh ? 800 : 2000,
-                essential: true,
-                maxZoom: 13 // On peut augmenter un peu le maxZoom autorisé quand on affiche des hôtels
-            }
-        );
-    }, [locations, isMapLoaded]);
-
-    const add3DBuildingsLayer = useCallback((map: MapboxMap, currentMapStyle: string) => {
-        if (IS_MAPBOX_STANDARD(currentMapStyle)) return;
-        if (!STYLES_WITH_3D_BUILDINGS.some((s) => currentMapStyle.includes(s))) return;
-        try {
-            if (map.getLayer(LAYER_3D_BUILDINGS_ID)) return;
-            const style = map.getStyle();
-            if (!style.sources?.composite) return;
-            const layers = style.layers ?? [];
-            const labelLayerId = layers.find(
-                (layer) => layer.type === 'symbol' && (layer as { layout?: { 'text-field'?: unknown } }).layout?.['text-field']
-            )?.id;
-            map.addLayer(
-                {
-                    id: LAYER_3D_BUILDINGS_ID,
-                    source: 'composite',
-                    'source-layer': 'building',
-                    filter: ['==', 'extrude', 'true'],
-                    type: 'fill-extrusion',
-                    minzoom: 14,
-                    paint: {
-                        'fill-extrusion-color': currentMapStyle.includes('dark') ? 'rgba(180, 180, 180, 0.9)' : 'rgba(200, 200, 200, 0.85)',
-                        'fill-extrusion-height': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            14,
-                            0,
-                            14.05,
-                            ['get', 'height'],
-                        ],
-                        'fill-extrusion-base': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            14,
-                            0,
-                            14.05,
-                            ['get', 'min_height'],
-                        ],
-                        'fill-extrusion-opacity': 0.85,
-                    },
-                },
-                labelLayerId ?? undefined
+        } else {
+            const lngs = locations.map(l => l.coordinates.longitude);
+            const lats = locations.map(l => l.coordinates.latitude);
+            mapRef.current.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 100, duration: 2000 }
             );
-        } catch {
-            // Style sans source composite (ex. satellite) — ignorer
         }
-    }, []);
-
-    const handleMove = (evt: { viewState: ViewState }) => {
-        const updatedViewState = {
-            ...evt.viewState,
-            padding: padding || evt.viewState.padding,
-        };
-        if (interactive) setViewState(updatedViewState);
-        onMove?.(updatedViewState);
-    };
-
-    const handleClick = useCallback((e: MapMouseEvent) => {
-        if (!mapRef.current) return;
-
-        try {
-            const features = mapRef.current.queryRenderedFeatures(e.point);
-
-            // 1. GESTION CLIC AÉROPORT (Prioritaire)
-            const airportFeature = features.find(f => f.layer?.id === 'airports-layer');
-            if (airportFeature && onAirportSelect) {
-                const iata = airportFeature.properties?.iata_code;
-                const name = airportFeature.properties?.name;
-
-                // AJOUT : Récupération des coordonnées géographiques
-                // Dans un GeoJSON Point, coordinates est un tableau [lng, lat]
-                const geometry = airportFeature.geometry as GeoJSON.Point;
-                const [lng, lat] = geometry.coordinates;
-
-                if (iata) {
-                    // On passe lat/lng au parent
-                    onAirportSelect(iata, name || 'Aéroport', lat, lng);
-                    return;
-                }
-            }
-
-            // 2. GESTION CLIC POI (Classique)
-            if (onPoiClick) {
-                const poiFeature = pickPoiFeature(features);
-                if (!poiFeature) return;
-
-                // On s'assure que ce n'est pas l'aéroport qu'on a cliqué par erreur comme POI
-                if (poiFeature.layer?.id === 'airports-layer') return;
-
-                onPoiClick(
-                    {
-                        id: poiFeature.id,
-                        layer: poiFeature.layer as { id: string },
-                        source: poiFeature.source,
-                        sourceLayer: poiFeature.sourceLayer,
-                        properties: poiFeature.properties as Record<string, unknown>,
-                        geometry: poiFeature.geometry,
-                    },
-                    { lng: e.lngLat.lng, lat: e.lngLat.lat }
-                );
-            }
-        } catch {}
-    }, [onPoiClick, onAirportSelect]);
-
-    const routeProfileLabels = React.useMemo<Record<string, string>>(
-        () => ({ driving: 'Voiture', walking: 'À pied', cycling: 'Vélo' }),
-        []
-    );
-
-    const hasSegmentRoutes = routeSegments.length > 0;
+    }, [locations, isMapLoaded]);
 
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
-        try {
-            const features = mapRef.current.queryRenderedFeatures(e.point);
+        const features = mapRef.current.queryRenderedFeatures(e.point);
+        const poi = pickPoiFeature(features);
+        const isAirport = features.some(f => f.layer?.id === 'airports-layer');
+        
+        setCursor(poi || isAirport ? 'pointer' : '');
+        
+        if (poi && onPoiHover) {
             const rect = containerRef.current?.getBoundingClientRect();
-            const screenX = rect ? rect.left + e.point.x : e.point.x;
-            const screenY = rect ? rect.top + e.point.y : e.point.y;
-
-            // Survol tronçon multi-modes (priorité)
-            const segLayerId = features.find((f) => f.layer?.id?.startsWith('route-layer-seg-'))?.layer?.id;
-            if (segLayerId && hasSegmentRoutes) {
-                const m = /^route-layer-seg-(\d+)$/.exec(segLayerId);
-                if (m) {
-                    const idx = parseInt(m[1], 10);
-                    const seg = routeSegments[idx];
-                    if (seg) {
-                        setHoveredRoute({
-                            profile: routeProfileLabels[seg.profile] ?? seg.profile,
-                            duration: seg.durationSec,
-                            x: screenX,
-                            y: screenY,
-                        });
-                        setCursor('pointer');
-                        onPoiLeave?.();
-                        return;
-                    }
-                }
-            }
-
-            // Survol route « un seul profil » (routeData)
-            const routeLayerId = features.find((f) =>
-                f.layer?.id?.startsWith('route-layer-') && !f.layer?.id?.startsWith('route-layer-seg-')
-            )?.layer?.id;
-            if (routeLayerId && routeData) {
-                const profile = routeLayerId.replace('route-layer-', '') as 'driving' | 'walking' | 'cycling';
-                const route = routeData[profile];
-                if (route) {
-                    setHoveredRoute({
-                        profile: routeProfileLabels[profile] ?? profile,
-                        duration: route.duration,
-                        x: screenX,
-                        y: screenY,
-                    });
-                    setCursor('pointer');
-                    onPoiLeave?.();
-                    return;
-                }
-            }
-            setHoveredRoute(null);
-
-            // Check si survol aéroport
-            const isOverAirport = features.some(f => f.layer?.id === 'airports-layer');
-
-            const poiFeature = pickPoiFeature(features);
-            const isOverPoi = !!poiFeature;
-
-            // Priorité curseur : Aéroport > POI
-            setCursor(isOverAirport || isOverPoi ? 'pointer' : '');
-
-            // Si on survole un aéroport, on n'affiche pas la popup du POI pour éviter la confusion
-            if (isOverAirport) {
-                onPoiLeave?.();
-                return;
-            }
-
-            if (isOverPoi && onPoiHover) {
-                onPoiHover(
-                    {
-                        id: poiFeature.id,
-                        layer: poiFeature.layer as { id: string },
-                        source: poiFeature.source,
-                        sourceLayer: poiFeature.sourceLayer,
-                        properties: poiFeature.properties as Record<string, unknown>,
-                        geometry: poiFeature.geometry,
-                    },
-                    { lng: e.lngLat.lng, lat: e.lngLat.lat },
-                    { x: screenX, y: screenY }
-                );
-            } else if (!isOverPoi && onPoiLeave) {
-                onPoiLeave();
-            }
-        } catch {
-            setCursor('');
-            setHoveredRoute(null);
+            onPoiHover(poi as MapboxPoiFeature, e.lngLat, { 
+                x: (rect?.left || 0) + e.point.x, 
+                y: (rect?.top || 0) + e.point.y 
+            });
+        } else {
             onPoiLeave?.();
         }
-    }, [onPoiHover, onPoiLeave, routeData, routeProfileLabels, routeSegments, hasSegmentRoutes]);
+    }, [onPoiHover, onPoiLeave]);
 
-    const locationsGeoJson = React.useMemo(() => {
-        if (!locations || locations.length === 0) return null;
-        return {
-            type: 'FeatureCollection',
-            features: locations.map(loc => ({
-                type: 'Feature',
-                geometry: {
-                    type: 'Point',
-                    coordinates: [loc.coordinates.longitude, loc.coordinates.latitude]
-                },
-                properties: {
-                    id: loc.id,
-                    title: loc.title,
-                    type: loc.type || 'hotel'
-                }
-            }))
-        };
-    }, [locations]);
+    const handleClick = useCallback((e: MapMouseEvent) => {
+        if (!mapRef.current) return;
+        const features = mapRef.current.queryRenderedFeatures(e.point);
+        
+        const airport = features.find(f => f.layer?.id === 'airports-layer');
+        if (airport && onAirportSelect) {
+            const coords = (airport.geometry as { coordinates?: unknown } | undefined)?.coordinates;
+            if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+                const [lng, lat] = coords as [number, number];
+                onAirportSelect(airport.properties?.iata_code, airport.properties?.name, lat, lng);
+            }
+            return;
+        }
+
+        const poi = pickPoiFeature(features);
+        if (poi && onPoiClick) {
+            onPoiClick(poi as MapboxPoiFeature, e.lngLat);
+        }
+    }, [onPoiClick, onAirportSelect]);
+
+    const locationsGeoJson = React.useMemo(() => ({
+        type: 'FeatureCollection',
+        features: locations.map(loc => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [loc.coordinates.longitude, loc.coordinates.latitude] },
+            properties: { id: loc.id, title: loc.title, type: loc.type || 'hotel' }
+        }))
+    }), [locations]);
+
+    const routeColors: Record<string, string> = { driving: '#06b6d4', walking: '#f97316', cycling: '#84cc16' };
 
     return (
-        <div
-            ref={containerRef}
-            className={className}
-            style={{ width, height, position: 'relative' }}
-            onMouseLeave={() => { setCursor(''); setHoveredRoute(null); onPoiLeave?.(); }}
-        >
+        <div ref={containerRef} className={`relative w-full h-full overflow-hidden ${className}`}>
             <Map
                 ref={mapRef}
-                {...(autoRotateSpeed != null ? (({ bearing: _, ...v }) => v)(viewState) : viewState)}
-                {...(autoRotateSpeed == null && typeof bearing === 'number' ? { bearing } : {})}
-                {...(typeof pitch === 'number' ? { pitch } : {})}
-                onMove={handleMove}
+                {...viewState}
+                onMove={evt => setViewState(evt.viewState)}
                 onMouseMove={handleMouseMove}
-                onClick={handleClick} // Utilise handleClick qui gère Aéroports + POI
-                onLoad={() => {
-                    setIsMapLoaded(true);
-                    const map = mapRef.current?.getMap();
-                    if (!map) return;
-
-                    // Marquer le style comme prêt uniquement quand mapbox le signale
-                    const checkStyleReady = () => {
-                        try {
-                            if (map.isStyleLoaded()) {
-                                setIsStyleReady(true);
-                            }
-                        } catch {
-                            // ignore
-                        }
-                    };
-                    checkStyleReady();
-                    map.on('styledata', checkStyleReady);
-
-                    if (!IS_MAPBOX_STANDARD(mapStyleRef.current)) {
-                        add3DBuildingsLayer(map, mapStyleRef.current);
-                        map.on('style.load', () => add3DBuildingsLayer(map, mapStyleRef.current));
-                    }
-                }}
-                cursor={interactive ? (cursor || 'grab') : 'default'}
-                style={{ width: '100%', height: '100%' }}
+                onClick={handleClick}
+                onLoad={() => { setIsMapLoaded(true); setIsStyleReady(true); }}
                 mapStyle={mapStyle}
                 mapboxAccessToken={accessToken}
+                cursor={cursor || 'grab'}
                 attributionControl={showAttribution}
-                interactiveLayerIds={
-                    onPoiClick ||
-                    Object.keys(routeData || {}).length > 0 ||
-                    (routeSegments && routeSegments.length > 0)
-                        ? undefined
-                        : ['airports-layer']
-                }
-                {...(mapConfig && IS_MAPBOX_STANDARD(mapStyle) && {
-                    config: {
-                        basemap: Object.fromEntries(
-                            Object.entries(mapConfig).filter(([, v]) => v != null)
-                        ) as { lightPreset?: string; theme?: string },
-                    },
+                fog={{ range: [0.5, 10], color: '#020617', 'high-color': '#0f172a', 'space-color': '#000000', 'star-intensity': 0.5 }}
+                terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
+                {...(IS_MAPBOX_STANDARD(mapStyle) && {
+                    config: { basemap: { lightPreset: mapConfig.lightPreset, theme: mapConfig.theme || 'default' } }
                 })}
             >
+                <Source id="mapbox-dem" type="raster-dem" url="mapbox://mapbox.mapbox-terrain-dem-v1" tileSize={512} maxzoom={14} />
+
                 {isMapLoaded && isStyleReady && (
-                    <Source id="airports-source" type="geojson" data={AIRPORTS_DATA_SOURCE}>
-                        <Layer
-                            id="airports-layer"
-                            type="circle"
-                            paint={{
-                                'circle-radius': [
-                                    'interpolate', ['linear'], ['zoom'],
-                                    2, 2,
-                                    6, 6
-                                ],
-                                'circle-color': '#ff4d4d',
-                                'circle-stroke-width': 1,
-                                'circle-stroke-color': '#ffffff',
-                                'circle-opacity': 0.8
-                            }}
-                        />
-                        <Layer
-                            id="airports-labels"
-                            type="symbol"
-                            layout={{
-                                'text-field': ['get', 'iata_code'],
-                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                                'text-size': 10,
-                                'text-offset': [0, 1.2],
-                                'text-anchor': 'top',
-                                'visibility': 'visible'
-                            }}
-                            paint={{
-                                'text-color': '#ffffff'
-                            }}
-                            minzoom={4}
-                        />
-                    </Source>
-                )}
-                {isMapLoaded && isStyleReady && locationsGeoJson && (
-                    <Source id="locations-source" type="geojson" data={locationsGeoJson as GeoJSON.FeatureCollection}>
-                        <Layer
-                            id="locations-itinerary-circles"
-                            type="circle"
-                            filter={['==', ['get', 'type'], 'itinerary-activity']}
-                            paint={{
-                                'circle-radius': 7,
-                                'circle-color': '#06b6d4',
+                    <>
+                        {/* Airports */}
+                        <Source id="airports-source" type="geojson" data={AIRPORTS_DATA_SOURCE}>
+                            <Layer id="airports-layer" type="circle" paint={{
+                                'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 3, 6, 8],
+                                'circle-color': '#ef4444',
                                 'circle-stroke-width': 2,
                                 'circle-stroke-color': '#ffffff',
-                                'circle-opacity': 0.95,
-                            }}
-                            minzoom={3}
-                        />
-                        <Layer
-                            id="locations-itinerary-labels"
-                            type="symbol"
-                            filter={['==', ['get', 'type'], 'itinerary-activity']}
-                            layout={{
+                                'circle-blur': 0.2
+                            }} />
+                        </Source>
+
+                        {/* User Locations */}
+                        <Source
+                            id="locations-source"
+                            type="geojson"
+                            data={locationsGeoJson as unknown as GeoJSON.FeatureCollection}
+                        >
+                            <Layer id="locations-itinerary-glow" type="circle" filter={['==', ['get', 'type'], 'itinerary-activity']} paint={{
+                                'circle-radius': 12,
+                                'circle-color': '#06b6d4',
+                                'circle-opacity': 0.2,
+                                'circle-blur': 1
+                            }} />
+                            <Layer id="locations-itinerary-circles" type="circle" filter={['==', ['get', 'type'], 'itinerary-activity']} paint={{
+                                'circle-radius': 6,
+                                'circle-color': '#06b6d4',
+                                'circle-stroke-width': 2,
+                                'circle-stroke-color': '#ffffff'
+                            }} />
+                            <Layer id="locations-labels" type="symbol" layout={{
                                 'text-field': ['get', 'title'],
                                 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
                                 'text-size': 11,
-                                'text-offset': [0, 1.45],
-                                'text-anchor': 'top',
-                                'text-max-width': 16,
-                            }}
-                            paint={{
-                                'text-color': '#67e8f9',
-                                'text-halo-color': '#0f172a',
-                                'text-halo-width': 2,
-                            }}
-                            minzoom={9}
-                        />
-                        <Layer
-                            id="locations-layer-labels"
-                            type="symbol"
-                            filter={['!=', ['get', 'type'], 'itinerary-activity']}
-                            layout={{
-                                'text-field': ['get', 'title'],
-                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                                'text-size': 11,
-                                'text-offset': [0, 1.3],
-                                'text-anchor': 'top',
-                            }}
-                            paint={{
-                                'text-color': '#3b82f6',
-                                'text-halo-color': '#ffffff',
+                                'text-offset': [0, 1.5],
+                                'text-anchor': 'top'
+                            }} paint={{
+                                'text-color': '#ffffff',
+                                'text-halo-color': '#020617',
                                 'text-halo-width': 2
-                            }}
-                            minzoom={11}
-                        />
-                    </Source>
+                            }} />
+                        </Source>
+
+                        {/* Routes */}
+                        {routeSegments.map((seg, idx) => (
+                            <Source key={idx} id={`route-seg-${idx}`} type="geojson" data={{ type: 'Feature', geometry: seg.geometry, properties: {} }}>
+                                <Layer id={`route-layer-${idx}`} type="line" layout={{ 'line-join': 'round', 'line-cap': 'round' }} paint={{
+                                    'line-color': routeColors[seg.profile] || '#06b6d4',
+                                    'line-width': 4,
+                                    'line-opacity': 0.8,
+                                    'line-dasharray': seg.profile === 'walking' ? [1, 2] : [1, 0]
+                                }} />
+                            </Source>
+                        ))}
+                    </>
                 )}
-                {isMapLoaded &&
-                    isStyleReady &&
-                    hasSegmentRoutes &&
-                    routeSegments.map((seg, idx) => {
-                        const colors: Record<string, string> = {
-                            driving: '#f97316',
-                            walking: '#22d3ee',
-                            cycling: '#84cc16',
-                        };
-                        return (
-                            <Source
-                                key={`route-seg-${seg.id}-${idx}`}
-                                id={`route-source-seg-${idx}`}
-                                type="geojson"
-                                data={{
-                                    type: 'Feature',
-                                    geometry: seg.geometry,
-                                    properties: { profile: seg.profile, durationSec: seg.durationSec },
-                                }}
-                            >
-                                <Layer
-                                    id={`route-layer-seg-${idx}`}
-                                    type="line"
-                                    layout={{
-                                        'line-join': 'round',
-                                        'line-cap': 'round',
-                                    }}
-                                    paint={{
-                                        'line-color': colors[seg.profile] ?? '#22d3ee',
-                                        'line-width': 5,
-                                        'line-opacity': 0.88,
-                                    }}
-                                />
-                            </Source>
-                        );
-                    })}
-                {isMapLoaded &&
-                    isStyleReady &&
-                    !hasSegmentRoutes &&
-                    routeData &&
-                    Object.entries(routeData).map(([profile, { geometry }]) => {
-                        const colors: Record<string, string> = {
-                            driving: '#f97316',
-                            walking: '#22d3ee',
-                            cycling: '#84cc16',
-                        };
-                        return (
-                            <Source
-                                key={`route-${profile}`}
-                                id={`route-source-${profile}`}
-                                type="geojson"
-                                data={{
-                                    type: 'Feature',
-                                    geometry,
-                                    properties: {},
-                                }}
-                            >
-                                <Layer
-                                    id={`route-layer-${profile}`}
-                                    type="line"
-                                    layout={{
-                                        'line-join': 'round',
-                                        'line-cap': 'round',
-                                    }}
-                                    paint={{
-                                        'line-color': colors[profile] ?? '#22d3ee',
-                                        'line-width': 5,
-                                        'line-opacity': 0.85,
-                                    }}
-                                />
-                            </Source>
-                        );
-                    })}
             </Map>
 
-            {hasSegmentRoutes && (
-                <div className="absolute bottom-4 left-4 z-10 max-w-[min(100vw-2rem,420px)] rounded-2xl border border-white/15 bg-slate-900/95 px-4 py-2.5 shadow-lg backdrop-blur-md">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Itinéraire du jour</div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium text-slate-100">
-                        {routeSegments.map((s, i) => {
-                            const colors: Record<string, string> = {
-                                driving: '#f97316',
-                                walking: '#22d3ee',
-                                cycling: '#84cc16',
-                            };
-                            return (
-                                <span key={`${s.id}-${i}`} className="inline-flex items-center gap-1.5">
-                                    <span
-                                        className="h-2 w-2 shrink-0 rounded-full"
-                                        style={{ backgroundColor: colors[s.profile] ?? '#22d3ee' }}
-                                    />
-                                    {routeProfileLabels[s.profile]}
-                                    <span className="tabular-nums text-slate-300">
-                                        {s.durationSec > 0 ? `${Math.round(s.durationSec / 60)} min` : '—'}
-                                    </span>
-                                    {i < routeSegments.length - 1 ? <span className="text-slate-500">·</span> : null}
-                                </span>
-                            );
-                        })}
+            {/* Float Info Panel */}
+            {routeSegments.length > 0 && (
+                <div className="absolute bottom-6 left-6 z-10 rounded-2xl border border-white/10 bg-[#020617]/80 p-4 shadow-2xl backdrop-blur-xl">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Itinéraire Actif</div>
+                    <div className="flex items-center gap-4">
+                        <div className="flex flex-col">
+                            <span className="text-2xl font-bold text-white font-chillax">
+                                {Math.round(routeSegments.reduce((acc, s) => acc + s.durationSec, 0) / 60)} min
+                            </span>
+                            <span className="text-[10px] text-cyan-400 font-medium">Temps de trajet total</span>
+                        </div>
+                        <div className="h-8 w-px bg-white/10" />
+                        <div className="flex gap-2">
+                            {Array.from(new Set(routeSegments.map(s => s.profile))).map(p => (
+                                <div key={p} className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-400" title={p}>
+                                    {p === 'driving' && '🚗'}
+                                    {p === 'walking' && '🚶'}
+                                    {p === 'cycling' && '🚲'}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <div className="mt-1 text-[12px] text-slate-400">
-                        Total{' '}
-                        <span className="font-medium text-slate-200">
-                            {Math.round(routeSegments.reduce((acc, s) => acc + s.durationSec, 0) / 60)} min
-                        </span>
-                    </div>
-                </div>
-            )}
-            {!hasSegmentRoutes && routeData && Object.keys(routeData).length > 0 && (
-                <div className="absolute bottom-4 left-4 z-10 rounded-full border border-white/15 bg-slate-900/95 px-4 py-2 shadow-lg backdrop-blur-md">
-                    <span className="flex items-center gap-2 text-[13px] font-medium text-slate-100">
-                        <span
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{
-                                backgroundColor:
-                                    Object.keys(routeData)[0] === 'driving'
-                                        ? '#f97316'
-                                        : Object.keys(routeData)[0] === 'cycling'
-                                          ? '#84cc16'
-                                          : '#22d3ee',
-                            }}
-                        />
-                        {routeProfileLabels[Object.keys(routeData)[0]] ?? Object.keys(routeData)[0]} · {Object.values(routeData)[0] && `${Math.round(Object.values(routeData)[0].duration / 60)} min`}
-                    </span>
-                </div>
-            )}
-            {hoveredRoute && (
-                <div
-                    className="pointer-events-none fixed z-[1000] rounded-full border border-white/20 bg-slate-900/95 px-4 py-2 text-[13px] font-medium text-slate-100 shadow-xl backdrop-blur-md"
-                    style={{
-                        left: hoveredRoute.x + 14,
-                        top: hoveredRoute.y + 14,
-                    }}
-                >
-                    {hoveredRoute.profile} · {Math.round(hoveredRoute.duration / 60)} min
                 </div>
             )}
 
-            {(!showLogo || !showAttribution) && (
-                <style>{`
-                    .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-attrib-inner, 
-                    a[href*="mapbox.com"], a[href*="openstreetmap.org"] { display: none !important; }
-                `}</style>
-            )}
+            <style jsx global>{`
+                .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { display: none !important; }
+            `}</style>
         </div>
     );
 };

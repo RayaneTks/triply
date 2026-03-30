@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Button } from '@/src/components/Button/Button';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { login, register, saveSession, type AuthUser } from '@/src/lib/auth-client';
+import { Logo } from '../Logo/Logo';
 
 export interface LoginProps {
     onLoginSuccess: (user: AuthUser, isNewUser?: boolean) => void;
@@ -46,7 +48,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
             saveSession(session);
             onLoginSuccess(session.user ?? { id: 0, name: normalizedName, email: normalizedEmail }, mode === 'register');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+            setError(err instanceof Error ? err.message : 'Identifiants invalides ou erreur serveur.');
         } finally {
             setLoading(false);
         }
@@ -57,144 +59,125 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
         void executeAuth();
     };
 
-    return (
-        <div className="w-full h-full flex items-center justify-center relative p-6">
-            <div className="absolute top-6 left-6">
-                <Button
-                    label="<- Retour"
-                    onClick={onBack}
-                    variant="dark"
-                    tone="tone1"
-                />
-            </div>
+    const inputClasses = "w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all";
 
-            <div
-                className="w-full max-w-md rounded-2xl overflow-hidden"
-                style={{
-                    background: 'linear-gradient(180deg, #1a1a1a 0%, var(--background, #222222) 100%)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03)',
-                }}
+    return (
+        <div className="flex h-full w-full items-center justify-center p-6 relative">
+            <button 
+                onClick={onBack}
+                className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-white/10 bg-[#020617]/50 px-4 py-2 text-sm font-medium text-slate-300 backdrop-blur-md transition-all hover:bg-white/10 hover:text-white"
             >
-                <div className="pt-10 pb-6 px-8 text-center border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                    <Image
-                        src="/Logo-triply.svg"
-                        alt="Triply"
-                        width={80}
-                        height={45}
-                        className="mx-auto object-contain mb-4"
-                    />
-                    <h1
-                        className="text-2xl font-semibold"
-                        style={{ color: 'var(--foreground, #ededed)', fontFamily: 'var(--font-title)' }}
-                    >
-                        {mode === 'login' ? 'Connexion' : 'Inscription'}
+                <ArrowLeft size={16} /> Retour
+            </button>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className="w-full max-w-[400px] overflow-hidden rounded-3xl border border-white/10 bg-[#020617]/80 shadow-2xl backdrop-blur-xl"
+            >
+                <div className="border-b border-white/5 p-8 text-center">
+                    <div className="flex justify-center mb-6">
+                        <Logo size="small" tone="light" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-white font-chillax tracking-tight">
+                        {mode === 'login' ? 'Bon retour' : 'Rejoignez l\'aventure'}
                     </h1>
-                    <p className="text-sm mt-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {mode === 'login' ? 'Accedez a votre espace voyage' : 'Creez votre compte Triply'}
+                    <p className="mt-2 text-sm text-slate-400">
+                        {mode === 'login' ? 'Accédez à vos voyages et préférences.' : 'Créez votre compte gratuit en quelques secondes.'}
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-5">
-                    {mode === 'register' && (
-                        <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                                Nom
-                            </label>
-                            <div className="input-assistant">
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Votre nom"
-                                    className="w-full flex-grow"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    )}
+                <form onSubmit={handleSubmit} className="p-8">
+                    <div className="space-y-4">
+                        <AnimatePresence mode="popLayout">
+                            {mode === 'register' && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <div className="relative">
+                                        <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                                        <input
+                                            type="text" required placeholder="Votre nom complet"
+                                            value={name} onChange={e => setName(e.target.value)}
+                                            className={inputClasses}
+                                        />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Email
-                        </label>
-                        <div className="input-assistant">
+                        <div className="relative">
+                            <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                             <input
-                                type="email"
-                                required
-                                placeholder="vous@exemple.com"
-                                className="w-full flex-grow"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                type="email" required placeholder="Adresse email"
+                                value={email} onChange={e => setEmail(e.target.value)}
+                                className={inputClasses}
                             />
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                            Mot de passe
-                        </label>
-                        <div className="input-assistant">
+                        <div className="relative">
+                            <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                             <input
-                                type="password"
-                                required
-                                placeholder="........"
-                                className="w-full flex-grow"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                type="password" required placeholder="Mot de passe"
+                                value={password} onChange={e => setPassword(e.target.value)}
+                                className={inputClasses}
                             />
                         </div>
+
+                        <AnimatePresence mode="popLayout">
+                            {mode === 'register' && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <div className="relative">
+                                        <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                                        <input
+                                            type="password" required placeholder="Confirmez le mot de passe"
+                                            value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                                            className={inputClasses}
+                                        />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
-                    {mode === 'register' && (
-                        <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
-                                Confirmation du mot de passe
-                            </label>
-                            <div className="input-assistant">
-                                <input
-                                    type="password"
-                                    required
-                                    placeholder="........"
-                                    className="w-full flex-grow"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {error && (
-                        <p className="text-sm" style={{ color: '#ff7d7d' }}>
-                            {error}
-                        </p>
-                    )}
-
-                    <div className="pt-2">
-                        <Button
-                            label={mode === 'login' ? 'Se connecter' : "S'inscrire"}
-                            type="submit"
-                            variant="dark"
-                            tone="tone1"
-                            className="w-full"
-                            disabled={loading}
-                            loading={loading}
-                        />
-                    </div>
+                    <AnimatePresence>
+                        {error && (
+                            <motion.p 
+                                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                className="mt-4 rounded-lg bg-red-500/10 p-3 text-center text-xs font-medium text-red-400 border border-red-500/20"
+                            >
+                                {error}
+                            </motion.p>
+                        )}
+                    </AnimatePresence>
 
                     <button
-                        type="button"
-                        className="text-xs mt-2 hover:underline"
-                        style={{ color: 'rgba(255, 255, 255, 0.7)' }}
-                        onClick={() => {
-                            setError('');
-                            setMode(mode === 'login' ? 'register' : 'login');
-                        }}
+                        type="submit"
+                        disabled={loading}
+                        className="mt-6 w-full rounded-xl bg-cyan-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 transition-all hover:bg-cyan-400 active:scale-[0.98] disabled:opacity-50"
                     >
-                        {mode === 'login' ? "Pas de compte ? S'inscrire" : 'Deja inscrit ? Se connecter'}
+                        {loading ? 'Veuillez patienter...' : (mode === 'login' ? 'Se connecter' : "S'inscrire")}
                     </button>
+
+                    <div className="mt-6 text-center">
+                        <button
+                            type="button"
+                            onClick={() => { setError(''); setMode(mode === 'login' ? 'register' : 'login'); }}
+                            className="text-xs font-medium text-slate-400 hover:text-cyan-400 transition-colors"
+                        >
+                            {mode === 'login' ? "Nouveau sur Triply ? Créer un compte" : 'Déjà inscrit ? Se connecter'}
+                        </button>
+                    </div>
                 </form>
-            </div>
+            </motion.div>
         </div>
     );
 };

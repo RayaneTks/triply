@@ -1,0 +1,18 @@
+{
+  "name": "Triply",
+  "short_name": "Triply",
+  "description": "Triply - Planification de voyage",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0096C7",
+  "icons": [
+    {
+      "src": "/Logo-triply.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+

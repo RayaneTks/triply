@@ -1,253 +1,221 @@
 'use client';
 
-import React, { useSyncExternalStore } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Button } from '@/src/components/Button/Button';
-import { MEDIA_MAX_LG, useMediaQuery } from '@/src/hooks/useMediaQuery';
+import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { 
+    LayoutDashboard, 
+    Compass, 
+    History, 
+    Settings, 
+    LogOut,
+    ChevronLeft,
+    ChevronRight,
+    Search,
+    X
+} from 'lucide-react';
+import { Logo } from '../Logo/Logo';
+import { MEDIA_MIN_LG, useMediaQuery } from '@/src/hooks/useMediaQuery';
 
-const iconSize = 20;
-
-const HomeIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-);
-
-const UserIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-    </svg>
-);
-
-const ClipboardIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-        <line x1="8" y1="12" x2="16" y2="12" />
-        <line x1="8" y1="16" x2="16" y2="16" />
-    </svg>
-);
-
-const InfoIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="16" x2="12" y2="12" />
-        <line x1="12" y1="8" x2="12.01" y2="8" />
-    </svg>
-);
-
-const MailIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-        <polyline points="22,6 12,13 2,6" />
-    </svg>
-);
-
-const PricingIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-);
-
-const LogInIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-        <polyline points="10 17 15 12 10 7" />
-        <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-);
-
-const LogOutIcon = () => (
-    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-        <polyline points="16 17 21 12 16 7" />
-        <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-);
-
-const NAV_ITEMS = [
-    { label: 'Accueil', Icon: HomeIcon, path: '/' },
-    { label: 'Profil', Icon: UserIcon, path: '/profil' },
-    { label: 'Mes voyages', Icon: ClipboardIcon, path: '/voyages' },
-    { label: 'Tarifs', Icon: PricingIcon, path: '/pricing' },
-    { label: 'À propos', Icon: InfoIcon, path: '/a-propos' },
-    { label: 'Contact', Icon: MailIcon, path: undefined },
-];
-
-export interface SidebarProps {
-    children?: React.ReactNode;
-    className?: string;
-    isCollapsed?: boolean;
-    onToggle?: () => void;
-    /** Quand le parent affiche déjà l’overlay (drawer mobile), ne pas dupliquer le backdrop. */
-    useExternalBackdrop?: boolean;
-
+interface SidebarProps {
+    isCollapsed: boolean;
+    onToggle: () => void;
     isConnected: boolean;
     onLoginClick: () => void;
     onLogoutClick: () => void;
+    /** Mobile: ouverture du drawer (overlay) */
+    mobileOpen?: boolean;
+    /** Mobile: callback fermeture */
+    onMobileClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-                                                    children,
-                                                    className = '',
-                                                    isCollapsed = false,
-                                                    onToggle,
-                                                    useExternalBackdrop = false,
-                                                    isConnected,
-                                                    onLoginClick,
-                                                    onLogoutClick,
-                                                }) => {
-    const pathname = usePathname();
-    const isMobile = useMediaQuery(MEDIA_MAX_LG);
-    const hasHydrated = useSyncExternalStore(
-        () => () => {},
-        () => true,
-        () => false
-    );
+    isCollapsed,
+    onToggle,
+    isConnected,
+    onLoginClick,
+    onLogoutClick,
+    mobileOpen = false,
+    onMobileClose
+}) => {
+    const isDesktop = useMediaQuery(MEDIA_MIN_LG);
 
-    const effectiveIsMobile = hasHydrated ? isMobile : false;
-    const effectiveIsConnected = hasHydrated ? isConnected : false;
-    const collapsedW = effectiveIsMobile ? 56 : 80;
-    const expandedW = effectiveIsMobile ? 280 : 280;
-    const navItems = effectiveIsConnected
-        ? NAV_ITEMS
-        : NAV_ITEMS.filter((item) => item.path !== '/voyages');
+    const menuItems = [
+        { icon: LayoutDashboard, label: 'Tableau de bord', active: true },
+        { icon: Search, label: 'Planifier' },
+        { icon: Compass, label: 'Explorer' },
+        { icon: History, label: 'Mes voyages' },
+        { icon: Settings, label: 'Paramètres' },
+    ];
 
-    const handleToggle = () => {
-        onToggle?.();
+    const closeMobile = () => {
+        onMobileClose?.();
     };
 
-    return (
-        <>
-            {effectiveIsMobile && !isCollapsed && !useExternalBackdrop && (
-                <div
-                    className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-                    onClick={handleToggle}
-                    aria-hidden="true"
-                />
-            )}
-        <motion.aside
-            className={`relative z-30 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10 shadow-xl lg:z-auto ${className}`}
-            style={{ backgroundColor: 'var(--background, #222222)' }}
-            animate={{ width: isCollapsed ? collapsedW : expandedW }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-        >
-            {/* Header avec logo + toggle */}
-            <div
-                className={`flex border-b border-white/10 ${
-                    isCollapsed ? 'flex-col items-center gap-2 py-3' : 'items-center justify-between p-4'
-                }`}
-            >
-                {!isCollapsed ? (
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
-                            <Image
-                                src="/Logo-triply.svg"
-                                alt="Triply"
-                                width={100}
-                                height={36}
-                                className="object-contain"
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex shrink-0 items-center justify-center" aria-hidden>
-                        <Image src="/Logo-triply.svg" alt="" width={28} height={28} className="object-contain opacity-90" />
-                    </div>
-                )}
-                <button
-                    onClick={handleToggle}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-                    aria-label={isCollapsed ? 'Ouvrir le menu' : 'Fermer le menu'}
-                >
-                    <motion.span
-                        animate={{ rotate: isCollapsed ? 180 : 0 }}
-                        transition={{ duration: 0.25 }}
-                    >
-                        ‹
-                    </motion.span>
-                </button>
-            </div>
+    const handleLogin = () => {
+        closeMobile();
+        onLoginClick();
+    };
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {children || (
+    const handleLogout = () => {
+        closeMobile();
+        onLogoutClick();
+    };
+
+    if (!isDesktop) {
+        return (
+            <AnimatePresence>
+                {mobileOpen && (
                     <>
-                        <nav className={`flex-1 py-4 ${isCollapsed ? 'px-1.5' : 'px-4'}`}>
-                            <ul className={isCollapsed ? 'flex flex-col items-center gap-0.5' : 'space-y-1'}>
-                                {navItems.map((item) => {
-                                    const isActive = item.path ? pathname === item.path : false;
-                                    const Icon = item.Icon;
-                                    const itemBase =
-                                        'rounded-xl text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 flex items-center text-slate-200';
-                                    const itemExpanded = 'w-full px-4 py-3 text-left gap-3';
-                                    const itemCollapsed =
-                                        'w-full justify-center px-0 py-2.5 min-h-[44px] min-w-[44px] max-w-[48px] mx-auto';
-                                    const itemClass = `${itemBase} ${isCollapsed ? itemCollapsed : itemExpanded} ${
-                                        isActive ? 'text-[var(--primary)]' : ''
-                                    }`;
-                                    const content = (
-                                        <>
-                                            <span className={`shrink-0 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
-                                                <Icon />
-                                            </span>
-                                            <span className={isCollapsed ? 'sr-only' : 'font-medium'}>{item.label}</span>
-                                        </>
-                                    );
-                                    return (
-                                        <li key={item.label} className={isCollapsed ? 'flex justify-center w-full' : ''}>
-                                            {item.path ? (
-                                                <Link
-                                                    href={item.path}
-                                                    title={item.label}
-                                                    aria-label={item.label}
-                                                    className={`block ${itemClass}`}
-                                                    style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' } : undefined}
-                                                >
-                                                    {content}
-                                                </Link>
-                                            ) : (
-                                                <button type="button" title={item.label} aria-label={item.label} className={itemClass}>
-                                                    {content}
-                                                </button>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </nav>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={closeMobile}
+                            className="fixed inset-0 z-[119] bg-black/60 backdrop-blur-sm"
+                            aria-hidden
+                        />
 
-                        <div className={`border-t border-white/10 ${isCollapsed ? 'flex justify-center p-2' : 'p-4'}`}>
-                            {isCollapsed ? (
+                        <motion.aside
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: -20, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                            className="fixed left-0 top-0 z-[120] flex h-dvh w-[min(320px,86vw)] flex-col border-r border-white/10 bg-[#020617]/95 backdrop-blur-xl"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Menu Triply"
+                        >
+                            {/* Top bar (logo + close) */}
+                            <div className="flex h-16 items-center justify-between border-b border-white/5 px-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <Logo size="small" tone="light" />
+                                    <span className="truncate text-xl font-bold tracking-tight text-white font-chillax">
+                                        Triply
+                                    </span>
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
-                                    title={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                    aria-label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-                                    style={{ color: 'var(--primary, #0096c7)' }}
+                                    onClick={closeMobile}
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all"
+                                    aria-label="Fermer le menu"
                                 >
-                                    {effectiveIsConnected ? <LogOutIcon /> : <LogInIcon />}
+                                    <X size={20} />
                                 </button>
-                            ) : (
-                                <Button
-                                    label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                    onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
-                                    variant="dark"
-                                    tone="tone1"
-                                    className="w-full"
-                                />
-                            )}
-                        </div>
+                            </div>
+
+                            {/* Navigation */}
+                            <nav className="flex-1 space-y-1 p-4">
+                                {menuItems.map((item, index) => (
+                                    <button
+                                        key={index}
+                                        type="button"
+                                        className={`group flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition-all duration-200 ${
+                                            item.active
+                                                ? 'bg-cyan-500/10 text-cyan-400 shadow-[inset_0_0_0_1px_rgba(6,182,212,0.2)]'
+                                                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                    >
+                                        <item.icon size={20} strokeWidth={item.active ? 2 : 1.5} className="shrink-0" />
+                                        <span className="text-sm font-medium tracking-wide">{item.label}</span>
+                                    </button>
+                                ))}
+                            </nav>
+
+                            {/* Bottom auth */}
+                            <div className="border-t border-white/5 p-4">
+                                {isConnected ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleLogout}
+                                        className={`group flex w-full items-center gap-4 rounded-xl px-3 py-3 text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all`}
+                                    >
+                                        <LogOut size={20} strokeWidth={1.5} className="shrink-0" />
+                                        <span className="text-sm font-medium">Déconnexion</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleLogin}
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 hover:bg-cyan-400 transition-all"
+                                    >
+                                        Connexion
+                                    </button>
+                                )}
+                            </div>
+                        </motion.aside>
                     </>
                 )}
+            </AnimatePresence>
+        );
+    }
+
+    return (
+        <motion.aside
+            initial={false}
+            animate={{ width: isCollapsed ? 80 : 280 }}
+            className="relative z-[110] flex h-full flex-col border-r border-white/5 bg-[#020617]/95 backdrop-blur-xl transition-all duration-300 ease-in-out"
+        >
+            {/* Logo Section */}
+            <div className="flex h-16 items-center border-b border-white/5 px-6">
+                <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
+                    <Logo size="small" tone="light" />
+                    {!isCollapsed && (
+                        <span className="text-xl font-bold tracking-tight text-white font-chillax">
+                            Triply
+                        </span>
+                    )}
+                </div>
             </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 space-y-1 p-4">
+                {menuItems.map((item, index) => (
+                    <button
+                        key={index}
+                        className={`group flex w-full items-center gap-4 rounded-xl px-3 py-3 transition-all duration-200 ${
+                            item.active 
+                            ? 'bg-cyan-500/10 text-cyan-400 shadow-[inset_0_0_0_1px_rgba(6,182,212,0.2)]' 
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        }`}
+                    >
+                        <item.icon size={20} strokeWidth={item.active ? 2 : 1.5} className="shrink-0" />
+                        {!isCollapsed && (
+                            <span className="text-sm font-medium tracking-wide">{item.label}</span>
+                        )}
+                        {item.active && !isCollapsed && (
+                            <div className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                        )}
+                    </button>
+                ))}
+            </nav>
+
+            {/* Bottom Section: Auth / Logout */}
+            <div className="border-t border-white/5 p-4">
+                {isConnected ? (
+                    <button
+                        onClick={onLogoutClick}
+                        className={`group flex w-full items-center gap-4 rounded-xl px-3 py-3 text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all ${isCollapsed ? 'justify-center' : ''}`}
+                    >
+                        <LogOut size={20} strokeWidth={1.5} className="shrink-0" />
+                        {!isCollapsed && <span className="text-sm font-medium">Déconnexion</span>}
+                    </button>
+                ) : (
+                    <button
+                        onClick={onLoginClick}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 hover:bg-cyan-400 transition-all"
+                    >
+                        {!isCollapsed ? 'Connexion' : <LayoutDashboard size={20} />}
+                    </button>
+                )}
+            </div>
+
+            {/* Toggle Button */}
+            <button
+                onClick={onToggle}
+                className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-[#0F172A] text-slate-400 hover:text-white shadow-xl transition-all hover:scale-110"
+            >
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
         </motion.aside>
-        </>
     );
 };

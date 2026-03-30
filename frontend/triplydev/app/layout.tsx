@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import PwaRegistrar from "@/src/components/PwaRegistrar/PwaRegistrar";
 
 export const metadata: Metadata = {
   title: "Triply - Planification de voyage",
@@ -25,8 +26,15 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/Gotham-Book.otf" as="font" type="font/otf" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/Gotham-Medium.otf" as="font" type="font/otf" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        {/* PWA / ajout à l'écran d'accueil */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#020617" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/Logo-triply.svg" />
       </head>
       <body className="antialiased overflow-x-hidden min-h-dvh">
+        <PwaRegistrar />
         <main className="flex min-h-dvh flex-col">
           {children}
         </main>

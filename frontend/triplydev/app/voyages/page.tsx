@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Plane, Calendar, MapPin, CreditCard, ChevronRight, Plus, ArrowLeft } from 'lucide-react';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
-import { clearSession, getStoredSession } from '@/src/lib/auth-client';
+import { Header } from '@/src/components/Header/Header';
+import { clearSession, getStoredSession, type AuthUser } from '@/src/lib/auth-client';
 import { listTrips, type TripSummary } from '@/src/lib/trips-client';
 
 const parseAmount = (value: unknown): number => {
@@ -25,12 +28,8 @@ const parseTripDate = (dateStr: string): Date | null => {
 
 const formatShortDate = (dateStr: string) => {
     const parsed = parseTripDate(dateStr);
-    if (!parsed) return '-';
-    return parsed.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    });
+    if (!parsed) return '—';
+    return parsed.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 const getComputedBudget = (trip: TripSummary): { amount: number; currency: string } => {
@@ -44,60 +43,27 @@ const getComputedBudget = (trip: TripSummary): { amount: number; currency: strin
 };
 
 const getTripCity = (trip: TripSummary): string => {
-    return (
-        trip.plan_snapshot?.destinationSummary?.cityName ||
-        trip.plan_snapshot?.hotelSummary?.cityName ||
-        trip.destination ||
-        'Destination'
-    );
+    return trip.plan_snapshot?.destinationSummary?.cityName || trip.plan_snapshot?.hotelSummary?.cityName || trip.destination || 'Destination';
 };
 
 const getTripTitle = (trip: TripSummary): string => {
     const city = getTripCity(trip);
     const airport = (trip.plan_snapshot?.destinationSummary?.airportName || '').trim();
-    if (airport && airport.toLowerCase() !== city.toLowerCase()) {
-        return `${city} | ${airport}`;
-    }
-    return city;
+    return airport && airport.toLowerCase() !== city.toLowerCase() ? `${city} | ${airport}` : city;
 };
 
-const PlaneIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.5c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2L8 14l3-3 5.5 4.5c1.5 1.5 2 3.5 1.5 4.5-.5 1-2.5 1.5-4.5 0L17.8 19.2Z" />
-    </svg>
-);
-
-const ChevronIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m9 18 6-6-6-6" />
-    </svg>
-);
-
-function statusStyle(status: string): { backgroundColor: string; color: string } {
-    if (status === 'Termine') {
-        return {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            color: 'rgba(255, 255, 255, 0.7)',
-        };
-    }
-
-    if (status === 'A venir') {
-        return {
-            backgroundColor: 'rgba(0, 150, 199, 0.2)',
-            color: 'var(--primary)',
-        };
-    }
-
-    return {
-        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-        color: '#22c55e',
-    };
+function statusBadge(status: string) {
+    if (status === 'Termine') return <span className="px-2.5 py-1 rounded-md bg-white/10 text-slate-400 text-[10px] font-bold uppercase tracking-wider border border-white/5">{status}</span>;
+    if (status === 'A venir') return <span className="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase tracking-wider border border-cyan-500/20">{status}</span>;
+    return <span className="px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">{status}</span>;
 }
 
 export default function VoyagesPage() {
     const router = useRouter();
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
+    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trips, setTrips] = useState<TripSummary[]>([]);
@@ -105,205 +71,177 @@ export default function VoyagesPage() {
 
     useEffect(() => {
         let active = true;
-
-        const loadTrips = async () => {
+        const load = async () => {
             const session = getStoredSession();
             if (!session?.token) {
                 setIsConnected(false);
                 router.replace('/');
                 return;
             }
-
             try {
                 setIsConnected(true);
-                setLoading(true);
-                setError('');
+                setCurrentUser(session.user);
                 const items = await listTrips(session.token);
-                if (active) {
-                    setTrips(items);
-                }
+                if (active) setTrips(items);
             } catch (err) {
                 if (active) {
-                    setError(err instanceof Error ? err.message : 'Impossible de recuperer les voyages.');
+                    const message = err instanceof Error ? err.message : undefined;
+                    setError(message || 'Impossible de récupérer les voyages.');
                 }
             } finally {
-                if (active) {
-                    setLoading(false);
-                }
+                if (active) setLoading(false);
             }
         };
-
-        void loadTrips();
-        return () => {
-            active = false;
-        };
+        void load();
+        return () => { active = false; };
     }, [router]);
 
     const sortedTrips = useMemo(() => {
-        const getCreatedTimestamp = (trip: TripSummary): number => {
-            const created = parseTripDate(trip.created_at || '');
-            if (created) return created.getTime();
-            const fallback = parseTripDate(trip.start_date);
-            return fallback ? fallback.getTime() : 0;
-        };
-
         return [...trips].sort((a, b) => {
-            const aTime = getCreatedTimestamp(a);
-            const bTime = getCreatedTimestamp(b);
+            const aTime = parseTripDate(a.created_at || a.start_date)?.getTime() || 0;
+            const bTime = parseTripDate(b.created_at || b.start_date)?.getTime() || 0;
             return creationOrder === 'asc' ? aTime - bTime : bTime - aTime;
         });
     }, [trips, creationOrder]);
 
-    const hasTrips = useMemo(() => sortedTrips.length > 0, [sortedTrips]);
+    const hasTrips = sortedTrips.length > 0;
+
+    const handleLogout = () => {
+        clearSession();
+        setIsMobileSidebarOpen(false);
+        router.push('/');
+    };
 
     return (
-        <div className="flex h-dvh min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>
+        <div className="flex h-dvh w-full flex-col overflow-hidden bg-[#020617] text-slate-100 lg:flex-row">
             <Sidebar
                 isCollapsed={isSidebarCollapsed}
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 isConnected={isConnected}
-                onLoginClick={() => router.push('/')}
-                onLogoutClick={() => {
-                    clearSession();
-                    router.push('/');
-                }}
+                onLoginClick={() => { setIsMobileSidebarOpen(false); router.push('/'); }}
+                onLogoutClick={handleLogout}
+                mobileOpen={isMobileSidebarOpen}
+                onMobileClose={() => setIsMobileSidebarOpen(false)}
             />
 
-            <main className="flex-1 overflow-y-auto min-w-0">
-                <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12">
-                    <div className="flex items-center gap-4 mb-8">
-                        <Link
-                            href="/"
-                            className="text-sm font-medium hover:underline"
-                            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
-                        >
-                            {'<- Retour a l\'application'}
-                        </Link>
-                    </div>
+            <div className="relative flex flex-1 flex-col overflow-hidden">
+                <Header 
+                    user={currentUser}
+                    isConnected={isConnected}
+                    onLoginClick={() => { setIsMobileSidebarOpen(false); router.push('/'); }}
+                    onLogoutClick={handleLogout}
+                    isSidebarCollapsed={isSidebarCollapsed}
+                    onMenuClick={() => setIsMobileSidebarOpen(true)}
+                />
 
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex flex-col">
-                            <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
-                                Mes voyages
-                            </h1>
-                            <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                Consultez et gerez tous vos voyages
-                            </p>
-                        </div>
-                        {!loading && !error && hasTrips && (
-                            <div className="mb-6 flex items-center justify-end gap-2">
-                                <select
-                                    id="creation-order"
-                                    value={creationOrder}
-                                    onChange={(e) => setCreationOrder(e.target.value as 'desc' | 'asc')}
-                                    className="rounded-lg border px-3 py-1.5 text-sm"
-                                    style={{
-                                        backgroundColor: 'var(--background)',
-                                        borderColor: 'rgba(255, 255, 255, 0.18)',
-                                        color: 'var(--foreground)',
-                                    }}
-                                >
-                                    <option value="desc">Plus recents</option>
-                                    <option value="asc">Plus anciens</option>
-                                </select>
+                <main className="flex-1 overflow-y-auto mt-16 px-6 py-8 md:p-12">
+                    <div className="mx-auto max-w-6xl">
+                        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+                            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors mb-6">
+                                <ArrowLeft size={16} /> Retour au Dashboard
+                            </Link>
+                            
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                <div>
+                                    <h1 className="text-4xl font-bold text-white font-chillax tracking-tight">Mes Voyages</h1>
+                                    <p className="mt-2 text-slate-400">Retrouvez l&apos;historique et les détails de vos aventures.</p>
+                                </div>
+                                
+                                {!loading && !error && hasTrips && (
+                                    <div className="flex items-center gap-3">
+                                        <select
+                                            value={creationOrder}
+                                            onChange={(e) => setCreationOrder(e.target.value as 'desc' | 'asc')}
+                                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500/50"
+                                        >
+                                            <option value="desc" className="bg-[#0f172a]">Plus récents</option>
+                                            <option value="asc" className="bg-[#0f172a]">Plus anciens</option>
+                                        </select>
+                                        <Link href="/" className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 hover:bg-cyan-400 transition-all">
+                                            <Plus size={16} /> Nouveau
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        {loading && (
+                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-3xl bg-white/5 animate-pulse border border-white/5" />)}
                             </div>
                         )}
-                    </div>
 
-                    {loading && (
-                        <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Chargement des voyages...
-                        </p>
-                    )}
+                        {!loading && error && (
+                            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-center text-red-400">
+                                {error}
+                            </div>
+                        )}
 
-                    {!loading && error && (
-                        <div
-                            className="rounded-2xl p-6 mb-6"
-                            style={{
-                                backgroundColor: 'rgba(255, 0, 0, 0.08)',
-                                border: '1px solid rgba(255, 0, 0, 0.25)',
-                                color: '#ffb3b3',
-                            }}
-                        >
-                            {error}
-                        </div>
-                    )}
+                        {!loading && !error && hasTrips && (
+                            <motion.div 
+                                initial="hidden" animate="show"
+                                variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }}
+                                className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3"
+                            >
+                                {sortedTrips.map((trip) => (
+                                    <motion.div key={trip.id} variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
+                                        <Link href={`/voyages/${trip.id}`}>
+                                            <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 transition-all hover:border-cyan-500/50 hover:bg-white/10 shadow-xl">
+                                                <div className="flex items-start justify-between mb-6">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+                                                            <MapPin size={20} />
+                                                        </div>
+                                                        <h3 className="text-lg font-bold text-white truncate">{getTripTitle(trip)}</h3>
+                                                    </div>
+                                                    {statusBadge(trip.status)}
+                                                </div>
 
-                    {!loading && !error && hasTrips && (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {sortedTrips.map((trip) => (
-                                <Link key={trip.id} href={`/voyages/${trip.id}`}>
-                                    <article
-                                        className="rounded-2xl p-5 h-full cursor-pointer transition-all hover:border-primary hover:bg-white/5"
-                                        style={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        }}
-                                    >
-                                        <div className="flex items-start justify-between gap-3 mb-3">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <span className="shrink-0" style={{ color: 'var(--primary)' }}>
-                                                    <PlaneIcon />
-                                                </span>
-                                                <span className="font-semibold truncate" style={{ color: 'var(--foreground)' }}>
-                                                    {getTripTitle(trip)}
-                                                </span>
-                                            </div>
-                                            <span
-                                                className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
-                                                style={statusStyle(trip.status)}
-                                            >
-                                                {trip.status}
-                                            </span>
-                                        </div>
+                                                <div className="flex-1 space-y-4">
+                                                    <div className="flex items-center gap-3 text-sm text-slate-300">
+                                                        <Calendar size={16} className="text-cyan-500/70" />
+                                                        <span>{formatShortDate(trip.start_date)} <span className="text-slate-600 mx-1">→</span> {formatShortDate(trip.end_date)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-sm text-slate-300">
+                                                        <Plane size={16} className="text-cyan-500/70" />
+                                                        <span>{trip.travel_days} Jours {trip.flight?.carrier ? `• ${trip.flight.carrier}` : ''}</span>
+                                                    </div>
+                                                </div>
 
-                                        <p className="text-sm mb-2 truncate" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                                            {getTripCity(trip)}
-                                        </p>
+                                                <div className="mt-6 flex items-end justify-between border-t border-white/10 pt-4">
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Budget Total</span>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-2xl font-black text-emerald-400 font-chillax">{Math.round(getComputedBudget(trip).amount)}</span>
+                                                            <span className="text-xs font-bold text-emerald-500/80">{getComputedBudget(trip).currency}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-slate-400 group-hover:bg-cyan-500 group-hover:text-white transition-all">
+                                                        <ChevronRight size={16} />
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        </Link>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        )}
 
-                                        <p className="text-sm mb-2" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            {formatShortDate(trip.start_date)} - {formatShortDate(trip.end_date)}
-                                        </p>
-
-                                        <p className="text-sm mb-3" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            {trip.travel_days} jours{trip.flight?.carrier ? ` - ${trip.flight.carrier}` : ''}
-                                        </p>
-
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-bold" style={{ color: 'var(--primary)' }}>
-                                                {Math.round(getComputedBudget(trip).amount)} {getComputedBudget(trip).currency}
-                                            </span>
-                                            <span className="flex items-center gap-1" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                                                Voir le detail
-                                                <ChevronIcon />
-                                            </span>
-                                        </div>
-                                    </article>
+                        {!loading && !error && !hasTrips && (
+                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/20 bg-white/5 py-24 text-center">
+                                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-400">
+                                    <Plane size={32} />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Aucun voyage prévu</h3>
+                                <p className="text-slate-400 mb-8 max-w-md">Il est temps de planifier votre prochaine aventure. Laissez notre IA vous guider !</p>
+                                <Link href="/" className="rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 hover:bg-cyan-400 transition-all active:scale-95">
+                                    Créer mon premier voyage
                                 </Link>
-                            ))}
-                        </div>
-                    )}
-
-                    {!loading && !error && !hasTrips && (
-                        <div
-                            className="rounded-2xl p-12 text-center"
-                            style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                            }}
-                        >
-                            <p className="mb-4" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                Aucun voyage pour le moment
-                            </p>
-                            <Link href="/">
-                                <span className="font-medium" style={{ color: 'var(--primary)' }}>
-                                    Creer un voyage -&gt;
-                                </span>
-                            </Link>
-                        </div>
-                    )}
-                </div>
-            </main>
+                            </motion.div>
+                        )}
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }

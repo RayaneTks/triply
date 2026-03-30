@@ -28,10 +28,10 @@ export function LandingHub({ onStartPlanning, onQuickSearch, onExploreMap }: Lan
             >
                 <Logo size="large" tone="light" />
                 <h1 className="mt-8 text-center text-4xl font-bold tracking-tight sm:text-6xl">
-                    L'aventure commence <span className="text-cyan-400 font-chillax">ici.</span>
+                    L&apos;aventure commence <span className="text-cyan-400 font-chillax">ici.</span>
                 </h1>
                 <p className="mt-6 max-w-2xl text-center text-lg text-slate-400 leading-relaxed">
-                    Centralisez vos vols, hôtels et activités. Planifiez votre voyage sur mesure avec l'IA ou explorez le monde librement.
+                    Centralisez vos vols, hôtels et activités. Planifiez votre voyage sur mesure avec l&apos;IA ou explorez le monde librement.
                 </p>
             </motion.div>
 
@@ -48,7 +48,7 @@ export function LandingHub({ onStartPlanning, onQuickSearch, onExploreMap }: Lan
                     </div>
                     <h3 className="text-2xl font-bold text-white">Assistant IA</h3>
                     <p className="mt-3 text-slate-400 group-hover:text-slate-300 transition-colors">
-                        Laissez notre intelligence artificielle concevoir l'itinéraire parfait selon vos envies et votre budget.
+                        Laissez notre intelligence artificielle concevoir l&apos;itinéraire parfait selon vos envies et votre budget.
                     </p>
                     <div className="mt-8 flex items-center text-sm font-semibold text-cyan-400">
                         Démarrer la planification →
@@ -91,7 +91,7 @@ export function LandingHub({ onStartPlanning, onQuickSearch, onExploreMap }: Lan
                     </div>
                     <h3 className="text-2xl font-bold text-white">Explorer la Carte</h3>
                     <p className="mt-3 text-slate-400 group-hover:text-slate-300 transition-colors">
-                        Découvrez les meilleures activités et points d'intérêt directement sur notre carte interactive 3D.
+                        Découvrez les meilleures activités et points d&apos;intérêt directement sur notre carte interactive 3D.
                     </p>
                     <div className="mt-8 flex items-center text-sm font-semibold text-slate-300">
                         Ouvrir la carte →
