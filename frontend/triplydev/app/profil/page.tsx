@@ -1,26 +1,29 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/src/components/Sidebar/Sidebar';
-import { Button } from '@/src/components/Button/Button';
+import { BedDouble, Bell, CircleUserRound, HeartHandshake, SlidersHorizontal } from 'lucide-react';
+import { AppShell } from '@/src/components/AppShell/AppShell';
+import { ContextSummaryCard } from '@/src/components/GuidedUI/ContextSummaryCard';
+import { EmptyStateAction } from '@/src/components/GuidedUI/EmptyStateAction';
+import { InlineStatus } from '@/src/components/GuidedUI/InlineStatus';
 import {
     clearSession,
+    fetchPreferences,
     getStoredSession,
     logout,
     me,
     saveSession,
-    updateProfile,
-    fetchPreferences,
     updatePreferences,
-    UserPreferences,
+    updateProfile,
+    type AuthUser,
+    type UserPreferences,
 } from '@/src/lib/auth-client';
 import {
-    TuPreferes,
-    PreferencesPayload,
     PREFERENCES_STORAGE_KEY,
     preferencesPayloadToAssistantTags,
+    TuPreferes,
+    type PreferencesPayload,
 } from '@/src/components/TuPreferes/TuPreferes';
 
 const LABEL_MAP: Record<string, string> = {
@@ -29,50 +32,43 @@ const LABEL_MAP: Record<string, string> = {
     ville: 'Ville',
     campagne: 'Campagne',
     aventurier: 'Aventurier',
-    epicurien: 'Épicurien',
+    epicurien: 'Epicurien',
     contemplatif: 'Contemplatif',
-    fetard: 'Fêtard',
-    randonnee: 'Randonnée',
+    fetard: 'Fetard',
+    randonnee: 'Randonnee',
     gastronomie: 'Gastronomie',
-    culture: 'Musées & Culture',
+    culture: 'Musees et culture',
     nautique: 'Sports nautiques',
     nightlife: 'Vie nocturne',
     shopping: 'Shopping',
-    planifie: 'Programme millimétré',
+    planifie: 'Programme cadre',
     spontane: 'Au feeling',
-    flexible: 'Un mix des deux',
+    flexible: 'Mix des deux',
     streetfood: 'Street food locale',
     gastro: 'Restaurants gastro',
     homecook: 'Je cuisine sur place',
-    adaptable: 'Je m\'adapte',
+    adaptable: "Je m'adapte",
+    full_ai: 'Guide',
+    semi_ai: 'Autonome',
+    manual: 'Libre',
 };
 
 function Tag({ value }: { value: string }) {
     return (
-        <span
-            className="inline-block px-3 py-1 rounded-full text-xs font-medium"
-            style={{
-                backgroundColor: 'rgba(0, 150, 199, 0.15)',
-                color: '#0096c7',
-                border: '1px solid rgba(0, 150, 199, 0.3)',
-            }}
-        >
+        <span className="inline-flex rounded-full bg-[var(--app-brand-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--primary)]">
             {LABEL_MAP[value] ?? value}
         </span>
     );
 }
 
-
 function PreferenceRow({ label, values }: { label: string; values: string[] }) {
     if (!values.length) return null;
     return (
         <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                {label}
-            </span>
+            <span className="text-sm font-medium text-[color:var(--app-muted)]">{label}</span>
             <div className="flex flex-wrap gap-2">
-                {values.map((v) => (
-                    <Tag key={v} value={v} />
+                {values.map((value) => (
+                    <Tag key={value} value={value} />
                 ))}
             </div>
         </div>
@@ -81,15 +77,14 @@ function PreferenceRow({ label, values }: { label: string; values: string[] }) {
 
 export default function ProfilPage() {
     const router = useRouter();
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
+    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [showPrefsModal, setShowPrefsModal] = useState(false);
     const [userPreferences, setUserPreferences] = useState<UserPreferences>({});
-
     const [profile, setProfile] = useState({
         firstName: '',
         lastName: '',
@@ -116,6 +111,7 @@ export default function ProfilPage() {
                 const firstName = chunks[0] || '';
                 const lastName = chunks.slice(1).join(' ');
 
+                setCurrentUser(user);
                 setProfile((prev) => ({
                     ...prev,
                     firstName,
@@ -130,7 +126,7 @@ export default function ProfilPage() {
                     const prefs = await fetchPreferences(session.token);
                     setUserPreferences(prefs);
                 } catch {
-                    setError('Profil chargé, mais les préférences n\'ont pas pu être récupérées.');
+                    setError("Profil charge, mais les preferences n'ont pas pu etre recuperees.");
                 }
             } catch {
                 clearSession();
@@ -148,14 +144,15 @@ export default function ProfilPage() {
         const first = profile.firstName?.[0] || '';
         const last = profile.lastName?.[0] || '';
         return `${first}${last}`.trim() || (profile.email?.[0] || 'U');
-    }, [profile.firstName, profile.lastName, profile.email]);
+    }, [profile.email, profile.firstName, profile.lastName]);
 
     const hasPreferences = !!(
         userPreferences.environments?.length ||
         userPreferences.traveler_profile ||
         userPreferences.interests?.length ||
         userPreferences.pace ||
-        userPreferences.food_preference
+        userPreferences.food_preference ||
+        userPreferences.planning_mode
     );
 
     const handleLogout = async () => {
@@ -186,19 +183,21 @@ export default function ProfilPage() {
             const fullName = `${profile.firstName} ${profile.lastName}`.trim();
             if (fullName) {
                 await updateProfile(session.token, { name: fullName });
+                const nextUser = {
+                    ...(session.user || { id: 0, email: profile.email, name: fullName }),
+                    name: fullName,
+                    email: profile.email,
+                };
                 saveSession({
                     token: session.token,
-                    user: {
-                        ...(session.user || { id: 0, email: profile.email, name: fullName }),
-                        name: fullName,
-                        email: profile.email,
-                    },
+                    user: nextUser,
                 });
+                setCurrentUser(nextUser);
             }
 
-            setSuccess('Profil mis à jour.');
+            setSuccess('Profil mis a jour.');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Impossible de mettre à jour le profil.');
+            setError(err instanceof Error ? err.message : 'Impossible de mettre a jour le profil.');
         } finally {
             setSaving(false);
         }
@@ -219,262 +218,252 @@ export default function ProfilPage() {
                     JSON.stringify(preferencesPayloadToAssistantTags(prefs)),
                 );
             } catch {
-                /* ignore */
+                // ignore
             }
-            setSuccess('Préférences mises à jour.');
+            setSuccess('Preferences mises a jour.');
+            setError('');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Impossible de sauvegarder les préférences.');
+            setError(err instanceof Error ? err.message : 'Impossible de sauvegarder les preferences.');
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-screen items-center justify-center" style={{ backgroundColor: 'var(--background, #222222)' }}>
-                <p style={{ color: 'var(--foreground, #ededed)' }}>Chargement du profil...</p>
-            </div>
-        );
-    }
-
     return (
-        <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background, #222222)' }}>
-            <Sidebar
-                isCollapsed={isSidebarCollapsed}
-                onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                isConnected={isConnected}
-                onLoginClick={() => router.push('/')}
-                onLogoutClick={handleLogout}
-            />
-
-            <main className="flex-1 overflow-y-auto min-w-0">
-                <div className="max-w-2xl mx-auto p-8 md:p-12">
-                    <div className="flex items-center gap-4 mb-8">
-                        <Link
-                            href="/"
-                            className="text-sm font-medium hover:underline"
-                            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
-                        >
-                            {'<- Retour à l\'application'}
-                        </Link>
+        <AppShell
+            activeTab="profil"
+            title="Profil"
+            subtitle="Compte et preferences."
+            user={currentUser}
+            isConnected={isConnected}
+            onLoginClick={() => router.push('/')}
+            onLogoutClick={handleLogout}
+        >
+            {loading ? (
+                <div className="space-y-5">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                        <div className="h-56 animate-pulse rounded-[1.9rem] border border-[var(--app-border)] bg-white/60" />
+                        <div className="h-56 animate-pulse rounded-[1.9rem] border border-[var(--app-border)] bg-white/60" />
                     </div>
+                    <div className="h-64 animate-pulse rounded-[1.9rem] border border-[var(--app-border)] bg-white/60" />
+                </div>
+            ) : null}
 
-                    <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--foreground, #ededed)', fontFamily: 'var(--font-title)' }}>
-                        Mon profil
-                    </h1>
-                    <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                        Gère tes informations personnelles
-                    </p>
+            {!loading && !isConnected ? (
+                <EmptyStateAction
+                    icon={<CircleUserRound size={30} />}
+                    eyebrow="Connexion requise"
+                    title="Retrouvez vos preferences et vos voyages"
+                    description="Connectez-vous pour retrouver vos voyages et vos preferences."
+                    action={
+                        <button
+                            type="button"
+                            onClick={() => router.push('/')}
+                            className="inline-flex min-h-12 items-center justify-center rounded-[1.25rem] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--secondary)]"
+                        >
+                            Aller a la connexion
+                        </button>
+                    }
+                />
+            ) : null}
 
-                    {!isConnected && (
-                        <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                            <p style={{ color: 'rgba(255, 255, 255, 0.85)' }}>Tu dois être connecté pour accéder au profil.</p>
-                            <Button label="Se connecter" variant="dark" tone="tone1" onClick={() => router.push('/')} className="mt-4" />
-                        </div>
-                    )}
-
-                    {isConnected && (
-                        <>
-                            <div
-                                className="rounded-2xl p-6 mb-6"
-                                style={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                }}
-                            >
-                                <div className="flex items-center gap-6">
-                                    <div
-                                        className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold shrink-0"
-                                        style={{
-                                            backgroundColor: 'var(--primary, #0096c7)',
-                                            color: '#fff',
-                                        }}
-                                    >
-                                        {initials.toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
-                                            {profile.firstName} {profile.lastName}
-                                        </h2>
-                                        <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>{profile.email}</p>
-                                    </div>
+            {!loading && isConnected ? (
+                <div className="space-y-5">
+                    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                        <section className="rounded-[1.9rem] border border-[var(--app-border)] bg-white/82 p-6 shadow-[var(--shadow-sm)]">
+                            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                                <div className="inline-flex h-20 w-20 items-center justify-center rounded-[1.8rem] bg-[var(--app-brand-soft)] text-3xl font-semibold text-[color:var(--primary)]">
+                                    {initials.toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--app-muted)]">Compte Triply</p>
+                                    <h2 className="mt-2 text-2xl font-semibold text-[color:var(--foreground)]">
+                                        {profile.firstName} {profile.lastName}
+                                    </h2>
+                                    <p className="mt-1 text-sm text-[color:var(--app-muted)]">{profile.email}</p>
                                 </div>
                             </div>
 
-                            <section className="mb-8">
-                                <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-                                    Informations personnelles
-                                </h3>
-                                <div
-                                    className="rounded-2xl p-6 space-y-4"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    }}
-                                >
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Prénom
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={profile.firstName}
-                                            onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
-                                            className="input-assistant w-full"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Nom
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={profile.lastName}
-                                            onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
-                                            className="input-assistant w-full"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Email
-                                        </label>
-                                        <input type="email" value={profile.email} readOnly className="input-assistant w-full opacity-80" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                            Téléphone
-                                        </label>
-                                        <input
-                                            type="tel"
-                                            value={profile.phone}
-                                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                                            className="input-assistant w-full"
-                                        />
-                                    </div>
+                            <div className="mt-6 grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-[color:var(--app-muted)]">Prenom</label>
+                                    <input
+                                        type="text"
+                                        value={profile.firstName}
+                                        onChange={(event) => setProfile({ ...profile, firstName: event.target.value })}
+                                        className="input-assistant w-full"
+                                    />
                                 </div>
-                            </section>
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-[color:var(--app-muted)]">Nom</label>
+                                    <input
+                                        type="text"
+                                        value={profile.lastName}
+                                        onChange={(event) => setProfile({ ...profile, lastName: event.target.value })}
+                                        className="input-assistant w-full"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="mb-2 block text-sm font-medium text-[color:var(--app-muted)]">Email</label>
+                                    <input type="email" value={profile.email} readOnly className="input-assistant w-full opacity-80" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="mb-2 block text-sm font-medium text-[color:var(--app-muted)]">Telephone</label>
+                                    <input
+                                        type="tel"
+                                        value={profile.phone}
+                                        onChange={(event) => setProfile({ ...profile, phone: event.target.value })}
+                                        className="input-assistant w-full"
+                                    />
+                                </div>
+                            </div>
+                        </section>
 
-                            <section className="mb-8">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-                                        Préférences de voyage
-                                    </h3>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPrefsModal(true)}
-                                        className="text-sm font-medium transition-colors"
-                                        style={{ color: '#0096c7' }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#00b4d8')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.color = '#0096c7')}
-                                    >
-                                        {hasPreferences ? 'Modifier' : 'Configurer'}
-                                    </button>
-                                </div>
-                                <div
-                                    className="rounded-2xl p-6"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    }}
-                                >
-                                    {hasPreferences ? (
-                                        <div className="space-y-4">
-                                            <PreferenceRow label="Environnements" values={userPreferences.environments ?? []} />
-                                            <PreferenceRow label="Profil voyageur" values={userPreferences.traveler_profile ? [userPreferences.traveler_profile] : []} />
-                                            <PreferenceRow label="Activités" values={userPreferences.interests ?? []} />
-                                            <PreferenceRow label="Rythme" values={userPreferences.pace ? [userPreferences.pace] : []} />
-                                            <PreferenceRow label="Cuisine" values={userPreferences.food_preference ? [userPreferences.food_preference] : []} />
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-4">
-                                            <p className="text-sm mb-3" style={{ color: 'rgba(255, 255, 255, 0.4)' }}>
-                                                Aucune préférence configurée
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPrefsModal(true)}
-                                                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                                                style={{
-                                                    backgroundColor: 'rgba(0, 150, 199, 0.15)',
-                                                    color: '#0096c7',
-                                                    border: '1px solid rgba(0, 150, 199, 0.3)',
-                                                }}
-                                            >
-                                                Définir mes préférences
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
+                        <ContextSummaryCard
+                            eyebrow="Vos reperes"
+                            title="Utilise pour vos voyages"
+                            items={[
+                                { label: 'Connexion', value: 'Reprise des voyages et brouillons' },
+                                { label: 'Preferences', value: hasPreferences ? 'Actives dans les recommandations' : 'A configurer' },
+                                { label: 'Continuite', value: 'Memes reperes sur mobile et web' },
+                                { label: 'Confort', value: 'Notifications et suivi' },
+                            ]}
+                        />
+                    </section>
 
-                            <section className="mb-8">
-                                <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-                                    Notifications
-                                </h3>
-                                <div
-                                    className="rounded-2xl p-6 space-y-4"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    }}
+                    {error ? <InlineStatus tone="error" message={error} className="w-full" /> : null}
+                    {success ? <InlineStatus tone="success" message={success} className="w-full" /> : null}
+
+                    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                        <section className="rounded-[1.9rem] border border-[var(--app-border)] bg-white/82 p-6 shadow-[var(--shadow-sm)]">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--app-muted)]">Preferences de voyage</p>
+                                    <h3 className="mt-1 text-xl font-semibold text-[color:var(--foreground)]">Ce que Triply retient de vos gouts</h3>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPrefsModal(true)}
+                                    className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-white px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--app-brand-soft)]"
                                 >
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span style={{ color: 'var(--foreground)' }}>Recevoir la newsletter</span>
+                                    {hasPreferences ? 'Modifier mes preferences' : 'Configurer mes preferences'}
+                                </button>
+                            </div>
+
+                            <div className="mt-6 space-y-4">
+                                {hasPreferences ? (
+                                    <>
+                                        <PreferenceRow label="Environnements" values={userPreferences.environments ?? []} />
+                                        <PreferenceRow label="Profil voyageur" values={userPreferences.traveler_profile ? [userPreferences.traveler_profile] : []} />
+                                        <PreferenceRow label="Activites" values={userPreferences.interests ?? []} />
+                                        <PreferenceRow label="Rythme" values={userPreferences.pace ? [userPreferences.pace] : []} />
+                                        <PreferenceRow label="Cuisine" values={userPreferences.food_preference ? [userPreferences.food_preference] : []} />
+                                        <PreferenceRow label="Mode prefere" values={userPreferences.planning_mode ? [userPreferences.planning_mode] : []} />
+                                    </>
+                                ) : (
+                                    <div className="rounded-[1.5rem] bg-[var(--app-brand-soft)] p-4 text-sm text-[color:var(--app-muted)]">
+                                        Aucune preference enregistree pour l instant.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="space-y-4">
+                            <section className="rounded-[1.9rem] border border-[var(--app-border)] bg-white/82 p-6 shadow-[var(--shadow-sm)]">
+                                <div className="flex items-center gap-3">
+                                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--app-brand-soft)] text-[color:var(--primary)]">
+                                        <Bell size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--app-muted)]">Parametres de confort</p>
+                                        <h3 className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">Votre rythme</h3>
+                                    </div>
+                                </div>
+                                <div className="mt-5 space-y-4">
+                                    <label className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[var(--app-border)] bg-white/75 px-4 py-4">
+                                        <span className="text-sm font-medium text-[color:var(--foreground)]">Recevoir la newsletter</span>
                                         <input
                                             type="checkbox"
                                             checked={profile.preferences.newsletter}
-                                            onChange={(e) =>
+                                            onChange={(event) =>
                                                 setProfile({
                                                     ...profile,
-                                                    preferences: { ...profile.preferences, newsletter: e.target.checked },
+                                                    preferences: { ...profile.preferences, newsletter: event.target.checked },
                                                 })
                                             }
-                                            className="w-4 h-4 rounded"
+                                            className="h-4 w-4 rounded"
                                             style={{ accentColor: 'var(--primary)' }}
                                         />
                                     </label>
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span style={{ color: 'var(--foreground)' }}>Notifications par email</span>
+
+                                    <label className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[var(--app-border)] bg-white/75 px-4 py-4">
+                                        <span className="text-sm font-medium text-[color:var(--foreground)]">Notifications par email</span>
                                         <input
                                             type="checkbox"
                                             checked={profile.preferences.notifications}
-                                            onChange={(e) =>
+                                            onChange={(event) =>
                                                 setProfile({
                                                     ...profile,
-                                                    preferences: { ...profile.preferences, notifications: e.target.checked },
+                                                    preferences: { ...profile.preferences, notifications: event.target.checked },
                                                 })
                                             }
-                                            className="w-4 h-4 rounded"
+                                            className="h-4 w-4 rounded"
                                             style={{ accentColor: 'var(--primary)' }}
                                         />
                                     </label>
                                 </div>
                             </section>
 
-                            {error && <p className="mb-4 text-sm" style={{ color: '#ff7d7d' }}>{error}</p>}
-                            {success && <p className="mb-4 text-sm" style={{ color: '#77e69c' }}>{success}</p>}
+                            <section className="rounded-[1.9rem] border border-[var(--app-border)] bg-white/82 p-6 shadow-[var(--shadow-sm)]">
+                                <div className="flex items-center gap-3">
+                                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--app-brand-soft)] text-[color:var(--primary)]">
+                                        <SlidersHorizontal size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--app-muted)]">Reperes utiles</p>
+                                        <h3 className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">Ce que Triply retient</h3>
+                                    </div>
+                                </div>
+                                <div className="mt-5 space-y-3 text-sm text-[color:var(--app-muted)]">
+                                    <div className="rounded-[1.35rem] bg-[var(--app-brand-soft)] p-4">
+                                        <p className="font-semibold text-[color:var(--foreground)]">Hebergement et confort</p>
+                                        <p className="mt-2 leading-relaxed">Rythme, cuisine et style de voyage servent a mieux cadrer les suggestions.</p>
+                                    </div>
+                                    <div className="rounded-[1.35rem] bg-[var(--app-brand-soft)] p-4">
+                                        <p className="font-semibold text-[color:var(--foreground)]">Assistant plus pertinent</p>
+                                        <p className="mt-2 leading-relaxed">Vos preferences evitent les suggestions trop generiques.</p>
+                                    </div>
+                                </div>
+                            </section>
+                        </section>
+                    </section>
 
-                            <Button
-                                label="Enregistrer les modifications"
-                                variant="dark"
-                                tone="tone1"
-                                onClick={() => {
-                                    void handleSave();
-                                }}
-                                disabled={saving}
-                                loading={saving}
-                            />
-                        </>
-                    )}
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <button
+                            type="button"
+                            onClick={() => void handleSave()}
+                            disabled={saving}
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.25rem] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+                        >
+                            <HeartHandshake size={16} />
+                            {saving ? 'Enregistrement...' : 'Enregistrer mes informations'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowPrefsModal(true)}
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.25rem] border border-[var(--app-border)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--foreground)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--app-brand-soft)]"
+                        >
+                            <BedDouble size={16} />
+                            Ajuster mes preferences de voyage
+                        </button>
+                    </div>
                 </div>
-            </main>
+            ) : null}
 
             <TuPreferes
                 visible={showPrefsModal}
                 initialValues={userPreferences}
-                onComplete={(prefs) => {
-                    void handlePreferencesComplete(prefs);
-                }}
+                onComplete={(prefs) => void handlePreferencesComplete(prefs)}
                 onSkip={() => setShowPrefsModal(false)}
             />
-        </div>
+        </AppShell>
     );
 }

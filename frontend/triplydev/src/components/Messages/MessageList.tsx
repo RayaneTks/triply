@@ -1,6 +1,5 @@
-
 import MessageBubble from './MessageBubble';
-import {ChatMessage} from "@/src/components/Assistant/Assistant";
+import { ChatMessage } from '@/src/components/Assistant/Assistant';
 
 interface Props {
     messages: ChatMessage[];
@@ -10,15 +9,10 @@ interface Props {
 export default function MessageList({ messages, loading }: Props) {
     return (
         <div className="space-y-3 pr-2">
-            {messages.map(msg => (
+            {messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
             ))}
-
-            {loading && (
-                <div className="text-sm opacity-60 text-white">
-                    L’assistant réfléchit…
-                </div>
-            )}
+            {loading ? <div className="text-sm text-white/60">Triply prepare sa reponse...</div> : null}
         </div>
     );
 }

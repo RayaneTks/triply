@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { MapboxPoiFeature, RouteMapSegment } from '@/src/components/Map/Map';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import type { RouteMapSegment } from '@/src/components/Map/Map';
 import type { LocationPoint } from '@/src/utils/locations';
 import {
     getDayActivityLabel,

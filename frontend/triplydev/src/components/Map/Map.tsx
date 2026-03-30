@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Map, Source, Layer } from 'react-map-gl/mapbox';
 import type { ViewState, MapRef } from 'react-map-gl/mapbox';
-import type { Map as MapboxMap, MapMouseEvent } from 'mapbox-gl';
+import type { MapMouseEvent } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const AIRPORTS_DATA_SOURCE = 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_airports.geojson';
@@ -87,8 +87,8 @@ export const WorldMap: React.FC<MapProps> = ({
     mapConfig = { lightPreset: 'night' },
     pitch = 45,
     bearing = 0,
-    interactive = true,
-    autoRotateSpeed,
+    interactive: _interactive = true,
+    autoRotateSpeed: _autoRotateSpeed,
     height = '100%',
     width = '100%',
     className = '',
@@ -99,17 +99,15 @@ export const WorldMap: React.FC<MapProps> = ({
     onPoiLeave,
     onAirportSelect,
     showAttribution = false,
-    showLogo = false,
+    showLogo: _showLogo = false,
     locations = [],
-    routeData = {},
+    routeData: _routeData = {},
     routeSegments = [],
 }) => {
     const mapRef = useRef<MapRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [cursor, setCursor] = useState<string>('');
-    const [hoveredRoute, setHoveredRoute] = useState<{ profile: string; duration: number; x: number; y: number } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
-    const [isStyleReady, setIsStyleReady] = useState(false);
 
     const [viewState, setViewState] = useState<ViewState>({
         longitude: initialLongitude,
@@ -200,14 +198,17 @@ export const WorldMap: React.FC<MapProps> = ({
     const routeColors: Record<string, string> = { driving: '#06b6d4', walking: '#f97316', cycling: '#84cc16' };
 
     return (
-        <div ref={containerRef} className={`relative w-full h-full overflow-hidden ${className}`}>
+        <div ref={containerRef} className={`relative w-full h-full overflow-hidden ${className}`} style={{ height, width }}>
             <Map
                 ref={mapRef}
                 {...viewState}
-                onMove={evt => setViewState(evt.viewState)}
+                onMove={(evt) => {
+                    setViewState(evt.viewState);
+                    onMove?.(evt.viewState);
+                }}
                 onMouseMove={handleMouseMove}
                 onClick={handleClick}
-                onLoad={() => { setIsMapLoaded(true); setIsStyleReady(true); }}
+                onLoad={() => { setIsMapLoaded(true); }}
                 mapStyle={mapStyle}
                 mapboxAccessToken={accessToken}
                 cursor={cursor || 'grab'}
@@ -220,7 +221,7 @@ export const WorldMap: React.FC<MapProps> = ({
             >
                 <Source id="mapbox-dem" type="raster-dem" url="mapbox://mapbox.mapbox-terrain-dem-v1" tileSize={512} maxzoom={14} />
 
-                {isMapLoaded && isStyleReady && (
+                {isMapLoaded && (
                     <>
                         {/* Airports */}
                         <Source id="airports-source" type="geojson" data={AIRPORTS_DATA_SOURCE}>

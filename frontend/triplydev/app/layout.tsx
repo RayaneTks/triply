@@ -3,8 +3,18 @@ import "./globals.css";
 import PwaRegistrar from "@/src/components/PwaRegistrar/PwaRegistrar";
 
 export const metadata: Metadata = {
-  title: "Triply - Planification de voyage",
-  description: "Planifiez vos voyages facilement",
+  title: "Triply | Planification de voyage",
+  description:
+    "Triply rassemble vols, hotels, activites et budget dans une seule application de planification de voyage.",
+  applicationName: "Triply",
+  keywords: [
+    "Triply",
+    "voyage",
+    "planification voyage",
+    "vols hotels activites",
+    "itineraire voyage",
+    "budget voyage",
+  ],
 };
 
 export const viewport: Viewport = {
@@ -28,9 +38,9 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
         {/* PWA / ajout à l'écran d'accueil */}
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#020617" />
+        <meta name="theme-color" content="#0b1f33" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="apple-touch-icon" href="/Logo-triply.svg" />
       </head>
       <body className="antialiased overflow-x-hidden min-h-dvh">

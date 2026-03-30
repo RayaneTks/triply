@@ -1,6 +1,7 @@
 export type PlanningMode = 'full_ai' | 'semi_ai' | 'manual';
+export type GuidanceMode = 'guided' | 'autonomous';
 
-/** Clé historique (tous les comptes) — migrée vers une clé par utilisateur */
+/** Cle historique (tous les comptes) - migree vers une cle par utilisateur */
 export const PLANNING_MODE_STORAGE_KEY = 'triply-planning-mode';
 
 function scopedKey(userId: string | number): string {
@@ -37,7 +38,7 @@ export function savePlanningMode(mode: PlanningMode, userId: string | number) {
     }
 }
 
-/** Supprime la clé globale et, si fourni, la clé du compte. */
+/** Supprime la cle globale et, si fourni, la cle du compte. */
 export function clearPlanningModeStorage(userId?: string | number | null) {
     if (typeof window === 'undefined') return;
     try {
@@ -48,4 +49,41 @@ export function clearPlanningModeStorage(userId?: string | number | null) {
     } catch {
         /* ignore */
     }
+}
+
+export function guidanceModeToPlanningMode(mode: GuidanceMode): PlanningMode {
+    return mode === 'guided' ? 'full_ai' : 'semi_ai';
+}
+
+export function planningModeToGuidanceMode(mode: PlanningMode | null | undefined): GuidanceMode | null {
+    if (mode === 'full_ai') return 'guided';
+    if (mode === 'semi_ai' || mode === 'manual') return 'autonomous';
+    return null;
+}
+
+export function getPlanningModeHeadline(mode: PlanningMode | null | undefined): string {
+    if (mode === 'full_ai') return 'Triply construit avec vous';
+    if (mode === 'semi_ai') return 'Vous gardez la main';
+    if (mode === 'manual') return 'Preparation libre';
+    return 'Choisissez votre facon d avancer';
+}
+
+export function getPlanningModeDescription(mode: PlanningMode | null | undefined): string {
+    if (mode === 'full_ai') {
+        return "Triply propose et organise avec vous.";
+    }
+    if (mode === 'semi_ai') {
+        return "Vous gardez la main et utilisez Triply quand vous en avez besoin.";
+    }
+    if (mode === 'manual') {
+        return "Le parcours reste simple et libre.";
+    }
+    return "Choisissez comment preparer ce voyage.";
+}
+
+export function getPlanningModeBadge(mode: PlanningMode | null | undefined): string {
+    if (mode === 'full_ai') return 'Guide';
+    if (mode === 'semi_ai') return 'Autonome';
+    if (mode === 'manual') return 'Libre';
+    return 'A definir';
 }

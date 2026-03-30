@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Bell, HelpCircle, LogOut, User, Menu } from 'lucide-react';
 import { Logo } from '../Logo/Logo';
 import type { AuthUser } from '@/src/lib/auth-client';

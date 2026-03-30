@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { PlaneTakeoff, PlaneLanding, Clock, Luggage, ChevronRight, Info } from 'lucide-react';
+import { PlaneTakeoff, Clock, Luggage, ChevronRight } from 'lucide-react';
 
 export interface FlightSegment {
     departure: { iataCode?: string; at: string; terminal?: string };

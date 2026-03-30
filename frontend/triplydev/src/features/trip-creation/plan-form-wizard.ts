@@ -1,15 +1,15 @@
-/** Nombre d’étapes du formulaire Étape 1 (0..LAST inclus). */
+/** Nombre d etapes du formulaire Etape 1 (0..LAST inclus). */
 export const PLAN_FORM_STEP_LAST = 6;
 export const PLAN_FORM_STEP_COUNT = PLAN_FORM_STEP_LAST + 1;
 
 export const PLAN_FORM_STEP_LABELS = [
-    'Destination',
+    'Trajet',
     'Dates',
     'Voyageurs',
-    'Vol',
-    'Hébergement',
-    'Préférences',
-    'Récap',
+    'Transport',
+    'Hebergement',
+    'Style',
+    'Verification',
 ] as const;
 
 export type PlanFormStepFields = {
@@ -26,7 +26,7 @@ export function clampPlanFormStep(n: number): number {
     return Math.max(0, Math.min(PLAN_FORM_STEP_LAST, Math.floor(n)));
 }
 
-/** Étapes 0–2 requises pour « Suivant » ; 3–5 toujours valides. */
+/** Etapes 0-2 requises pour "Suivant" ; 3-5 toujours valides. */
 export function validatePlanFormStep(step: number, s: PlanFormStepFields): boolean {
     const st = clampPlanFormStep(step);
     if (st <= 2) {

@@ -12,31 +12,21 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
     return (
         <div
-            className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+            className={`max-w-[84%] rounded-[1.4rem] border px-4 py-3 text-sm leading-relaxed shadow-sm ${
                 isUser
-                    ? 'ml-auto bg-cyan-500/15 border border-cyan-400/40 text-slate-50'
-                    : 'mr-auto bg-slate-900/80 border border-white/10 text-slate-100'
+                    ? 'ml-auto border-cyan-400/40 bg-cyan-500/15 text-white'
+                    : 'mr-auto border-white/10 bg-slate-900/70 text-slate-100'
             }`}
         >
             <ReactMarkdown
                 components={{
-                    h1: ({ node: _node, ...props }) => (
-                        <h1 className="mb-1 text-base font-semibold" {...props} />
-                    ),
-                    h2: ({ node: _node, ...props }) => (
-                        <h2 className="mt-2 mb-1 text-sm font-semibold" {...props} />
-                    ),
-                    h3: ({ node: _node, ...props }) => (
-                        <h3 className="mt-2 mb-1 text-sm font-semibold" {...props} />
-                    ),
-                    p: ({ node: _node, ...props }) => <p className="mb-1 text-slate-200" {...props} />,
-                    ul: ({ node: _node, ...props }) => (
-                        <ul className="my-1 list-inside list-disc space-y-1" {...props} />
-                    ),
+                    h1: ({ node: _node, ...props }) => <h1 className="mb-1 text-base font-semibold" {...props} />,
+                    h2: ({ node: _node, ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold" {...props} />,
+                    h3: ({ node: _node, ...props }) => <h3 className="mb-1 mt-2 text-sm font-semibold" {...props} />,
+                    p: ({ node: _node, ...props }) => <p className="mb-1 text-inherit" {...props} />,
+                    ul: ({ node: _node, ...props }) => <ul className="my-1 list-inside list-disc space-y-1" {...props} />,
                     li: ({ node: _node, ...props }) => <li {...props} />,
-                    strong: ({ node: _node, ...props }) => (
-                        <strong className="font-semibold" {...props} />
-                    ),
+                    strong: ({ node: _node, ...props }) => <strong className="font-semibold" {...props} />,
                 }}
             >
                 {message.content}

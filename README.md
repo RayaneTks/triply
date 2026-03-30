@@ -2,6 +2,26 @@
 
 Plateforme de planification de voyage avec backend Laravel (`backend/`) et frontend Next.js (`frontend/triplydev/`).
 
+## Contexte produit
+
+Triply est un assistant voyage IA tout-en-un concu pour centraliser et automatiser l'organisation d'un sejour.
+Le produit vise a reduire la charge mentale liee a la preparation d'un voyage en reunissant vols, hebergements, activites, carte et budget dans une seule experience.
+
+Promesse produit:
+
+- generer des itineraires personnalises en quelques minutes
+- respecter le budget comme une contrainte forte
+- limiter la fragmentation entre recherche, comparaison et planification
+- offrir une experience simple, fluide et orientee decision
+
+Personas cibles:
+
+- Lea, jeune active qui cherche surtout un gain de temps
+- Yassine, etudiant qui optimise chaque euro
+- Camille et Hugo, couple urbain qui veut deconnecter sans subir la logistique
+
+Le document canonique de contexte produit est `PRODUCT_CONTEXT.md`.
+
 ## Prerequis
 
 ### Option A (recommandee): Docker

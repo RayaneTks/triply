@@ -20,7 +20,7 @@ export const Logo: React.FC<LogoProps> = ({
                                               height,
                                               alt = 'Logo',
                                               size = 'default',
-                                              tone = 'light',
+                                              tone: _tone = 'light',
                                           }) => {
     const sizeConfig = logoSizeVariants[size];
     const finalWidth = width ?? sizeConfig.width;

@@ -7,7 +7,6 @@ import { Plane, Users, Banknote, Calendar, X, ArrowRight } from 'lucide-react';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
-import { Button } from '@/src/components/Button/Button';
 import { FlightResults } from '@/src/components/FlightResults/FlightResults';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';

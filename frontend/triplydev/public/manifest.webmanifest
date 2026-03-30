@@ -1,12 +1,12 @@
 {
   "name": "Triply",
   "short_name": "Triply",
-  "description": "Triply - Planification de voyage",
+  "description": "Vols, hotels, activites et budget dans une seule application de voyage.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#0096C7",
+  "background_color": "#eff4f8",
+  "theme_color": "#0b1f33",
   "icons": [
     {
       "src": "/Logo-triply.svg",
@@ -15,4 +15,3 @@
     }
   ]
 }
-

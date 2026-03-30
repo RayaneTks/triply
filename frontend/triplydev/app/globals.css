@@ -1,11 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #222222;
-  --foreground: #ededed;
-  --primary: #0096C7;
-  --secondary: #115C75;
-  --micro-design: #00A896;
+  color-scheme: light;
+  --background: #eff4f8;
+  --foreground: #10233b;
+  --primary: #115c75;
+  --secondary: #0b1f33;
+  --micro-design: #0096c7;
+  --app-surface: rgba(255, 255, 255, 0.88);
+  --app-surface-elevated: rgba(255, 255, 255, 0.96);
+  --app-surface-soft: rgba(255, 255, 255, 0.74);
+  --app-surface-dark: #081523;
+  --app-border: rgba(16, 35, 59, 0.1);
+  --app-border-strong: rgba(16, 35, 59, 0.18);
+  --app-muted: #5a6f85;
+  --app-brand-soft: rgba(0, 150, 199, 0.1);
+  --shadow-sm: 0 12px 28px rgba(16, 35, 59, 0.08);
+  --shadow-md: 0 22px 48px rgba(16, 35, 59, 0.12);
+  --shadow-lg: 0 34px 72px rgba(8, 21, 35, 0.24);
 }
 
 @theme inline {
@@ -19,18 +31,9 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #222222;
-    --foreground: #ededed;
-  }
-}
-
-/* Import Chillax via @font-face */
 @font-face {
   font-family: 'Chillax';
-  src: url('/fonts/Chillax-Light.woff2') format('woff2'),
-       url('/fonts/Chillax-Light.woff') format('woff');
+  src: url('/fonts/Chillax-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -38,8 +41,7 @@
 
 @font-face {
   font-family: 'Chillax';
-  src: url('/fonts/Chillax-Regular.woff2') format('woff2'),
-       url('/fonts/Chillax-Regular.woff') format('woff');
+  src: url('/fonts/Chillax-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -47,8 +49,7 @@
 
 @font-face {
   font-family: 'Chillax';
-  src: url('/fonts/Chillax-Medium.woff2') format('woff2'),
-       url('/fonts/Chillax-Medium.woff') format('woff');
+  src: url('/fonts/Chillax-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -56,8 +57,7 @@
 
 @font-face {
   font-family: 'Chillax';
-  src: url('/fonts/Chillax-SemiBold.woff2') format('woff2'),
-       url('/fonts/Chillax-SemiBold.woff') format('woff');
+  src: url('/fonts/Chillax-Semibold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -65,14 +65,12 @@
 
 @font-face {
   font-family: 'Chillax';
-  src: url('/fonts/Chillax-Bold.woff2') format('woff2'),
-       url('/fonts/Chillax-Bold.woff') format('woff');
+  src: url('/fonts/Chillax-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
-/* Import Gotham via @font-face */
 @font-face {
   font-family: 'Gotham';
   src: url('/fonts/Gotham-Book.otf') format('opentype');
@@ -100,10 +98,13 @@
 html {
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(0, 150, 199, 0.09), transparent 24%),
+    linear-gradient(180deg, #f8fbfd 0%, #eff4f8 100%);
   color: var(--foreground);
   font-family: var(--font-text);
   overflow-x: hidden;
@@ -114,17 +115,23 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-title);
 }
 
-/* Masquer les scrollbars tout en gardant la fonctionnalité de scroll */
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
 * {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE et Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
-  display: none !important; /* Chrome, Safari, Opera */
+  display: none !important;
 }
 
-/* Styles spécifiques pour les éléments avec overflow */
 .overflow-y-auto,
 .overflow-auto,
 .overflow-y-scroll,
@@ -140,8 +147,6 @@ h1, h2, h3, h4, h5, h6 {
   display: none !important;
 }
 
-/* Style unifié des inputs (calqué sur l'assistant)
-   Placé dans @layer base pour bien s'intégrer après le preflight Tailwind v4 */
 @layer base {
   .input-assistant {
     display: flex;
@@ -149,21 +154,23 @@ h1, h2, h3, h4, h5, h6 {
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.92) !important;
     border-width: 1px !important;
     border-style: solid !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-    border-radius: 0.5rem;
-    padding: 0.5rem 0.625rem;
-    min-height: 2.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    border-color: var(--app-border-strong) !important;
+    border-radius: 1rem;
+    padding: 0.7rem 0.85rem;
+    min-height: 2.75rem;
+    box-shadow: var(--shadow-sm);
     transition: border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
   }
+
   .input-assistant:focus-within {
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 2px rgba(0, 150, 199, 0.25);
+    box-shadow: 0 0 0 3px rgba(17, 92, 117, 0.16);
   }
+
   .input-assistant input,
   .input-assistant input:focus {
     background: transparent !important;
@@ -171,27 +178,44 @@ h1, h2, h3, h4, h5, h6 {
     outline: none !important;
     color: var(--foreground) !important;
   }
+
   .input-assistant input::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: rgba(100, 116, 139, 0.88) !important;
   }
 }
 
-/* Utilitaires responsive - éviter débordement */
 @layer utilities {
   .overflow-ellipsis {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .triply-surface {
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .triply-surface-strong {
+    background: var(--app-surface-elevated);
+    border: 1px solid var(--app-border);
+    box-shadow: var(--shadow-md);
+  }
+
+  .triply-dark-panel {
+    background: linear-gradient(180deg, rgba(8, 21, 35, 0.98) 0%, rgba(11, 31, 51, 0.99) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 30px 60px rgba(2, 6, 23, 0.36);
+  }
 }
 
-/* Forcer fieldset a respecter la largeur du parent */
 fieldset {
   min-width: 0;
   max-width: 100%;
 }
 
-/* Forcer les inputs number/date/time a ne jamais deborder */
 input[type="number"],
 input[type="date"],
 input[type="time"],

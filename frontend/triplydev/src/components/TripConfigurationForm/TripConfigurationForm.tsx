@@ -1,33 +1,18 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    MapPin, 
-    Calendar as CalendarIcon, 
-    Users, 
-    Plane, 
-    Hotel, 
-    Settings2, 
-    CheckCircle2, 
-    ChevronRight,
-    AlertCircle,
-    ArrowLeft
-} from 'lucide-react';
+import React from 'react';
+import { AlertCircle, ArrowLeft, BedDouble, CalendarDays, CheckCircle2, CircleDashed, MapPin, Plane, Sparkles, Users } from 'lucide-react';
 import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomplete';
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
 import { SelectedFlightCard } from '@/src/components/SelectedFlightCard/SelectedFlightCard';
 import { SelectedHotelCard } from '@/src/components/SelectedHotelCard/SelectedHotelCard';
+import { InlineStatus } from '@/src/components/GuidedUI/InlineStatus';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
-import {
-    PLAN_FORM_STEP_COUNT,
-    PLAN_FORM_STEP_LABELS,
-    PLAN_FORM_STEP_LAST,
-    clampPlanFormStep,
-} from '@/src/features/trip-creation/plan-form-wizard';
+import { PLAN_FORM_STEP_COUNT, clampPlanFormStep } from '@/src/features/trip-creation/plan-form-wizard';
+import type { BookingStepChoice } from '@/src/features/trip-creation/booking-step';
 
 interface TripConfigurationFormProps {
     departureCity: string;
@@ -64,6 +49,8 @@ interface TripConfigurationFormProps {
     setDietarySelections: (o: string[]) => void;
     onOpenFlightSearch: () => void;
     onCloseFlightSearch?: () => void;
+    flightChoice: BookingStepChoice;
+    onFlightChoiceChange: (choice: BookingStepChoice) => void;
     selectedFlight?: FlightOffer | null;
     selectedFlightCarrierName?: string;
     flightSearchChecked?: boolean;
@@ -71,6 +58,8 @@ interface TripConfigurationFormProps {
     onRemoveFlight?: () => void;
     onOpenHotelSearch: () => void;
     onCloseHotelSearch?: () => void;
+    hotelChoice: BookingStepChoice;
+    onHotelChoiceChange: (choice: BookingStepChoice) => void;
     selectedHotel?: HotelOffer | null;
     hotelSearchChecked?: boolean;
     onHotelCardClick: () => void;
@@ -99,298 +88,301 @@ interface TripConfigurationFormProps {
     onPlanFormStepSelect: (step: number) => void;
     stepInvalidHighlight: boolean[];
     onOpenAssistant?: () => void;
+    flightStatusMessage?: string;
+    hotelStatusMessage?: string;
+}
+
+const STEP_META = [
+    { id: 0, label: 'Trajet', title: 'Depart et destination', description: 'Renseignez le trajet.', icon: MapPin },
+    { id: 1, label: 'Dates', title: 'Dates du voyage', description: 'Choisissez vos dates.', icon: CalendarDays },
+    { id: 2, label: 'Voyageurs', title: 'Voyageurs et duree', description: 'Cadrez le sejour.', icon: Users },
+    { id: 3, label: 'Vol', title: 'Vol', description: 'Ajoutez un vol, cherchez ou passez.', icon: Plane },
+    { id: 4, label: 'Hotel', title: 'Hebergement', description: 'Ajoutez un logement, cherchez ou passez.', icon: BedDouble },
+    { id: 5, label: 'Style', title: 'Budget et envies', description: 'Affinez le voyage.', icon: Sparkles },
+    { id: 6, label: 'Resume', title: 'Resume', description: 'Verifiez avant de continuer.', icon: CheckCircle2 },
+] as const;
+
+const defaultExperienceOptions = ['Culture', 'Cuisine locale', 'Detente', 'Balades a pied', 'Sorties en soiree', 'Nature'];
+const defaultFoodOptions = ['Aucune contrainte', 'Vegetarien', 'Halal', 'Sans gluten'];
+
+function joinClasses(...values: Array<string | false | null | undefined>): string {
+    return values.filter(Boolean).join(' ');
+}
+
+function SectionTitle({ title, hint }: { title: string; hint?: string }) {
+    return (
+        <div className="mb-4">
+            <h3 className="text-base font-semibold text-white">{title}</h3>
+            {hint ? <p className="mt-1 text-sm leading-relaxed text-slate-400">{hint}</p> : null}
+        </div>
+    );
+}
+
+function ModeChoice({
+    active,
+    title,
+    description,
+    onClick,
+}: {
+    active: boolean;
+    title: string;
+    description: string;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={joinClasses(
+                'rounded-2xl border p-4 text-left transition-colors',
+                active
+                    ? 'border-cyan-400/60 bg-cyan-500/12 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/8'
+            )}
+        >
+            <p className="text-sm font-semibold">{title}</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">{description}</p>
+        </button>
+    );
 }
 
 export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (props) => {
     const {
-        departureCity, setDepartureCity,
-        arrivalCity, setArrivalCity,
-        travelDays, setTravelDays,
-        travelerCount, setTravelerCount,
-        budget, setBudget,
-        activityTime, setActivityTime,
-        arrivalDate, setArrivalDate,
-        departureDate, setDepartureDate,
-        outboundDepartureTime,
-        setOutboundDepartureTime,
-        outboundArrivalTime,
-        setOutboundArrivalTime,
-        returnDepartureTime,
-        setReturnDepartureTime,
-        returnArrivalTime,
-        setReturnArrivalTime,
-        selectedOptions, setSelectedOptions,
-        multiSelectOptions, dietaryMultiSelectOptions,
-        dietarySelections, setDietarySelections,
-        onOpenFlightSearch, onCloseFlightSearch,
-        selectedFlight, selectedFlightCarrierName = '', onRemoveFlight,
-        flightSearchChecked,
-        onFlightCardClick,
-        onOpenHotelSearch, onCloseHotelSearch,
-        selectedHotel, onRemoveHotel,
-        hotelSearchChecked,
-        onHotelCardClick,
-        onBackToPlanningMode,
-        manualFlightEntry, setManualFlightEntry,
-        manualFlightAirline, setManualFlightAirline,
-        manualFlightNumber, setManualFlightNumber,
-        manualFlightNumberReturn, setManualFlightNumberReturn,
-        manualHotelEntry, setManualHotelEntry,
-        manualHotelName, setManualHotelName,
-        manualHotelAddress, setManualHotelAddress,
-        manualHotelCheckIn, setManualHotelCheckIn,
-        manualHotelCheckOut, setManualHotelCheckOut,
-        planFormStep, planFormMaxVisited,
-        onPlanFormStepSelect, stepInvalidHighlight,
-        onOpenAssistant,
-        setArrivalCityName, onArrivalGeoSelect
+        departureCity, setDepartureCity, arrivalCity, setArrivalCity, setArrivalCityName, onArrivalGeoSelect,
+        travelDays, setTravelDays, travelerCount, setTravelerCount, budget, setBudget, activityTime, setActivityTime,
+        arrivalDate, setArrivalDate, departureDate, setDepartureDate, outboundDepartureTime, setOutboundDepartureTime,
+        outboundArrivalTime, setOutboundArrivalTime, returnDepartureTime, setReturnDepartureTime, returnArrivalTime, setReturnArrivalTime,
+        selectedOptions, setSelectedOptions, multiSelectOptions, dietaryMultiSelectOptions, dietarySelections, setDietarySelections,
+        onOpenFlightSearch, onCloseFlightSearch, flightChoice, onFlightChoiceChange, selectedFlight, selectedFlightCarrierName = '', onFlightCardClick, onRemoveFlight,
+        onOpenHotelSearch, onCloseHotelSearch, hotelChoice, onHotelChoiceChange, selectedHotel, onHotelCardClick, onRemoveHotel, onBackToPlanningMode,
+        setManualFlightEntry, manualFlightAirline, setManualFlightAirline, manualFlightNumber, setManualFlightNumber,
+        manualFlightNumberReturn, setManualFlightNumberReturn, setManualHotelEntry, manualHotelName, setManualHotelName,
+        manualHotelAddress, setManualHotelAddress, manualHotelCheckIn, setManualHotelCheckIn, manualHotelCheckOut, setManualHotelCheckOut,
+        planFormStep, planFormMaxVisited, onPlanFormStepSelect, stepInvalidHighlight, onOpenAssistant, flightStatusMessage, hotelStatusMessage,
     } = props;
 
     const currentStep = clampPlanFormStep(planFormStep);
+    const currentMeta = STEP_META[currentStep];
+    const optionValues = multiSelectOptions.length ? multiSelectOptions : defaultExperienceOptions;
+    const foodValues = dietaryMultiSelectOptions.length ? dietaryMultiSelectOptions : defaultFoodOptions;
 
-    const steps = [
-        { id: 0, label: 'Destination', icon: MapPin },
-        { id: 1, label: 'Dates', icon: CalendarIcon },
-        { id: 2, label: 'Voyageurs', icon: Users },
-        { id: 3, label: 'Transport', icon: Plane },
-        { id: 4, label: 'Hébergement', icon: Hotel },
-        { id: 5, label: 'Préférences', icon: Settings2 },
-        { id: 6, label: 'Récapitulatif', icon: CheckCircle2 },
-    ];
-
-    const inputCls = "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all";
+    const inputCls = 'w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition-all focus:border-cyan-500/60 focus:bg-white/8 focus:ring-2 focus:ring-cyan-500/20';
 
     return (
-        <div className="flex h-full flex-col bg-[#020617] text-slate-200">
-            {/* Header / Back Button */}
-            <div className="flex items-center gap-4 border-b border-white/5 p-6">
-                {onBackToPlanningMode && (
-                    <button 
-                        onClick={onBackToPlanningMode}
-                        className="rounded-full p-2 hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                )}
-                <div>
-                    <h2 className="text-lg font-bold text-white">Configuration</h2>
-                    <p className="text-xs text-slate-500">Étape {currentStep + 1} sur {PLAN_FORM_STEP_COUNT}</p>
+        <div className="flex h-full flex-col bg-[#07131f] text-slate-200">
+            <div className="border-b border-white/6 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        {onBackToPlanningMode ? (
+                            <button type="button" onClick={onBackToPlanningMode} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-slate-300 transition-colors hover:bg-white/10">
+                                <ArrowLeft size={18} />
+                            </button>
+                        ) : null}
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Etape {currentStep + 1} / {PLAN_FORM_STEP_COUNT}</p>
+                            <h2 className="mt-1 text-xl font-semibold text-white">{currentMeta.title}</h2>
+                        </div>
+                    </div>
+                    {stepInvalidHighlight[currentStep] ? (
+                        <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/12 px-3 py-2 text-xs font-semibold text-amber-300">
+                            <AlertCircle size={14} />
+                            A completer
+                        </div>
+                    ) : null}
                 </div>
-            </div>
-
-            {/* Stepper Content */}
-            <div className="flex-1 overflow-y-auto px-6 py-8 scrollbar-hide">
-                <div className="space-y-6">
-                    {steps.map((step) => {
-                        const isExpanded = currentStep === step.id;
-                        const isCompleted = planFormMaxVisited > step.id;
-                        const isLocked = step.id > planFormMaxVisited;
-                        const hasError = stepInvalidHighlight[step.id];
-
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                    {STEP_META.map((step) => {
+                        const active = step.id === currentStep;
+                        const visited = step.id <= planFormMaxVisited;
+                        const warn = stepInvalidHighlight[step.id];
                         return (
-                            <div key={step.id} className="relative">
-                                {/* Step Connector Line */}
-                                {step.id !== steps.length - 1 && (
-                                    <div className="absolute left-[19px] top-10 h-full w-[2px] bg-white/5" />
+                            <button
+                                key={step.id}
+                                type="button"
+                                disabled={!visited}
+                                onClick={() => onPlanFormStepSelect(step.id)}
+                                className={joinClasses(
+                                    'inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition-colors',
+                                    active
+                                        ? 'border-cyan-500/60 bg-cyan-500/12 text-white'
+                                        : visited
+                                          ? 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/8'
+                                          : 'border-transparent bg-white/[0.03] text-slate-600'
                                 )}
-
-                                {/* Step Header */}
-                                <button
-                                    onClick={() => !isLocked && onPlanFormStepSelect(step.id)}
-                                    disabled={isLocked}
-                                    className={`group flex w-full items-center gap-4 text-left transition-all ${isLocked ? 'opacity-40 cursor-not-allowed' : 'opacity-100'}`}
-                                >
-                                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                                        isExpanded ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' :
-                                        isCompleted ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' :
-                                        'border-white/10 bg-white/5 text-slate-500 group-hover:border-white/20'
-                                    }`}>
-                                        {isCompleted && !isExpanded ? <CheckCircle2 size={18} /> : <step.icon size={18} />}
-                                    </div>
-                                    <div className="flex flex-1 items-center justify-between">
-                                        <span className={`text-sm font-semibold transition-colors ${isExpanded ? 'text-white' : 'text-slate-400'}`}>
-                                            {step.label}
-                                        </span>
-                                        {hasError && <AlertCircle size={16} className="text-red-400" />}
-                                        {!isExpanded && !isLocked && <ChevronRight size={16} className="text-slate-600" />}
-                                    </div>
-                                </button>
-
-                                {/* Step Body (Animated) */}
-                                <AnimatePresence initial={false}>
-                                    {isExpanded && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                            className="overflow-hidden"
-                                        >
-                                            <div className="ml-14 pb-4 pt-6 space-y-4">
-                                                {step.id === 0 && (
-                                                    <div className="space-y-4">
-                                                        <CityAutocomplete value={departureCity} onChange={setDepartureCity} label="Départ" placeholder="D'où partez-vous ?" />
-                                                        <CityAutocomplete 
-                                                            value={arrivalCity} 
-                                                            onChange={setArrivalCity} 
-                                                            onSelectName={(n) => setArrivalCityName?.(n)}
-                                                            onSelectGeo={onArrivalGeoSelect}
-                                                            label="Arrivée" 
-                                                            placeholder="Quelle destination ?" 
-                                                        />
-                                                    </div>
-                                                )}
-                                                {step.id === 1 && (
-                                                    <DateRangePicker
-                                                        startDate={arrivalDate}
-                                                        endDate={departureDate}
-                                                        onDatesChange={(s, e) => { setArrivalDate(s); setDepartureDate(e); }}
-                                                        className="w-full"
-                                                    />
-                                                )}
-                                                {step.id === 2 && (
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="mb-2 block text-xs font-medium text-slate-500 uppercase tracking-wider">Voyageurs</label>
-                                                            <TravelerCounter count={travelerCount} onChange={setTravelerCount} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="mb-2 block text-xs font-medium text-slate-500 uppercase tracking-wider">Durée (jours)</label>
-                                                            <input
-                                                                type="number"
-                                                                min={1}
-                                                                value={travelDays || ''}
-                                                                onChange={(e) => setTravelDays(Math.max(1, parseInt(e.target.value, 10) || 0))}
-                                                                className={inputCls}
-                                                                placeholder="Ex: 7"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {step.id === 3 && (
-                                                    <div className="space-y-4">
-                                                        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={manualFlightEntry}
-                                                                onChange={(e) => {
-                                                                    setManualFlightEntry(e.target.checked);
-                                                                    if (e.target.checked) onCloseFlightSearch?.();
-                                                                }}
-                                                                className="h-5 w-5 rounded border-white/20 bg-white/10 text-cyan-500 focus:ring-cyan-500/50"
-                                                            />
-                                                            <span className="text-sm text-slate-300">Saisie manuelle du vol</span>
-                                                        </label>
-                                                        {!manualFlightEntry ? (
-                                                            <div className="space-y-3">
-                                                                {selectedFlight ? (
-                                                                    <SelectedFlightCard
-                                                                        offer={selectedFlight}
-                                                                        carrierName={selectedFlightCarrierName}
-                                                                        onClick={onFlightCardClick}
-                                                                        onRemove={onRemoveFlight}
-                                                                    />
-                                                                ) : (
-                                                                    <button onClick={onOpenFlightSearch} className="w-full rounded-xl border border-dashed border-cyan-500/30 bg-cyan-500/5 py-6 text-sm font-medium text-cyan-400 hover:bg-cyan-500/10 transition-all">
-                                                                        + Rechercher un vol
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                                                                <input type="text" value={manualFlightAirline} onChange={(e) => setManualFlightAirline(e.target.value)} placeholder="Compagnie" className={inputCls} />
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    <input type="text" value={manualFlightNumber} onChange={(e) => setManualFlightNumber(e.target.value)} placeholder="N° Aller" className={inputCls} />
-                                                                    <input type="text" value={manualFlightNumberReturn} onChange={(e) => setManualFlightNumberReturn(e.target.value)} placeholder="N° Retour" className={inputCls} />
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {step.id === 4 && (
-                                                    <div className="space-y-4">
-                                                        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={manualHotelEntry}
-                                                                onChange={(e) => {
-                                                                    setManualHotelEntry(e.target.checked);
-                                                                    if (e.target.checked) onCloseHotelSearch?.();
-                                                                }}
-                                                                className="h-5 w-5 rounded border-white/20 bg-white/10 text-cyan-500 focus:ring-cyan-500/50"
-                                                            />
-                                                            <span className="text-sm text-slate-300">Saisie manuelle de l&apos;hôtel</span>
-                                                        </label>
-                                                        {!manualHotelEntry ? (
-                                                            <div className="space-y-3">
-                                                                {selectedHotel ? (
-                                                                    <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick} onRemove={onRemoveHotel} />
-                                                                ) : (
-                                                                    <button onClick={onOpenHotelSearch} className="w-full rounded-xl border border-dashed border-emerald-500/30 bg-emerald-500/5 py-6 text-sm font-medium text-emerald-400 hover:bg-emerald-500/10 transition-all">
-                                                                        + Rechercher un hôtel
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                                                                <input type="text" value={manualHotelName} onChange={(e) => setManualHotelName(e.target.value)} placeholder="Nom de l'hôtel" className={inputCls} />
-                                                                <input type="text" value={manualHotelAddress} onChange={(e) => setManualHotelAddress(e.target.value)} placeholder="Adresse" className={inputCls} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {step.id === 5 && (
-                                                    <div className="space-y-6">
-                                                        <div className="space-y-2">
-                                                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider">Budget indicatif (€)</label>
-                                                            <input type="text" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="Ex: 1500" className={inputCls} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider">Style de voyage</label>
-                                                            <MultiSelect options={multiSelectOptions} selectedValues={selectedOptions} onChange={setSelectedOptions} placeholder="Sélectionnez..." />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider">Régime alimentaire</label>
-                                                            <MultiSelect options={dietaryMultiSelectOptions} selectedValues={dietarySelections} onChange={setDietarySelections} placeholder="Restrictions..." />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {step.id === 6 && (
-                                                    <div className="space-y-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-400 leading-relaxed">
-                                                        <p>Presque terminé ! Vérifiez vos informations à gauche. Vous pouvez cliquer sur n&apos;importe quel titre pour corriger.</p>
-                                                        <div className="flex items-center gap-2 text-cyan-400 font-semibold">
-                                                            <CheckCircle2 size={14} /> Tout semble correct
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                            >
+                                {warn ? <AlertCircle size={14} className="text-amber-400" /> : visited ? <CheckCircle2 size={14} className="text-emerald-400" /> : <CircleDashed size={14} />}
+                                <span>{step.label}</span>
+                            </button>
                         );
                     })}
                 </div>
             </div>
 
-            {/* Assistant Hint / Quick Actions */}
-            <div className="border-t border-white/5 bg-white/2 p-6">
-                <div className="flex items-start gap-3 rounded-2xl bg-[#0F172A] p-4 border border-white/5">
-                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">
-                        <Settings2 size={14} />
-                    </div>
-                    <div>
-                        <p className="text-xs font-medium text-white mb-1">Besoin d&apos;un coup de pouce ?</p>
-                        <p className="text-[11px] text-slate-500 leading-relaxed">L&apos;assistant peut remplir ces informations pour vous en quelques secondes.</p>
-                        {onOpenAssistant && (
-                            <button 
-                                onClick={onOpenAssistant}
-                                className="mt-2 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
-                            >
-                                Demander à l&apos;IA →
-                            </button>
-                        )}
-                    </div>
+            <div className="flex-1 overflow-y-auto px-5 py-6">
+                <div className="mx-auto max-w-xl">
+                    {currentStep === 0 ? (
+                        <div className="space-y-4">
+                            <SectionTitle title="Depart et destination" hint="Renseignez le trajet." />
+                            <CityAutocomplete value={departureCity} onChange={setDepartureCity} label="Depart" placeholder="Exemple : Paris" />
+                            <CityAutocomplete value={arrivalCity} onChange={setArrivalCity} onSelectName={(value) => setArrivalCityName?.(value)} onSelectGeo={onArrivalGeoSelect} label="Destination" placeholder="Exemple : Lisbonne" />
+                        </div>
+                    ) : null}
+
+                    {currentStep === 1 ? (
+                        <div className="space-y-5">
+                            <SectionTitle title="Choisissez votre periode" hint="Choisissez vos dates." />
+                            <DateRangePicker startDate={arrivalDate} endDate={departureDate} onDatesChange={(start, end) => { setArrivalDate(start); setDepartureDate(end); }} className="w-full" />
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Depart aller</label>
+                                    <input type="time" value={outboundDepartureTime} onChange={(event) => setOutboundDepartureTime(event.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Arrivee aller</label>
+                                    <input type="time" value={outboundArrivalTime} onChange={(event) => setOutboundArrivalTime(event.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Depart retour</label>
+                                    <input type="time" value={returnDepartureTime} onChange={(event) => setReturnDepartureTime(event.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Arrivee retour</label>
+                                    <input type="time" value={returnArrivalTime} onChange={(event) => setReturnArrivalTime(event.target.value)} className={inputCls} />
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {currentStep === 2 ? (
+                        <div className="space-y-5">
+                            <SectionTitle title="Combien de personnes et de jours ?" hint="Cadrez le sejour." />
+                            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                                <label className="mb-3 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Voyageurs</label>
+                                <TravelerCounter count={travelerCount} onChange={setTravelerCount} />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Duree du sejour</label>
+                                <input type="number" min={1} value={travelDays || ''} onChange={(event) => setTravelDays(Math.max(1, Number.parseInt(event.target.value, 10) || 1))} className={inputCls} placeholder="Exemple : 4 jours" />
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {currentStep === 3 ? (
+                        <div className="space-y-5">
+                            <SectionTitle title="Transport principal" hint="Ajoutez un vol, cherchez ou passez." />
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                <ModeChoice active={flightChoice === 'existing'} title="J ai deja reserve" description="Je renseigne mon vol pour que Triply tienne compte des horaires." onClick={() => { onFlightChoiceChange('existing'); setManualFlightEntry(true); onCloseFlightSearch?.(); }} />
+                                <ModeChoice active={flightChoice === 'triply_search'} title="Triply m aide a chercher" description="Je lance la recherche et je reviens ici." onClick={() => { onFlightChoiceChange('triply_search'); setManualFlightEntry(false); onOpenFlightSearch(); }} />
+                                <ModeChoice active={flightChoice === 'later'} title="Je completerai plus tard" description="Je continue le voyage sans bloquer sur le transport pour l instant." onClick={() => { onFlightChoiceChange('later'); setManualFlightEntry(false); onCloseFlightSearch?.(); }} />
+                            </div>
+                            {flightChoice === 'existing' ? (
+                                <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                                    <input type="text" value={manualFlightAirline} onChange={(event) => setManualFlightAirline(event.target.value)} placeholder="Compagnie aerienne" className={inputCls} />
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <input type="text" value={manualFlightNumber} onChange={(event) => setManualFlightNumber(event.target.value)} placeholder="Numero aller" className={inputCls} />
+                                        <input type="text" value={manualFlightNumberReturn} onChange={(event) => setManualFlightNumberReturn(event.target.value)} placeholder="Numero retour" className={inputCls} />
+                                    </div>
+                                </div>
+                            ) : flightChoice === 'triply_search' && selectedFlight ? (
+                                <SelectedFlightCard offer={selectedFlight} carrierName={selectedFlightCarrierName} onClick={onFlightCardClick} onRemove={onRemoveFlight} />
+                            ) : flightChoice === 'triply_search' ? (
+                                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                                    <p className="text-sm font-semibold text-white">Lancez une recherche de vol.</p>
+                                    <button type="button" onClick={onOpenFlightSearch} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-cyan-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-cyan-400">
+                                        Chercher un vol
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="rounded-[1.5rem] border border-dashed border-white/15 bg-white/[0.03] p-4 text-sm leading-relaxed text-slate-400">
+                                    Aucun vol ajoute pour l instant.
+                                </div>
+                            )}
+                            {flightStatusMessage ? <InlineStatus tone="success" message={flightStatusMessage} /> : null}
+                        </div>
+                    ) : null}
+
+                    {currentStep === 4 ? (
+                        <div className="space-y-5">
+                            <SectionTitle title="Hebergement" hint="Ajoutez un logement, cherchez ou passez." />
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                <ModeChoice active={hotelChoice === 'existing'} title="J ai deja reserve" description="Je renseigne mon logement pour garder un voyage coherent." onClick={() => { onHotelChoiceChange('existing'); setManualHotelEntry(true); onCloseHotelSearch?.(); }} />
+                                <ModeChoice active={hotelChoice === 'triply_search'} title="Triply m aide a chercher" description="Je compare des hotels puis je reviens ici." onClick={() => { onHotelChoiceChange('triply_search'); setManualHotelEntry(false); onOpenHotelSearch(); }} />
+                                <ModeChoice active={hotelChoice === 'later'} title="Je completerai plus tard" description="Je continue le plan puis je reviendrai sur le logement." onClick={() => { onHotelChoiceChange('later'); setManualHotelEntry(false); onCloseHotelSearch?.(); }} />
+                            </div>
+                            {hotelChoice === 'existing' ? (
+                                <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                                    <input type="text" value={manualHotelName} onChange={(event) => setManualHotelName(event.target.value)} placeholder="Nom du logement" className={inputCls} />
+                                    <input type="text" value={manualHotelAddress} onChange={(event) => setManualHotelAddress(event.target.value)} placeholder="Adresse" className={inputCls} />
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <input type="date" value={manualHotelCheckIn} onChange={(event) => setManualHotelCheckIn(event.target.value)} className={inputCls} />
+                                        <input type="date" value={manualHotelCheckOut} onChange={(event) => setManualHotelCheckOut(event.target.value)} className={inputCls} />
+                                    </div>
+                                </div>
+                            ) : hotelChoice === 'triply_search' && selectedHotel ? (
+                                <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick} onRemove={onRemoveHotel} />
+                            ) : hotelChoice === 'triply_search' ? (
+                                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                                    <p className="text-sm font-semibold text-white">Lancez une recherche d hotel.</p>
+                                    <button type="button" onClick={onOpenHotelSearch} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-cyan-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-cyan-400">
+                                        Chercher un hotel
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="rounded-[1.5rem] border border-dashed border-white/15 bg-white/[0.03] p-4 text-sm leading-relaxed text-slate-400">
+                                    Aucun hebergement ajoute pour l instant.
+                                </div>
+                            )}
+                            {hotelStatusMessage ? <InlineStatus tone="success" message={hotelStatusMessage} /> : null}
+                        </div>
+                    ) : null}
+
+                    {currentStep === 5 ? (
+                        <div className="space-y-5">
+                            <SectionTitle title="Rythme, budget et envies" hint="Affinez le voyage." />
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Budget total</label>
+                                    <input type="number" min={0} value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="Exemple : 900" className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Heures d activite par jour</label>
+                                    <input type="number" min={1} max={16} value={activityTime} onChange={(event) => setActivityTime(event.target.value)} placeholder="Exemple : 8" className={inputCls} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ambiance du sejour</label>
+                                <MultiSelect options={optionValues} selectedValues={selectedOptions} onChange={setSelectedOptions} variant="tripForm" />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Contraintes alimentaires</label>
+                                <MultiSelect options={foodValues} selectedValues={dietarySelections} onChange={setDietarySelections} variant="tripForm" />
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {currentStep === 6 ? (
+                        <div className="space-y-4">
+                            <SectionTitle title="Resume" hint="Verifiez avant de continuer." />
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {[
+                                    { label: 'Trajet', value: departureCity && arrivalCity ? `${departureCity} -> ${arrivalCity}` : 'A completer' },
+                                    { label: 'Dates', value: arrivalDate && departureDate ? `${arrivalDate} -> ${departureDate}` : 'A completer' },
+                                    { label: 'Voyageurs', value: travelerCount ? `${travelerCount} voyageur${travelerCount > 1 ? 's' : ''}` : 'A completer' },
+                                    { label: 'Budget', value: budget ? `${budget} EUR max` : 'Non renseigne' },
+                                ].map((item) => (
+                                    <div key={item.label} className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4">
+                                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                                        <p className="mt-2 text-sm font-semibold text-white">{item.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            {onOpenAssistant ? (
+                                <button type="button" onClick={onOpenAssistant} className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-cyan-500/90 px-4 text-sm font-semibold text-white transition-colors hover:bg-cyan-400">
+                                    Demander de l aide
+                                </button>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

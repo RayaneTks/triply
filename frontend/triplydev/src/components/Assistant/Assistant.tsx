@@ -1,16 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, forwardRef } from 'react';
 import { v4 as uuid } from 'uuid';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Send, Trash2, RotateCcw, StopCircle, MessageSquare, Map as MapIcon } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { MessageSquare, Send, Sparkles, StopCircle, Trash2 } from 'lucide-react';
 import MessageList from '@/src/components/Messages/MessageList';
-import { getStoredSession, type UserPreferences } from '@/src/lib/auth-client';
-import { PREFERENCES_STORAGE_KEY } from '@/src/lib/preferences-storage';
-import {
-    type AssistantStep1FormPatch,
-    buildStep1ActivityConstraintsPromptFragment,
-} from '@/src/features/trip-creation/step1-form-patch';
+import { getStoredSession } from '@/src/lib/auth-client';
+import type { AssistantStep1FormPatch } from '@/src/features/trip-creation/step1-form-patch';
 
 const LEGACY_CHAT_STORAGE_KEY = 'triply-assistant-chat';
 
@@ -20,27 +16,12 @@ function chatStorageKeyForUser(userId: string | number | null | undefined): stri
 }
 
 export type AssistantChatMode = 'itinerary' | 'qa';
-
 interface Coordinates { latitude: number; longitude: number; }
 interface Location { id: string; title: string; coordinates: Coordinates; }
-
-export interface SuggestedActivityPin {
-    title: string;
-    lat: number;
-    lng: number;
-    durationHours?: number;
-}
-
-interface AssistantResponse {
-    reply: string;
-    locations: Location[];
-    suggestedActivities?: SuggestedActivityPin[];
-    step1FormPatch?: AssistantStep1FormPatch | null;
-}
-
+export interface SuggestedActivityPin { title: string; lat: number; lng: number; durationHours?: number; }
+interface AssistantResponse { reply: string; locations: Location[]; suggestedActivities?: SuggestedActivityPin[]; step1FormPatch?: AssistantStep1FormPatch | null; }
 export type Role = 'user' | 'assistant';
 export interface ChatMessage { id: string; role: Role; content: string; }
-
 export interface AssistantPlanningContext {
     maxActivityHoursPerDay: number;
     selectedDay: number;
@@ -48,11 +29,7 @@ export interface AssistantPlanningContext {
     planningMode: string;
     currentDayActivityTitles: string[];
 }
-
-export type AssistantHandle = {
-    suggestActivitiesForDay: () => void;
-    suggestActivitiesForAllDays: () => Promise<void>;
-};
+export type AssistantHandle = { suggestActivitiesForDay: () => void; suggestActivitiesForAllDays: () => Promise<void>; };
 
 interface AssistantProps {
     chatOwnerId: string | number | null;
@@ -72,8 +49,7 @@ interface AssistantProps {
 const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(props, ref) {
     const {
         chatOwnerId, onUpdateLocations, destination, onClearChat, planningContext,
-        onSuggestedActivities, onSuggestedActivitiesForDay, onLoadingChange,
-        step1FormSnapshot, step1HotelOptionLabels, step1DietaryLabels, onApplyStep1Form
+        onSuggestedActivities, onSuggestedActivitiesForDay, onLoadingChange, step1FormSnapshot, onApplyStep1Form,
     } = props;
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -85,26 +61,22 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
     const abortControllerRef = useRef<AbortController | null>(null);
 
     useLayoutEffect(() => {
-        if (typeof window !== 'undefined') {
-            const key = chatStorageKeyForUser(chatOwnerId);
-            if (key) {
-                const raw = window.localStorage.getItem(key);
-                if (raw) setMessages(JSON.parse(raw));
-            }
-        }
+        if (typeof window === 'undefined') return;
+        const key = chatStorageKeyForUser(chatOwnerId);
+        if (!key) return;
+        const raw = window.localStorage.getItem(key);
+        if (raw) setMessages(JSON.parse(raw));
     }, [chatOwnerId]);
 
     useEffect(() => {
         const key = chatStorageKeyForUser(chatOwnerId);
-        if (key && messages.length > 0) {
-            window.localStorage.setItem(key, JSON.stringify(messages));
-        }
+        if (!key || messages.length === 0) return;
+        window.localStorage.setItem(key, JSON.stringify(messages));
     }, [messages, chatOwnerId]);
 
     useEffect(() => {
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-        }
+        if (!scrollContainerRef.current) return;
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }, [messages, loading, pendingAssistantMessage]);
 
     const postUserMessage = useCallback(async (text: string, opts?: { forceItinerary?: boolean }, targetDay?: number) => {
@@ -113,138 +85,181 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         if (!session?.token) return;
 
         const userMsg: ChatMessage = { id: uuid(), role: 'user', content: text.trim() };
-        const newHistory = [...messages, userMsg];
-        setMessages(newHistory);
+        const history = [...messages, userMsg];
+        setMessages(history);
         setLoading(true);
         onLoadingChange?.(true);
-        setPendingAssistantMessage("Analyse de votre demande...");
+        setPendingAssistantMessage(chatMode === 'qa' ? 'Triply clarifie votre question...' : 'Triply prepare une proposition...');
 
-        const ac = new AbortController();
-        abortControllerRef.current = ac;
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         try {
             const res = await fetch('/api/assistant', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
-                signal: ac.signal,
+                signal: controller.signal,
                 body: JSON.stringify({
-                    messages: newHistory.map(({ role, content }) => ({ role, content })),
+                    messages: history.map(({ role, content }) => ({ role, content })),
                     destinationContext: destination,
                     chatMode: opts?.forceItinerary ? 'itinerary' : chatMode,
                     maxActivityHoursPerDay: planningContext?.maxActivityHoursPerDay,
                     selectedDay: targetDay ?? planningContext?.selectedDay,
                     travelDays: planningContext?.travelDays,
                     planningMode: planningContext?.planningMode,
-                    step1FormSnapshot
+                    step1FormSnapshot,
                 }),
             });
 
             const data: AssistantResponse = await res.json();
-            setMessages(prev => [...prev, { id: uuid(), role: 'assistant', content: data.reply }]);
-
-            if (data.locations?.length && onUpdateLocations) onUpdateLocations(data.locations);
+            setMessages((prev) => [...prev, { id: uuid(), role: 'assistant', content: data.reply }]);
+            if (data.locations?.length) onUpdateLocations?.(data.locations);
             if (data.suggestedActivities?.length) {
                 if (targetDay && onSuggestedActivitiesForDay) onSuggestedActivitiesForDay(targetDay, data.suggestedActivities);
-                else if (onSuggestedActivities) onSuggestedActivities(data.suggestedActivities);
+                else onSuggestedActivities?.(data.suggestedActivities);
             }
             if (data.step1FormPatch && onApplyStep1Form) onApplyStep1Form(data.step1FormPatch);
-
-        } catch (e) {
-            const isAbortError =
-                (e instanceof DOMException && e.name === 'AbortError') ||
-                (e instanceof Error && e.name === 'AbortError');
-            if (!isAbortError) {
-                setMessages(prev => [...prev, { id: uuid(), role: 'assistant', content: "Désolé, je rencontre une petite turbulence technique." }]);
+        } catch (error) {
+            const aborted = (error instanceof DOMException && error.name === 'AbortError') || (error instanceof Error && error.name === 'AbortError');
+            if (!aborted) {
+                setMessages((prev) => [...prev, { id: uuid(), role: 'assistant', content: 'Une erreur technique a interrompu la reponse. Reessayez dans un instant.' }]);
             }
         } finally {
             setLoading(false);
             onLoadingChange?.(false);
             setPendingAssistantMessage(null);
         }
-    }, [messages, loading, chatMode, destination, planningContext, step1FormSnapshot, onLoadingChange, onUpdateLocations, onSuggestedActivities, onSuggestedActivitiesForDay, onApplyStep1Form]);
+    }, [chatMode, destination, loading, messages, onApplyStep1Form, onLoadingChange, onSuggestedActivities, onSuggestedActivitiesForDay, onUpdateLocations, planningContext, step1FormSnapshot]);
 
     useImperativeHandle(ref, () => ({
         suggestActivitiesForDay: () => {
             const day = planningContext?.selectedDay ?? 1;
-            postUserMessage(`Propose-moi des activités pour le jour ${day} à ${destination || 'ma destination'}.`, { forceItinerary: true }, day);
+            void postUserMessage(`Propose-moi des activites pour le jour ${day} a ${destination || 'ma destination'}.`, { forceItinerary: true }, day);
         },
         suggestActivitiesForAllDays: async () => {
-            const days = Array.from({ length: planningContext?.travelDays ?? 1 }, (_, i) => i + 1);
-            for (const d of days) {
-                await postUserMessage(`Activités Jour ${d}`, { forceItinerary: true }, d);
+            const days = Array.from({ length: planningContext?.travelDays ?? 1 }, (_, index) => index + 1);
+            for (const day of days) {
+                await postUserMessage(`Construit une idee de programme pour le jour ${day}.`, { forceItinerary: true }, day);
             }
-        }
+        },
     }), [destination, planningContext, postUserMessage]);
 
+    const quickPrompts = chatMode === 'itinerary'
+        ? [
+            'Verifier le budget',
+            'Que manque-t-il ?',
+            `Des idees pour le jour ${planningContext?.selectedDay ?? 1}`,
+        ]
+        : [
+            'Prochaine etape',
+            'Information manquante',
+            'Rester dans le budget',
+        ];
+
     return (
-        <div className="flex h-full flex-col bg-[#020617] text-slate-200">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/5 p-4">
-                <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
-                        <Sparkles size={18} />
+        <div className="flex h-full flex-col bg-[#07131f] text-slate-100">
+            <div className="border-b border-white/8 px-4 py-4">
+                <div className="flex items-center gap-3">
+                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/12 text-cyan-300">
+                        {chatMode === 'itinerary' ? <Sparkles size={20} /> : <MessageSquare size={20} />}
                     </div>
-                    <span className="text-sm font-bold text-white">Assistant Triply</span>
+                    <div>
+                        <p className="text-sm font-semibold text-white">Aide Triply</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                            {chatMode === 'itinerary'
+                                ? 'Affinez ce voyage.'
+                                : 'Posez une question sur votre voyage.'}
+                        </p>
+                    </div>
                 </div>
-                <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-                    <button 
-                        onClick={() => setChatMode('itinerary')}
-                        className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase transition-all ${chatMode === 'itinerary' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-900/40' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Plan
+
+                <div className="mt-4 inline-flex rounded-2xl border border-white/10 bg-white/5 p-1">
+                    <button type="button" onClick={() => setChatMode('itinerary')} className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${chatMode === 'itinerary' ? 'bg-cyan-500 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                        Mon voyage
                     </button>
-                    <button 
-                        onClick={() => setChatMode('qa')}
-                        className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase transition-all ${chatMode === 'qa' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-900/40' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Aide
+                    <button type="button" onClick={() => setChatMode('qa')} className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${chatMode === 'qa' ? 'bg-cyan-500 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                        Questions
                     </button>
                 </div>
             </div>
 
-            {/* Chat Area */}
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-                <MessageList messages={messages} loading={loading} />
+            <div className="border-b border-white/8 px-4 py-3">
+                <div className="flex flex-wrap gap-2">
+                    {quickPrompts.map((prompt) => (
+                        <button key={prompt} type="button" onClick={() => void postUserMessage(prompt)} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10">
+                            {prompt}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
+                {messages.length === 0 ? (
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-slate-400">
+                        {chatMode === 'itinerary'
+                            ? 'Decrivez votre objectif ou votre budget.'
+                            : 'Posez une question simple.'}
+                    </div>
+                ) : null}
+                <div className="mt-4">
+                    <MessageList messages={messages} loading={loading} />
+                </div>
                 <AnimatePresence>
-                    {pendingAssistantMessage && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
-                            <div className="h-8 w-8 shrink-0 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 animate-pulse">
-                                <Sparkles size={14} />
-                            </div>
-                            <div className="rounded-2xl bg-white/5 p-3 text-xs text-slate-400 italic">
-                                {pendingAssistantMessage}
-                            </div>
+                    {pendingAssistantMessage ? (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs italic text-slate-400">
+                            {pendingAssistantMessage}
                         </motion.div>
-                    )}
+                    ) : null}
                 </AnimatePresence>
             </div>
 
-            {/* Input Area */}
-            <div className="border-t border-white/5 p-4 bg-[#020617]/50 backdrop-blur-md">
-                <div className="mb-3 flex justify-between">
-                    <button 
-                        onClick={() => { setMessages([]); window.localStorage.removeItem(chatStorageKeyForUser(chatOwnerId) || ''); onClearChat?.(); }}
-                        className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-red-400 transition-colors"
+            <div className="border-t border-white/8 px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setMessages([]);
+                            window.localStorage.removeItem(chatStorageKeyForUser(chatOwnerId) || '');
+                            onClearChat?.();
+                        }}
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 transition-colors hover:text-red-300"
                     >
-                        <Trash2 size={12} /> Effacer
+                        <Trash2 size={14} />
+                        Effacer
                     </button>
-                    {loading && (
-                        <button onClick={() => abortControllerRef.current?.abort()} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
-                            <StopCircle size={12} /> Arrêter
+                    {loading ? (
+                        <button type="button" onClick={() => abortControllerRef.current?.abort()} className="inline-flex items-center gap-2 text-xs font-semibold text-red-300">
+                            <StopCircle size={14} />
+                            Arreter
                         </button>
-                    )}
+                    ) : null}
                 </div>
-                <div className="relative flex items-center">
-                    <input
-                        type="text" value={message} onChange={e => setMessage(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && postUserMessage(message)}
-                        placeholder={chatMode === 'qa' ? "Posez une question..." : "Une destination, une envie ?"}
-                        className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-4 pr-12 text-sm text-white placeholder:text-slate-600 focus:border-cyan-500/50 outline-none transition-all"
-                    />
-                    <button 
-                        onClick={() => { postUserMessage(message); setMessage(''); }}
+
+                <div className="flex items-end gap-3">
+                    <div className="input-assistant flex-1">
+                        <input
+                            type="text"
+                            value={message}
+                            onChange={(event) => setMessage(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    void postUserMessage(message);
+                                    setMessage('');
+                                }
+                            }}
+                            placeholder={chatMode === 'qa' ? 'Votre question...' : 'Ce que vous voulez ajuster...'}
+                            className="w-full"
+                        />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void postUserMessage(message);
+                            setMessage('');
+                        }}
                         disabled={loading || !message.trim()}
-                        className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500 text-white shadow-lg hover:bg-cyan-400 disabled:opacity-30 transition-all active:scale-90"
+                        className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500 text-white transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         <Send size={16} />
                     </button>

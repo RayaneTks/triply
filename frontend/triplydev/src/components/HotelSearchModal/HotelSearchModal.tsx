@@ -8,7 +8,6 @@ import { CityAutocomplete } from '@/src/components/CityAutocomplete/CityAutocomp
 import { TravelerCounter } from '@/src/components/TravelerCounter/TravelerCounter';
 import { DateRangePicker } from '@/src/components/DataRangePicker/DataRangePicker';
 import { MultiSelect } from '@/src/components/MultiSelect/MultiSelect';
-import { Button } from '@/src/components/Button/Button';
 import { HotelResults } from '@/src/components/HotelResults/HotelResults';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
