@@ -3,7 +3,8 @@
 # Node.js TypeScript Application
 # ========================================
 
-FROM node:25-alpine3.22 AS base
+# Node LTS (22) : meilleure compatibilité libs / sécurité que les tags « latest » ou majeures impaires.
+FROM node:22-alpine AS base
 
 # Set working directory
 WORKDIR /app

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Retire une ligne « Made-with: Cursor » en fin de message (IDE).
+msg="$1"
+[ -f "$msg" ] || exit 0
+if grep -qx 'Made-with: Cursor' "$msg" 2>/dev/null; then
+  grep -vx 'Made-with: Cursor' "$msg" >"${msg}.strip" && mv "${msg}.strip" "$msg"
+fi
+exit 0

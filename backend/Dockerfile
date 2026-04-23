@@ -1,4 +1,4 @@
-FROM php:8.3-apache AS base
+FROM php:8.4-apache AS base
 
 ARG WWW_USER=1000
 ARG WWW_GROUP=1000

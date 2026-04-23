@@ -42,7 +42,7 @@ Si `curl` n'est pas disponible : ouvrir `http://127.0.0.1:8000/api/v1/health` da
 
 ## Variables d'environnement Docker
 
-Le service backend Docker est deja configure dans `docker-compose.yml` pour utiliser PostgreSQL :
+Le service backend Docker est configure dans `compose.dev.yaml` (racine du repo, invoque via `Makefile`) pour utiliser PostgreSQL :
 
 - `DB_CONNECTION=pgsql`
 - `DB_HOST=db`

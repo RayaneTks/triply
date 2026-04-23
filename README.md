@@ -1,6 +1,8 @@
 # Triply
 
-Plateforme de planification de voyage avec backend Laravel (`backend/`) et frontend Next.js (`frontend/triplydev/`).
+Plateforme de planification de voyage : backend Laravel (`backend/`), frontend Next (`frontend/triplydev/`), refonte SPA dans `rework-front/`.
+
+Développement Docker : [compose.dev.yaml](compose.dev.yaml) et `Makefile` à la racine.
 
 ## Contexte produit
 
@@ -39,7 +41,7 @@ Le document canonique de contexte produit est `PRODUCT_CONTEXT.md`.
 ## Installation (fresh clone)
 
 ### 1) Avec Docker + Makefile (recommande)
-Depuis la racine du repo:
+Depuis la racine du repo. Au premier lancement, `make up` / `make install` exécutent **`ensure-dev-env`** : copie automatique des `.env.example` vers `.env` (racine, `backend/`, `frontend/triplydev/`) si les fichiers manquent — plus d’erreur « env file not found ».
 
 ```bash
 make install

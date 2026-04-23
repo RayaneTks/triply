@@ -14,8 +14,8 @@ services:
       - ./frontend/triplydev/.env
     environment:
       NODE_ENV: development
-    user: "0:0"
-    command: npm run dev -- --webpack --hostname 0.0.0.0 --port 3000
+    # Image : utilisateur non-root (nodejs). Éviter user root en dev sauf besoin ponctuel de permissions sur le bind-mount.
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
     networks:
       - triply-development
     volumes:
@@ -31,7 +31,7 @@ services:
   # Backend - Nginx ========================
   tri-api:
     container_name: tri-api
-    image: nginx:latest
+    image: nginx:1.27-alpine
     volumes:
       # Mount the application code for live updates
       - ./backend:/var/www
@@ -132,10 +132,11 @@ services:
     networks:
       - triply-development
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_ROOT_PASSWORD || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 15s
   tri-pgadmin:
     image: dpage/pgadmin4
     ports:
@@ -156,12 +157,12 @@ services:
 
   # Backend - Cache ========================
   tri-redis:
-    image: redis:alpine
+    image: redis:7-alpine
     networks:
       - triply-development
     depends_on:
-      tri-api:
-        condition: service_started # Wait for tri-api to start
+      tri-postgres:
+        condition: service_healthy
 
 
 networks:

@@ -2,10 +2,40 @@
 .DS_Store
 Thumbs.db
 *.log
-.env
 /pgadmin
 
 # --- OS & éditeurs
 .vscode/
 .idea/
 *.swp
+
+# --- Secrets & env
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# --- Node / build
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# --- Python
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.venv/
+
+# --- Outils locaux (ne pas versionner)
+.cursor/
+.gsd/
+
+# --- Temporaires & caches locaux
+_gsd_temp/
+*.local.json
+.claude/settings.local.json

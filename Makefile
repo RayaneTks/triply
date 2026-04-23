@@ -1,4 +1,7 @@
+NODE ?= node
+
 .PHONY: help \
+	ensure-dev-env \
 	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
 	pgadmin-reset \
 	vendor-init composer-init \
@@ -23,6 +26,7 @@ help:
 	@echo Docker workflow:
 	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
 	@echo   make install           - alias of make init
+	@echo   make ensure-dev-env    - cree .env racine + backend + triplydev depuis .env.example si absents
 	@echo   make migrate           - run safe DB migrations in backend container
 	@echo   make up                - daily startup
 	@echo   make reload            - backend sync after changes
@@ -47,7 +51,10 @@ help:
 # Recommended workflow (Docker-first)
 # -----------------------------------------
 
-init:
+ensure-dev-env:
+	@$(NODE) scripts/ensure-dev-env.cjs
+
+init: ensure-dev-env
 	$(COMPOSE) down --remove-orphans
 	$(COMPOSE) up -d --build --remove-orphans
 	$(MAKE) vendor-init
@@ -69,12 +76,12 @@ migrate:
 	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 	$(MAKE) verify
 
-up:
+up: ensure-dev-env
 	$(COMPOSE) up -d --remove-orphans $(DOCKER_SERVICES)
 
 run: up
 
-reload:
+reload: ensure-dev-env
 	$(MAKE) env-sync
 	$(COMPOSE) exec -T tri-php-fpm php artisan optimize:clear
 	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
@@ -84,7 +91,7 @@ reload:
 down:
 	$(COMPOSE) down --remove-orphans
 
-rebuild:
+rebuild: ensure-dev-env
 	$(COMPOSE) down --remove-orphans
 	$(COMPOSE) up -d --build $(DOCKER_SERVICES)
 
