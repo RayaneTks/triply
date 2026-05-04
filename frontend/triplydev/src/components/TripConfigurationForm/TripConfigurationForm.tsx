@@ -100,8 +100,6 @@ interface TripConfigurationFormProps {
     onPlanFormStepSelect: (step: number) => void;
     /** Après une tentative « Suivant » infructueuse sur une étape requise. */
     stepInvalidHighlight: boolean[];
-    /** Ouvre le panneau Assistant (optionnel). */
-    onOpenAssistant?: () => void;
 }
 
 const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; children: React.ReactNode }> = ({ icon, title, tag, children }) => (
@@ -229,7 +227,6 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         planFormMaxVisited,
         onPlanFormStepSelect,
         stepInvalidHighlight,
-        onOpenAssistant,
     } = props;
 
     const inputCls =
@@ -787,15 +784,6 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             <span className="font-semibold text-cyan-400/90">Assistant · </span>
                             {STEP_ASSISTANT_HINTS[step]}
                         </p>
-                        {onOpenAssistant && (
-                            <button
-                                type="button"
-                                onClick={onOpenAssistant}
-                                className="mt-2 text-[11px] font-semibold text-cyan-400 underline-offset-2 hover:underline"
-                            >
-                                Ouvrir l&apos;assistant Triply
-                            </button>
-                        )}
                     </div>
 
                     <h3 ref={stepHeadingRef} tabIndex={-1} className="text-[13px] font-semibold text-slate-100 outline-none">

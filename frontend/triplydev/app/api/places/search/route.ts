@@ -1,15 +1,31 @@
 import { NextResponse } from 'next/server';
+import { getAmadeusBaseUrl } from '@/lib/amadeus-config';
+import { placesFallbackSearch } from '@/lib/places-fallback';
 
-const AMADEUS_BASE_URL = 'https://test.api.amadeus.com';
+const ALLOWED_SUB_TYPES = new Set(['CITY', 'AIRPORT']);
 
-async function getAmadeusToken(): Promise<string> {
+/** Format CSV attendu par Amadeus (collectionFormat: csv). Défaut : villes + aéroports. */
+function resolveAmadeusSubTypes(searchParams: URLSearchParams): string {
+    const raw = searchParams.get('subType')?.trim();
+    if (!raw) {
+        return 'CITY,AIRPORT';
+    }
+    const parts = raw
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => ALLOWED_SUB_TYPES.has(s));
+    const unique = [...new Set(parts)];
+    return unique.length > 0 ? unique.join(',') : 'CITY,AIRPORT';
+}
+
+async function getAmadeusToken(baseUrl: string): Promise<string> {
     const clientId = (process.env.AMADEUS_CLIENT_ID || '').trim();
     const clientSecret = (process.env.AMADEUS_CLIENT_SECRET || '').trim();
     if (!clientId || !clientSecret) {
         throw new Error('AMADEUS_CLIENT_ID et AMADEUS_CLIENT_SECRET requis');
     }
 
-    const authResponse = await fetch(`${AMADEUS_BASE_URL}/v1/security/oauth2/token`, {
+    const authResponse = await fetch(`${baseUrl}/v1/security/oauth2/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -57,10 +73,13 @@ export async function GET(request: Request) {
         return NextResponse.json([]);
     }
 
-    try {
-        const accessToken = await getAmadeusToken();
+    const baseUrl = getAmadeusBaseUrl();
 
-        const url = `${AMADEUS_BASE_URL}/v1/reference-data/locations?subType=CITY,AIRPORT&keyword=${encodeURIComponent(keyword)}&page[limit]=10&view=FULL`;
+    try {
+        const accessToken = await getAmadeusToken(baseUrl);
+        const subType = resolveAmadeusSubTypes(searchParams);
+        const url = `${baseUrl}/v1/reference-data/locations?subType=${subType}&keyword=${encodeURIComponent(keyword)}`;
+
         const response = await fetch(url, {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -73,14 +92,21 @@ export async function GET(request: Request) {
 
         if (!response.ok) {
             console.error('Amadeus locations error:', data);
-            return NextResponse.json([]);
+            const code = data?.errors?.[0]?.code;
+            if (code === 38189) {
+                console.error(
+                    '[places/search] Erreur interne Amadeus (38189). Vérifier que AMADEUS_API_BASE_URL correspond aux clés : test → https://test.api.amadeus.com , production → https://api.amadeus.com ; sinon APIs activées sur l’app Amadeus.',
+                );
+            }
+            const fallback = await placesFallbackSearch(keyword);
+            return NextResponse.json(fallback);
         }
 
         const normalized = raw.map((loc: Record<string, unknown>) => normalizeLocation(loc));
-
         return NextResponse.json(normalized);
     } catch (error) {
         console.error('Erreur API Places:', error);
-        return NextResponse.json([], { status: 500 });
+        const fallback = await placesFallbackSearch(keyword);
+        return NextResponse.json(fallback);
     }
 }

@@ -15,8 +15,8 @@ const nextConfig: NextConfig = {
     return {
       fallback: [
         {
-          source: '/api/:path*',
-          destination: `${backendProxyTarget}/api/:path*`,
+          source: '/api/v1/:path*',
+          destination: `${backendProxyTarget}/api/v1/:path*`,
         },
       ],
     };

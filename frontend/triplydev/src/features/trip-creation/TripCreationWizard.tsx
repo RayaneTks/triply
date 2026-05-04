@@ -722,7 +722,6 @@ interface TripCreationWizardProps {
     onPlanFormStepChange: (step: number) => void;
     planFormMaxVisited: number;
     onPlanFormMaxVisitedChange: (max: number) => void;
-    onOpenAssistant?: () => void;
     /** Barre de fermeture visible sous `lg` (drawer itinéraire). */
     showPanelClose?: boolean;
     onClosePanel?: () => void;
@@ -786,7 +785,6 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
     onPlanFormStepChange,
     planFormMaxVisited,
     onPlanFormMaxVisitedChange,
-    onOpenAssistant,
     showPanelClose = false,
     onClosePanel,
 }) => {
@@ -1044,7 +1042,6 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                             planFormMaxVisited={planMaxVisited}
                                             onPlanFormStepSelect={selectPlanStep}
                                             stepInvalidHighlight={stepInvalidHighlight}
-                                            onOpenAssistant={onOpenAssistant}
                                         />
                                     </div>
                                     {mobileStepsOpen && (

@@ -1,10 +1,10 @@
 // app/api/flights/search/route.ts
 import { NextResponse } from 'next/server';
+import { getAmadeusBaseUrl } from '@/lib/amadeus-config';
 
 const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
-// Utilise 'test' pour le dev, 'production' pour le live
-const AMADEUS_BASE_URL = 'https://test.api.amadeus.com';
+const AMADEUS_BASE_URL = getAmadeusBaseUrl();
 
 export async function POST(request: Request) {
     try {

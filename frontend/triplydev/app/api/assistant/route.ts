@@ -11,10 +11,11 @@ import {
     getRegenerateActivityInstructions,
 } from '@/src/lib/triply';
 import { normalizeAssistantStep1FormPatch } from '@/src/features/trip-creation/step1-form-patch';
+import { getAmadeusBaseUrl } from '@/lib/amadeus-config';
 
 const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
-const AMADEUS_BASE_URL = 'https://test.api.amadeus.com';
+const AMADEUS_BASE_URL = getAmadeusBaseUrl();
 const BACKEND_API_BASE_URL = (process.env.BACKEND_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/$/, '');
 
 async function getAmadeusToken() {

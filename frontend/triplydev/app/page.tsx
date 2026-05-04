@@ -73,6 +73,9 @@ import { MEDIA_MIN_LG, useMediaQuery } from '@/src/hooks/useMediaQuery';
 /** Segment / carte en alerte dépassement temps jour */
 const ACTIVITY_TIME_ALERT_COLOR = '#ef4444';
 
+/** LineString GeoJSON (évite `GeoJSON.LineString` en .tsx et les erreurs de namespace). */
+type GeoLineString = { type: 'LineString'; coordinates: number[][] };
+
 /** Couleurs par activité sur la barre de temps (contraste sur fond sombre) */
 const ACTIVITY_TIMELINE_COLORS = [
     '#22d3ee',
@@ -87,8 +90,40 @@ const ACTIVITY_TIMELINE_COLORS = [
     '#4ade80',
 ];
 
-/** LineString GeoJSON (évite `GeoJSON.LineString` en .tsx et les erreurs de namespace). */
-type GeoLineString = { type: 'LineString'; coordinates: number[][] };
+/** Barre de progression : trajets entre POIs (aligné modes carte / wizard). */
+const LEG_TRAVEL_TIMELINE_COLORS: Record<ActivityRouteProfile, string> = {
+    driving: '#f97316',
+    walking: '#22d3ee',
+    cycling: '#84cc16',
+};
+
+const LEG_PROFILE_SHORT_LABELS: Record<ActivityRouteProfile, string> = {
+    driving: 'Voiture',
+    walking: 'À pied',
+    cycling: 'Vélo',
+};
+
+/** Durées de trajet (h) par tronçon selon `dayRoutes` et le mode choisi pour chaque leg. */
+function travelHoursBetweenActivities(
+    routes: Partial<
+        Record<
+            ActivityRouteProfile,
+            {
+                legs?: Array<{ duration: number; distance: number; geometry?: GeoLineString }>;
+            }
+        >
+    >,
+    modes: ActivityRouteProfile[],
+    legCount: number,
+): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < legCount; i++) {
+        const profile = modes[i] ?? 'driving';
+        const durSec = routes[profile]?.legs?.[i]?.duration ?? 0;
+        out.push(durSec > 0 ? durSec / 3600 : 0);
+    }
+    return out;
+}
 
 function getDayActivityLabel(p: {
     properties?: Record<string, unknown> | null;
@@ -102,7 +137,9 @@ async function fetchGeocodeFirst(keyword: string): Promise<{ lat: number; lng: n
     const q = keyword.trim();
     if (q.length < 2) return null;
     try {
-        const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(q)}`);
+        const res = await fetch(
+            `/api/places/search?${new URLSearchParams({ keyword: q, subType: 'CITY,AIRPORT' }).toString()}`,
+        );
         const data: unknown = await res.json();
         const list = Array.isArray(data) ? data : [];
         const first = list[0] as
@@ -139,7 +176,9 @@ async function resolveDestinationLabels(params: {
 
     if (iata.length >= 3) {
         try {
-            const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(iata)}`);
+            const res = await fetch(
+                `/api/places/search?${new URLSearchParams({ keyword: iata, subType: 'CITY,AIRPORT' }).toString()}`,
+            );
             const data: unknown = await res.json();
             const list = Array.isArray(data) ? data : [];
             const items = list as PlaceSearchItem[];
@@ -1092,7 +1131,9 @@ export default function Home() {
                 return;
             }
             try {
-                const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(keyword)}`);
+                const res = await fetch(
+                    `/api/places/search?${new URLSearchParams({ keyword, subType: 'CITY,AIRPORT' }).toString()}`,
+                );
                 const data: unknown = await res.json();
                 const list = Array.isArray(data) ? data : [];
                 const first = list[0] as
@@ -1146,10 +1187,13 @@ export default function Home() {
         }
 
         setWizardView('activity');
-        if (planningMode === 'full_ai') {
-            setIsAssistantOpen(true);
-        } else if (planningMode === 'manual') {
+        // Modes IA : ouvrir l’assistant et enchaîner comme « Suggestions IA pour tout le séjour ».
+        // Avant : semi_ai ne ouvrait pas le panneau ; full_ai ouvrait sans lancer de requête LLM.
+        if (planningMode === 'manual' || planningMode == null) {
             setIsAssistantOpen(false);
+        } else {
+            setIsAssistantOpen(true);
+            setPendingAssistantSuggestion('all');
         }
     };
 
@@ -1636,19 +1680,31 @@ export default function Home() {
         return [...mapLocations, ...activityMarkers];
     }, [mapLocations, wizardView, dayActivitiesByDay, selectedDay]);
 
-    /** Dernière activité ajoutée en alerte si le total du jour dépasse le max */
+    /** Dernière activité ajoutée en alerte si activités + trajets dépassent le max du jour */
     const activityTimeAlertDragId = useMemo(() => {
         const list = dayActivitiesByDay[selectedDay] ?? [];
+        const modes = legTransportByDay[selectedDay] ?? [];
         const maxH =
             activityHoursByDay[selectedDay] ??
             Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0);
         if (maxH <= 0) return null;
-        const currentH = list.reduce((acc, p) => acc + getActivityDurationHours(p), 0);
+        const activityH = list.reduce((acc, p) => acc + getActivityDurationHours(p), 0);
+        const travelHs = travelHoursBetweenActivities(dayRoutes, modes, Math.max(0, list.length - 1));
+        const travelH = travelHs.reduce((a, h) => a + h, 0);
+        const currentH = activityH + travelH;
         if (currentH <= maxH) return null;
         const lid = lastAddedActivityDragIdByDay[selectedDay];
         if (!lid || !list.some((p) => p._dragId === lid)) return null;
         return lid;
-    }, [selectedDay, dayActivitiesByDay, activityHoursByDay, tripConfig.activityTime, lastAddedActivityDragIdByDay]);
+    }, [
+        selectedDay,
+        dayActivitiesByDay,
+        activityHoursByDay,
+        tripConfig.activityTime,
+        lastAddedActivityDragIdByDay,
+        legTransportByDay,
+        dayRoutes,
+    ]);
 
     useEffect(() => {
         if (selectedDay > travelDays) setSelectedDay(Math.max(1, travelDays));
@@ -2020,7 +2076,6 @@ export default function Home() {
                                                     onPlanFormStepChange={setPlanFormStep}
                                                     planFormMaxVisited={planFormMaxVisited}
                                                     onPlanFormMaxVisitedChange={setPlanFormMaxVisited}
-                                                    onOpenAssistant={() => setIsAssistantOpen(true)}
                                                     showPanelClose
                                                     onClosePanel={() => setIsConfigPanelOpen(false)}
                                                     state={tripConfig}
@@ -2227,20 +2282,48 @@ export default function Home() {
                                 const maxH =
                                     activityHoursByDay[selectedDay] ??
                                     Math.max(0, parseFloat(String(tripConfig.activityTime || 0)) || 0);
-                                const activitySegments = dayActivities.map((p, i) => {
+                                const legModes = legTransportByDay[selectedDay] ?? [];
+                                const travelHs = travelHoursBetweenActivities(
+                                    dayRoutes,
+                                    legModes,
+                                    Math.max(0, dayActivities.length - 1),
+                                );
+                                type TimelineSeg = {
+                                    key: string;
+                                    label: string;
+                                    hours: number;
+                                    color: string;
+                                    isAlert: boolean;
+                                    kind: 'activity' | 'travel';
+                                };
+                                const timelineSegments: TimelineSeg[] = [];
+                                dayActivities.forEach((p, i) => {
                                     const key = p._dragId ?? `${p.lngLat.lng}-${p.lngLat.lat}-${i}`;
                                     const isAlert = activityTimeAlertDragId != null && key === activityTimeAlertDragId;
-                                    return {
-                                        key,
+                                    timelineSegments.push({
+                                        key: `act-${key}`,
                                         label: getDayActivityLabel(p),
                                         hours: getActivityDurationHours(p),
                                         color: isAlert
                                             ? ACTIVITY_TIME_ALERT_COLOR
                                             : ACTIVITY_TIMELINE_COLORS[i % ACTIVITY_TIMELINE_COLORS.length],
                                         isAlert,
-                                    };
+                                        kind: 'activity',
+                                    });
+                                    if (i < dayActivities.length - 1) {
+                                        const profile = legModes[i] ?? 'driving';
+                                        const th = travelHs[i] ?? 0;
+                                        timelineSegments.push({
+                                            key: `travel-${selectedDay}-${i}`,
+                                            label: `Trajet (${LEG_PROFILE_SHORT_LABELS[profile]})`,
+                                            hours: th,
+                                            color: LEG_TRAVEL_TIMELINE_COLORS[profile],
+                                            isAlert: false,
+                                            kind: 'travel',
+                                        });
+                                    }
                                 });
-                                const currentH = activitySegments.reduce((acc, s) => acc + s.hours, 0);
+                                const currentH = timelineSegments.reduce((acc, s) => acc + s.hours, 0);
                                 return (
                                 <div
                                     ref={activityHoursEditRef}
@@ -2301,49 +2384,65 @@ export default function Home() {
                                     <div
                                         className="flex h-3.5 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/5"
                                         role="img"
-                                        aria-label={`Temps planifié ${currentH.toFixed(1)} heures sur ${maxH || 0} heures max`}
+                                        aria-label={`Temps planifié ${currentH.toFixed(1)} heures (activités et trajets) sur ${maxH || 0} heures max`}
                                     >
-                                        {maxH > 0 && activitySegments.length > 0 ? (
-                                            activitySegments.map((seg) => {
+                                        {maxH > 0 && timelineSegments.length > 0 ? (
+                                            timelineSegments.map((seg) => {
                                                 const pct = Math.max(0, (seg.hours / maxH) * 100);
+                                                const travelTitle =
+                                                    seg.kind === 'travel'
+                                                        ? seg.hours > 0
+                                                            ? `${seg.label} — ${seg.hours.toFixed(2)} h`
+                                                            : `${seg.label} — durée en chargement ou indisponible`
+                                                        : '';
+                                                const activityTitle =
+                                                    seg.kind === 'activity'
+                                                        ? seg.isAlert
+                                                            ? `${seg.label} — ${seg.hours.toFixed(1)} h (dépasse le temps max du jour)`
+                                                            : `${seg.label} — ${seg.hours.toFixed(1)} h`
+                                                        : '';
                                                 return (
                                                     <div
                                                         key={seg.key}
-                                                        title={
-                                                            seg.isAlert
-                                                                ? `${seg.label} — ${seg.hours.toFixed(1)} h (dépasse le temps max du jour)`
-                                                                : `${seg.label} — ${seg.hours.toFixed(1)} h`
-                                                        }
-                                                        className={`h-full shrink-0 transition-all duration-300 first:rounded-l-full last:rounded-r-full ${seg.isAlert ? 'animate-pulse ring-2 ring-red-400/90 ring-inset' : ''}`}
+                                                        title={seg.kind === 'travel' ? travelTitle : activityTitle}
+                                                        className={`h-full shrink-0 transition-all duration-300 first:rounded-l-full last:rounded-r-full ${seg.isAlert ? 'animate-pulse ring-2 ring-red-400/90 ring-inset' : ''} ${seg.kind === 'travel' ? 'opacity-95' : ''}`}
                                                         style={{
                                                             width: `${pct}%`,
-                                                            minWidth: seg.hours > 0 ? 4 : 0,
+                                                            minWidth: seg.hours > 0 ? 4 : seg.kind === 'travel' ? 2 : 0,
                                                             backgroundColor: seg.color,
                                                             boxShadow: seg.isAlert
                                                                 ? 'inset 0 0 12px rgba(254,202,202,0.35)'
                                                                 : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+                                                            backgroundImage:
+                                                                seg.kind === 'travel'
+                                                                    ? 'repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 5px)'
+                                                                    : undefined,
                                                         }}
                                                     />
                                                 );
                                             })
                                         ) : null}
                                     </div>
-                                    {activitySegments.some((s) => s.isAlert) && (
+                                    {timelineSegments.some((s) => s.isAlert) && (
                                         <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-400" role="alert">
                                             <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-400" aria-hidden />
-                                            Dernière activité ajoutée : dépassement du temps max du jour
+                                            Dernière activité ajoutée : dépassement du temps max du jour (activités + trajets)
                                         </p>
                                     )}
-                                    {activitySegments.length > 0 && (
+                                    {timelineSegments.length > 0 && (
                                         <div className="flex max-h-24 flex-wrap gap-x-3 gap-y-1.5 overflow-y-auto text-[10px] leading-tight">
-                                            {activitySegments.map((seg) => (
+                                            {timelineSegments.map((seg) => (
                                                 <span
                                                     key={seg.key}
-                                                    className={`flex max-w-44 items-center gap-1.5 ${seg.isAlert ? 'text-red-300' : 'text-slate-400'}`}
+                                                    className={`flex max-w-44 items-center gap-1.5 ${seg.isAlert ? 'text-red-300' : seg.kind === 'travel' ? 'text-slate-500' : 'text-slate-400'}`}
                                                     title={
-                                                        seg.isAlert
-                                                            ? `${seg.label} — ${seg.hours.toFixed(1)} h (alerte)`
-                                                            : `${seg.label} — ${seg.hours.toFixed(1)} h`
+                                                        seg.kind === 'travel'
+                                                            ? seg.hours > 0
+                                                                ? `${seg.label} — ${seg.hours.toFixed(2)} h`
+                                                                : `${seg.label} — en attente du calcul d’itinéraire`
+                                                            : seg.isAlert
+                                                              ? `${seg.label} — ${seg.hours.toFixed(1)} h (alerte)`
+                                                              : `${seg.label} — ${seg.hours.toFixed(1)} h`
                                                     }
                                                 >
                                                     <span

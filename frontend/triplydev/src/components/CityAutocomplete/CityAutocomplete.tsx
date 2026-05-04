@@ -129,7 +129,10 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
             abortRef.current?.abort();
             const controller = new AbortController();
             abortRef.current = controller;
-            const url = `/api/places/search?keyword=${encodeURIComponent(text)}`;
+            const url = `/api/places/search?${new URLSearchParams({
+                keyword: text,
+                subType: 'CITY,AIRPORT',
+            }).toString()}`;
             fetch(url, { signal: controller.signal })
                 .then((res) => {
                     if (!res.ok) throw new Error('Erreur API');
