@@ -7,6 +7,9 @@ export interface HotelOffer {
     id: string;
     hotelId: string;
     hotelName: string;
+    hotelAddress?: string;
+    hotelLatitude?: number;
+    hotelLongitude?: number;
     cityCode: string;
     checkInDate: string;
     checkOutDate: string;
@@ -67,6 +70,11 @@ export const HotelOfferCard: React.FC<HotelOfferCardProps> = ({
                         <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>
                             {offer.cityCode} • {offer.roomCategory || 'Chambre'}
                         </div>
+                        {offer.hotelAddress && (
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.55)' }}>
+                                {offer.hotelAddress}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="text-right">

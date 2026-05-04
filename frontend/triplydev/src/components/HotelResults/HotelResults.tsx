@@ -11,6 +11,15 @@ export interface AmadeusHotelResponse {
             hotelId?: string;
             name?: string;
             cityCode?: string;
+            latitude?: number;
+            longitude?: number;
+            formattedAddress?: string;
+            address?: {
+                lines?: string[];
+                cityName?: string;
+                countryCode?: string;
+                postalCode?: string;
+            };
         };
         offers?: Array<{
             id?: string;
@@ -33,12 +42,26 @@ function flattenHotelOffers(data: AmadeusHotelResponse): HotelOffer[] {
     for (const item of items) {
         const hotel = item.hotel;
         const offers = item.offers || [];
+        const lines = Array.isArray(hotel?.address?.lines) ? hotel?.address?.lines.filter((v) => typeof v === 'string' && v.trim() !== '') : [];
+        const city = hotel?.address?.cityName?.trim() || '';
+        const zip = hotel?.address?.postalCode?.trim() || '';
+        const country = hotel?.address?.countryCode?.trim() || '';
+        const cityBlock = [zip, city].filter(Boolean).join(' ');
+        const mergedAddress = [
+            ...(lines || []),
+            cityBlock,
+            country,
+        ].filter(Boolean).join(', ');
+        const hotelAddress = (hotel?.formattedAddress || mergedAddress || '').trim() || undefined;
 
         for (const off of offers) {
             result.push({
                 id: off.id || `${hotel?.hotelId}-${off.id}`,
                 hotelId: hotel?.hotelId || '',
                 hotelName: hotel?.name || 'Hôtel',
+                hotelAddress,
+                hotelLatitude: typeof hotel?.latitude === 'number' ? hotel.latitude : undefined,
+                hotelLongitude: typeof hotel?.longitude === 'number' ? hotel.longitude : undefined,
                 cityCode: hotel?.cityCode || '',
                 checkInDate: off.checkInDate || '',
                 checkOutDate: off.checkOutDate || '',
