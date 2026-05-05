@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useLayoutEffect, useSyncExternalStore } from 'react';
+import { useState, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -103,34 +103,6 @@ export default function PricingPage() {
   const btnMensuelRef = useRef<HTMLButtonElement>(null);
   const btnAnnuelRef = useRef<HTMLButtonElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
-
-  // #region agent log
-  useLayoutEffect(() => {
-    const log = () => {
-      const c = toggleContainerRef.current;
-      const m = btnMensuelRef.current;
-      const a = btnAnnuelRef.current;
-      const p = pillRef.current;
-      if (!c || !m || !a || !p) return;
-      const cr = c.getBoundingClientRect();
-      const mr = m.getBoundingClientRect();
-      const ar = a.getBoundingClientRect();
-      const pr = p.getBoundingClientRect();
-      const data = {
-        container: { w: cr.width, left: cr.left },
-        btnMensuel: { w: mr.width, left: mr.left - cr.left, right: mr.right - cr.left },
-        btnAnnuel: { w: ar.width, left: ar.left - cr.left, right: ar.right - cr.left },
-        pill: { w: pr.width, left: pr.left - cr.left, right: pr.right - cr.left },
-        isAnnual,
-      };
-      fetch('http://127.0.0.1:7244/ingest/d2a5e5b7-70f8-499a-bec3-af5ab2ca2354',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pricing/page.tsx:toggle',message:'Toggle dimensions',data,timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    };
-    log();
-    const t = setTimeout(log, 100);
-    return () => clearTimeout(t);
-  }, [isAnnual]);
-
-  // #endregion
 
   return (
     <div className="flex h-dvh min-h-0 overflow-hidden w-full" style={{ backgroundColor: 'var(--background, #222222)' }}>

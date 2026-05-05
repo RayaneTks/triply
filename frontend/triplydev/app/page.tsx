@@ -31,6 +31,7 @@ import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import type { DayActivityPoi, ActivityRouteProfile } from '@/src/features/trip-creation/TripCreationWizard';
 import { generateFlightRequest } from '@/utils/amadeus';
+import { apiV1 } from '@/src/lib/api-base';
 
 const WorldMap = dynamic(() => import('@/src/components/Map/Map').then((m) => m.WorldMap), {
     ssr: false,
@@ -350,9 +351,15 @@ export default function Home() {
         );
 
         try {
-            const response = await fetch('/api/flights/search', {
+            const session = getStoredSession();
+            if (!session?.token) {
+                setFlightApiResponse({ error: 'Connexion requise pour rechercher des vols.' });
+                setFeedbackNotice({ tone: 'error', message: 'Connectez-vous pour lancer la recherche de vols.' });
+                return;
+            }
+            const response = await fetch(apiV1('/integrations/amadeus/flights/search'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
                 body: JSON.stringify(payload),
             });
             const data = await response.json();
@@ -387,9 +394,15 @@ export default function Home() {
         setFeedbackNotice({ tone: 'saving', message: 'Triply cherche des hebergements adaptes a votre periode.' });
 
         try {
-            const response = await fetch('/api/hotels/search', {
+            const session = getStoredSession();
+            if (!session?.token) {
+                setHotelApiResponse({ error: 'Connexion requise pour rechercher des hébergements.' });
+                setFeedbackNotice({ tone: 'error', message: 'Connectez-vous pour lancer la recherche d hébergements.' });
+                return;
+            }
+            const response = await fetch(apiV1('/integrations/amadeus/hotels/search'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
                 body: JSON.stringify({
                     cityCode: city,
                     checkInDate: checkIn,

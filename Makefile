@@ -10,6 +10,7 @@ NODE ?= node
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-test-auth docker-test-feature docker-test-unit docker-swagger docker-routes docker-clean \
+	docker-reinstall \
 	bootstrap
 
 BACKEND_DIR := backend
@@ -28,10 +29,13 @@ help:
 	@echo   make install           - alias of make init
 	@echo   make ensure-dev-env    - cree .env racine + backend + triplydev depuis .env.example si absents
 	@echo   make migrate           - run safe DB migrations in backend container
-	@echo   make up                - daily startup
+	@echo   make up                - daily startup (rebuild images si Dockerfiles/context ont change — apres git pull)
 	@echo   make reload            - backend sync after changes
 	@echo   make down              - stop containers
 	@echo   make clean             - remove containers and volumes
+	@echo   make docker-reinstall - arret, volumes projet supprimes, images SPA/PHP/workspace rebuild sans cache, puis make init (stack propre ; efface la DB Postgres dev)
+	@echo.
+	@echo Frontend dev : http://localhost:5173 = SPA Vite (racine du depot, service tri-app Docker)
 	@echo.
 	@echo Tools:
 	@echo   make status            - docker service status
@@ -72,12 +76,28 @@ composer-init:
 
 install: init
 
+# Réinstallation complète : volumes nommés (node_modules SPA, vendor PHP, données Postgres),
+# puis rebuild sans cache des images construites localement, puis init (migrations, etc.).
+docker-reinstall: ensure-dev-env
+	@echo ""
+	@echo "======== docker-reinstall : état Docker du projet remis à zéro ========"
+	@echo "  - volumes : tri-spa-node_modules, tri-backend-vendor, tri-postgres-data"
+	@echo "  - images rebuild (--no-cache) : tri-app, tri-php-fpm, tri-workspace"
+	@echo "======================================================================="
+	@echo ""
+	$(COMPOSE) down -v --remove-orphans
+	$(COMPOSE) build --no-cache tri-app tri-php-fpm tri-workspace
+	$(MAKE) init
+	@echo ""
+	@echo "[docker-reinstall] Terminé. SPA : http://localhost:5173  |  API : http://localhost:8000"
+	@echo ""
+
 migrate:
 	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 	$(MAKE) verify
 
 up: ensure-dev-env
-	$(COMPOSE) up -d --remove-orphans $(DOCKER_SERVICES)
+	$(COMPOSE) up -d --build --remove-orphans $(DOCKER_SERVICES)
 
 run: up
 

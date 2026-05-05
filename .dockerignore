@@ -1,0 +1,18 @@
+# Build context racine pour tri-app (SPA Vite) — exclure tout ce qui n’est pas nécessaire au npm ci / image dev.
+.git
+.github
+.claude
+node_modules
+dist
+backend
+frontend
+pgadmin
+pgadmin_example
+scripts
+*.md
+conseil-analyse-non-exhaustif-novice.md
+GEMINI.md
+PRODUCT_CONTEXT.md
+docker-compose.yml.init
+compose.prod.yaml
+desktop.ini

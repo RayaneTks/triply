@@ -10,6 +10,8 @@ export type RegenerateActivityApiResponse = {
     replacement: ActivityReplacement | null;
 };
 
+import { apiV1 } from '@/src/lib/api-base';
+
 export async function requestActivityRegeneration(
     token: string,
     payload: {
@@ -20,7 +22,7 @@ export async function requestActivityRegeneration(
         destinationContext: string;
     }
 ): Promise<RegenerateActivityApiResponse> {
-    const res = await fetch('/api/assistant', {
+    const res = await fetch(apiV1('/integrations/assistant'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

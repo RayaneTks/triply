@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { MessageSquare, Send, Sparkles, StopCircle, Trash2 } from 'lucide-react';
 import MessageList from '@/src/components/Messages/MessageList';
 import { getStoredSession } from '@/src/lib/auth-client';
+import { apiV1 } from '@/src/lib/api-base';
 import type { AssistantStep1FormPatch } from '@/src/features/trip-creation/step1-form-patch';
 
 const LEGACY_CHAT_STORAGE_KEY = 'triply-assistant-chat';
@@ -18,7 +19,14 @@ function chatStorageKeyForUser(userId: string | number | null | undefined): stri
 export type AssistantChatMode = 'itinerary' | 'qa';
 interface Coordinates { latitude: number; longitude: number; }
 interface Location { id: string; title: string; coordinates: Coordinates; }
-export interface SuggestedActivityPin { title: string; lat: number; lng: number; durationHours?: number; }
+export interface SuggestedActivityPin {
+    title: string;
+    lat: number;
+    lng: number;
+    durationHours?: number;
+    /** Jour 1..n (séjour) — renseigné quand le backend renvoie un programme multi-jours. */
+    day?: number;
+}
 interface AssistantResponse { reply: string; locations: Location[]; suggestedActivities?: SuggestedActivityPin[]; step1FormPatch?: AssistantStep1FormPatch | null; }
 export type Role = 'user' | 'assistant';
 export interface ChatMessage { id: string; role: Role; content: string; }
@@ -48,8 +56,18 @@ interface AssistantProps {
 
 const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant(props, ref) {
     const {
-        chatOwnerId, onUpdateLocations, destination, onClearChat, planningContext,
-        onSuggestedActivities, onSuggestedActivitiesForDay, onLoadingChange, step1FormSnapshot, onApplyStep1Form,
+        chatOwnerId,
+        onUpdateLocations,
+        destination,
+        onClearChat,
+        planningContext,
+        onSuggestedActivities,
+        onSuggestedActivitiesForDay,
+        onLoadingChange,
+        step1FormSnapshot,
+        step1HotelOptionLabels = [],
+        step1DietaryLabels = [],
+        onApplyStep1Form,
     } = props;
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -79,7 +97,11 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }, [messages, loading, pendingAssistantMessage]);
 
-    const postUserMessage = useCallback(async (text: string, opts?: { forceItinerary?: boolean }, targetDay?: number) => {
+    const postUserMessage = useCallback(async (
+        text: string,
+        opts?: { forceItinerary?: boolean; requestFullItinerary?: boolean },
+        targetDay?: number,
+    ) => {
         if (!text.trim() || loading) return;
         const session = getStoredSession();
         if (!session?.token) return;
@@ -95,7 +117,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
         abortControllerRef.current = controller;
 
         try {
-            const res = await fetch('/api/assistant', {
+            const res = await fetch(apiV1('/integrations/assistant'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
                 signal: controller.signal,
@@ -107,7 +129,11 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     selectedDay: targetDay ?? planningContext?.selectedDay,
                     travelDays: planningContext?.travelDays,
                     planningMode: planningContext?.planningMode,
+                    currentDayActivityTitles: planningContext?.currentDayActivityTitles ?? [],
                     step1FormSnapshot,
+                    step1HotelOptionLabels,
+                    step1DietaryLabels,
+                    requestFullItinerary: Boolean(opts?.requestFullItinerary),
                 }),
             });
 
@@ -115,8 +141,31 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
             setMessages((prev) => [...prev, { id: uuid(), role: 'assistant', content: data.reply }]);
             if (data.locations?.length) onUpdateLocations?.(data.locations);
             if (data.suggestedActivities?.length) {
-                if (targetDay && onSuggestedActivitiesForDay) onSuggestedActivitiesForDay(targetDay, data.suggestedActivities);
-                else onSuggestedActivities?.(data.suggestedActivities);
+                const items = data.suggestedActivities;
+                const toPin = (raw: SuggestedActivityPin): SuggestedActivityPin => ({
+                    title: raw.title,
+                    lat: raw.lat,
+                    lng: raw.lng,
+                    ...(typeof raw.durationHours === 'number' ? { durationHours: raw.durationHours } : {}),
+                });
+                const hasDay = items.some((a) => typeof a.day === 'number');
+                if (hasDay && onSuggestedActivitiesForDay) {
+                    const map = new Map<number, SuggestedActivityPin[]>();
+                    for (const raw of items) {
+                        const d =
+                            typeof raw.day === 'number'
+                                ? raw.day
+                                : targetDay ?? planningContext?.selectedDay ?? 1;
+                        const list = map.get(d) ?? [];
+                        list.push(toPin(raw));
+                        map.set(d, list);
+                    }
+                    for (const [d, list] of map) onSuggestedActivitiesForDay(d, list);
+                } else if (targetDay && onSuggestedActivitiesForDay) {
+                    onSuggestedActivitiesForDay(targetDay, items.map(toPin));
+                } else {
+                    onSuggestedActivities?.(items.map(toPin));
+                }
             }
             if (data.step1FormPatch && onApplyStep1Form) onApplyStep1Form(data.step1FormPatch);
         } catch (error) {
@@ -129,7 +178,21 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
             onLoadingChange?.(false);
             setPendingAssistantMessage(null);
         }
-    }, [chatMode, destination, loading, messages, onApplyStep1Form, onLoadingChange, onSuggestedActivities, onSuggestedActivitiesForDay, onUpdateLocations, planningContext, step1FormSnapshot]);
+    }, [
+        chatMode,
+        destination,
+        loading,
+        messages,
+        onApplyStep1Form,
+        onLoadingChange,
+        onSuggestedActivities,
+        onSuggestedActivitiesForDay,
+        onUpdateLocations,
+        planningContext,
+        step1DietaryLabels,
+        step1FormSnapshot,
+        step1HotelOptionLabels,
+    ]);
 
     useImperativeHandle(ref, () => ({
         suggestActivitiesForDay: () => {
@@ -137,10 +200,13 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
             void postUserMessage(`Propose-moi des activites pour le jour ${day} a ${destination || 'ma destination'}.`, { forceItinerary: true }, day);
         },
         suggestActivitiesForAllDays: async () => {
-            const days = Array.from({ length: planningContext?.travelDays ?? 1 }, (_, index) => index + 1);
-            for (const day of days) {
-                await postUserMessage(`Construit une idee de programme pour le jour ${day}.`, { forceItinerary: true }, day);
-            }
+            const td = planningContext?.travelDays ?? 1;
+            const h = planningContext?.maxActivityHoursPerDay ?? 8;
+            const dest = destination || 'la destination';
+            await postUserMessage(
+                `Propose un programme d'activités pour les ${td} jour(s) complets du séjour à ${dest}, environ ${h} heures d'activités par jour, avec des idées variées (matin / après-midi). Couvre chaque jour numéroté de 1 à ${td}.`,
+                { forceItinerary: true, requestFullItinerary: true },
+            );
         },
     }), [destination, planningContext, postUserMessage]);
 

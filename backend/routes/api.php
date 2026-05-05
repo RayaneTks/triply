@@ -5,6 +5,11 @@ use App\Http\Controllers\Api\V1\AiController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ConsentController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Integrations\AmadeusFlightsProxyController;
+use App\Http\Controllers\Api\V1\Integrations\AmadeusHotelsProxyController;
+use App\Http\Controllers\Api\V1\Integrations\AmadeusPlacesSearchController;
+use App\Http\Controllers\Api\V1\Integrations\AssistantChatController;
+use App\Http\Controllers\Api\V1\Integrations\GooglePlaceReviewsController;
 use App\Http\Controllers\Api\V1\PlacesController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RestaurantController;
@@ -22,6 +27,19 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', [HealthController::class, 'show']);
+
+    /** Intégrations publiques (Amadeus lieux, avis lieu) — clés côté serveur. */
+    Route::prefix('integrations')->middleware('throttle:places')->group(function (): void {
+        Route::get('/amadeus/places', [AmadeusPlacesSearchController::class, 'index']);
+        Route::get('/google/place-reviews', [GooglePlaceReviewsController::class, 'index']);
+    });
+
+    Route::middleware('auth:sanctum')->prefix('integrations')->group(function (): void {
+        Route::post('/assistant', [AssistantChatController::class, 'store'])->middleware('throttle:ai');
+        Route::post('/amadeus/flights/search', [AmadeusFlightsProxyController::class, 'store'])->middleware('throttle:ai');
+        Route::get('/amadeus/hotels/by-geocode', [AmadeusHotelsProxyController::class, 'index'])->middleware('throttle:ai');
+        Route::post('/amadeus/hotels/search', [AmadeusHotelsProxyController::class, 'store'])->middleware('throttle:ai');
+    });
 
     Route::prefix('auth')->group(function (): void {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth');

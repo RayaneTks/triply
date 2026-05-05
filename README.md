@@ -1,6 +1,6 @@
 # Triply
 
-Plateforme de planification de voyage : backend Laravel (`backend/`), frontend Next (`frontend/triplydev/`), refonte SPA dans `rework-front/`.
+Plateforme de planification de voyage : backend Laravel (`backend/`), frontend principal **SPA Vite + React** à la racine (`src/`, `server.ts`) — service Docker **`tri-app`** sur [http://localhost:5173](http://localhost:5173). Le dossier `frontend/triplydev/` (Next) reste dans le dépôt pour référence / routes résiduelles mais n’est plus le service exposé en dev par `compose.dev.yaml`.
 
 Développement Docker : [compose.dev.yaml](compose.dev.yaml) et `Makefile` à la racine.
 

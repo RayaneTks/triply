@@ -69,7 +69,7 @@ use OpenApi\Attributes as OA;
             'error' => [
                 'code' => 'BAD_REQUEST',
                 'message' => 'Requete invalide.',
-                'details' => (object) [],
+                'details' => [],
             ],
         ]
     )
@@ -84,7 +84,7 @@ use OpenApi\Attributes as OA;
             'error' => [
                 'code' => 'UNAUTHORIZED',
                 'message' => 'Authentification requise.',
-                'details' => (object) [],
+                'details' => [],
             ],
         ]
     )
@@ -99,7 +99,7 @@ use OpenApi\Attributes as OA;
             'error' => [
                 'code' => 'FORBIDDEN',
                 'message' => 'Acces refuse.',
-                'details' => (object) [],
+                'details' => [],
             ],
         ]
     )
@@ -114,7 +114,7 @@ use OpenApi\Attributes as OA;
             'error' => [
                 'code' => 'NOT_FOUND',
                 'message' => 'Ressource introuvable.',
-                'details' => (object) [],
+                'details' => [],
             ],
         ]
     )
@@ -146,7 +146,7 @@ use OpenApi\Attributes as OA;
             'error' => [
                 'code' => 'TOO_MANY_REQUESTS',
                 'message' => 'Trop de requetes. Reessayez plus tard.',
-                'details' => (object) [],
+                'details' => [],
             ],
         ]
     )
@@ -161,7 +161,7 @@ use OpenApi\Attributes as OA;
             'error' => [
                 'code' => 'INTERNAL_SERVER_ERROR',
                 'message' => 'Une erreur interne est survenue.',
-                'details' => (object) [],
+                'details' => [],
             ],
         ]
     )

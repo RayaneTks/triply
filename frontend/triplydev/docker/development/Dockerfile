@@ -70,18 +70,23 @@ FROM build-deps AS development
 ENV NODE_ENV=development \
     NPM_CONFIG_LOGLEVEL=warn
 
-# Copy source files
+# su-exec : entrypoint root corrige les droits sur volumes (.next, node_modules) puis repasse en nodejs
+RUN apk add --no-cache su-exec
+
+# Hors de /app : le bind-mount ./frontend/triplydev:/app masquerait un script copié sous /app
+COPY docker/development/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+
+# Copy source files (image de référence ; au run, /app vient surtout du bind-mount)
 COPY . .
 
-# Ensure all directories have proper permissions
 RUN mkdir -p /app/node_modules/.vite && \
     chown -R nodejs:nodejs /app
 
-# Switch to non-root user
-USER nodejs
+# Root au démarrage uniquement : l’entrypoint ajuste uid/gid sur volumes Docker puis exec su-exec nodejs
+USER root
 
-# Expose ports
 EXPOSE 5173
 
-# Start development server
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
 CMD ["npm", "run", "dev"]

@@ -1,3 +1,4 @@
+import { apiV1 } from '@/src/lib/api-base';
 import type { DayActivityPoi } from '@/src/features/trip-creation/TripCreationWizard';
 import type { ActivityRouteProfile } from '@/src/features/trip-creation/TripCreationWizard';
 
@@ -16,7 +17,7 @@ export async function fetchGeocodeFirst(keyword: string): Promise<{ lat: number;
     const q = keyword.trim();
     if (q.length < 2) return null;
     try {
-        const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(q)}`);
+        const res = await fetch(apiV1(`/integrations/amadeus/places?keyword=${encodeURIComponent(q)}`));
         const data: unknown = await res.json();
         const list = Array.isArray(data) ? data : [];
         const first = list[0] as
@@ -53,7 +54,7 @@ export async function resolveDestinationLabels(params: {
 
     if (iata.length >= 3) {
         try {
-            const res = await fetch(`/api/places/search?keyword=${encodeURIComponent(iata)}`);
+            const res = await fetch(apiV1(`/integrations/amadeus/places?keyword=${encodeURIComponent(iata)}`));
             const data: unknown = await res.json();
             const list = Array.isArray(data) ? data : [];
             const items = list as PlaceSearchItem[];

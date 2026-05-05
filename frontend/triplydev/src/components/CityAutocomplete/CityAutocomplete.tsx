@@ -1,5 +1,6 @@
 'use client';
 
+import { apiV1 } from '@/src/lib/api-base';
 import { FC, useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -129,7 +130,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
             abortRef.current?.abort();
             const controller = new AbortController();
             abortRef.current = controller;
-            const url = `/api/places/search?keyword=${encodeURIComponent(text)}`;
+            const url = apiV1(`/integrations/amadeus/places?keyword=${encodeURIComponent(text)}`);
             fetch(url, { signal: controller.signal })
                 .then((res) => {
                     if (!res.ok) throw new Error('Erreur API');
