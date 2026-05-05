@@ -1,4 +1,4 @@
-# Build context racine pour tri-app (SPA Vite) — exclure tout ce qui n’est pas nécessaire au npm ci / image dev.
+# Contextes Docker du dépôt — exclure fichiers inutiles des builds.
 .git
 .github
 .claude

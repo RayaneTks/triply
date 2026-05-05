@@ -1,6 +1,6 @@
 # Triply — Next.js (`triplydev`)
 
-Application Next.js du monorepo Triply. Elle complète la **SPA Vite** à la racine du dépôt (service Docker `tri-app`, port 5173) : pages App Router, déploiement Vercel possible, et **jobs CI** (`npm run lint`, etc.).
+Application Next.js principale du monorepo Triply (service Docker `tri-app`, port 5173) : pages App Router et **jobs CI** (`npm run lint`, `npm run build`).
 
 ## Prérequis
 

@@ -1,92 +1,24 @@
-# ========================================
-# Optimized Multi-Stage Dockerfile
-# Node.js TypeScript Application
-# ========================================
+# Next.js (frontend/triplydev/) — service Docker tri-app (dev).
+# Image dev autonome : `next dev` avec hot-reload, monté en bind mount depuis la racine du dépôt.
+FROM node:22-alpine
 
-# Node LTS (22) : meilleure compatibilité libs / sécurité que les tags « latest » ou majeures impaires.
-FROM node:22-alpine AS base
-
-# Set working directory
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NPM_CONFIG_LOGLEVEL=warn \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
+
+RUN apk add --no-cache su-exec && \
+    addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs && \
     chown -R nodejs:nodejs /app
 
-# ========================================
-# Dependencies Stage
-# ========================================
-FROM base AS deps
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies
-RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    npm ci --omit=dev && \
-    npm cache clean --force
-
-# Set proper ownership
-RUN chown -R nodejs:nodejs /app
-
-# ========================================
-# Build Dependencies Stage
-# ========================================
-FROM base AS build-deps
-
-# Copy package files
-COPY package*.json ./
-
-# Install all dependencies with build optimizations
-RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    npm ci --no-audit --no-fund && \
-    npm cache clean --force
-
-# Create necessary directories and set permissions
-RUN mkdir -p /app/node_modules/.vite && \
-    chown -R nodejs:nodejs /app
-
-# ========================================
-# Build Stage
-# ========================================
-FROM build-deps AS build
-
-# Copy only necessary files for building (respects .dockerignore)
-COPY --chown=nodejs:nodejs . .
-
-# Build the application
-RUN npm run build
-
-# Set proper ownership
-RUN chown -R nodejs:nodejs /app
-
-# ========================================
-# Development Stage
-# ========================================
-FROM build-deps AS development
-
-# Set environment
-ENV NODE_ENV=development \
-    NPM_CONFIG_LOGLEVEL=warn
-
-# su-exec : entrypoint root corrige les droits sur volumes (.next, node_modules) puis repasse en nodejs
-RUN apk add --no-cache su-exec
-
-# Hors de /app : le bind-mount ./frontend/triplydev:/app masquerait un script copié sous /app
 COPY docker/development/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-dev.sh && chmod +x /usr/local/bin/docker-entrypoint-dev.sh
 
-# Copy source files (image de référence ; au run, /app vient surtout du bind-mount)
-COPY . .
+EXPOSE 3000
 
-RUN mkdir -p /app/node_modules/.vite && \
-    chown -R nodejs:nodejs /app
-
-# Root au démarrage uniquement : l’entrypoint ajuste uid/gid sur volumes Docker puis exec su-exec nodejs
-USER root
-
-EXPOSE 5173
-
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
-CMD ["npm", "run", "dev"]
+ENTRYPOINT ["sh", "/usr/local/bin/docker-entrypoint-dev.sh"]
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]

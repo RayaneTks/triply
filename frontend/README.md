@@ -1,12 +1,12 @@
 # Frontend Triply
 
-Ce dossier regroupe les paquets Node **hors** de la SPA principale (la SPA Vite + React vit à la **racine** du dépôt : `package.json`, `src/`, `server.ts`).
+Ce dossier regroupe les paquets frontend du dépôt Triply.
 
 ## Contenu
 
 | Dossier | Description |
 |---------|-------------|
-| **`triplydev/`** | Application [Next.js](https://nextjs.org) — lint en CI, pages marketing ou expérimentales. L’app voyage par défaut en dev Docker est la SPA racine (`tri-app`). |
+| **`triplydev/`** | Application [Next.js](https://nextjs.org) principale (dev + prod, service Docker `tri-app`). |
 | **`triply-docs-lib/`** | Bibliothèque de composants React + Tailwind + Storybook. |
 
 ## Démarrage rapide
@@ -15,7 +15,6 @@ Ce dossier regroupe les paquets Node **hors** de la SPA principale (la SPA Vite 
 
 ```bash
 make up
-# ou : npm ci && npm run dev  (avec Laravel joignable, voir .env.example racine)
 ```
 
 **Storybook (design system)** :

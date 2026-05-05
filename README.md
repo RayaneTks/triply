@@ -6,11 +6,11 @@ Planification de voyage centralisée : vols, hébergements, carte et parcours da
 
 | Zone | Rôle |
 |------|------|
-| **Racine** (`src/`, `server.ts`, `vite.config.ts`) | **SPA principale** — React 19, Vite 6, Express sert le build et proxifie `/api/v1` vers Laravel. |
+| **Racine** | Orchestration dev/prod : `compose.*.yaml`, `Makefile`, scripts et `.env` d'interpolation Docker. |
 | **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
-| **`frontend/triplydev/`** | Next.js — pages / CI (lint) ; ce n’est pas le service web exposé par défaut en Docker. |
+| **`frontend/triplydev/`** | Front principal Next.js (développement + production). |
 | **`frontend/triply-docs-lib/`** | Bibliothèque de composants + Storybook. |
-| **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, SPA). |
+| **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, Next.js). |
 
 Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md).
 
@@ -47,20 +47,7 @@ Réinstallation complète (volumes, rebuild images SPA/PHP/workspace, migrations
 make docker-reinstall
 ```
 
-### 2) SPA à la racine, sans Docker (front seul)
-
-Prérequis : API Laravel déjà joignable (ex. `http://127.0.0.1:8000`).
-
-```bash
-cp .env.example .env
-# Ajuster LARAVEL_API_URL=http://127.0.0.1:8000 (la valeur Docker http://tri-api:80 ne marche pas hors Docker)
-npm ci
-npm run dev
-```
-
-Application : [http://localhost:3000](http://localhost:3000) par défaut (`server.ts` écoute `PORT || 3000`). Pour aligner sur Docker : `PORT=5173 npm run dev` → [http://localhost:5173](http://localhost:5173). En Docker, le service **tri-app** mappe automatiquement `5173:3000`.
-
-### 3) Backend Laravel seul
+### 2) Backend Laravel seul
 
 ```bash
 cd backend
@@ -78,9 +65,11 @@ php artisan serve
 
 Guide détaillé : [`backend/README.md`](backend/README.md).
 
-### 4) Next.js `triplydev` (optionnel)
+### 3) Next.js `triplydev` (sans Docker)
 
-Utile pour la CI ou des pages sous Next :
+Prérequis : API Laravel joignable. Pour un run local hors Docker, adaptez dans `frontend/triplydev/.env` :
+- `BACKEND_PROXY_TARGET=http://127.0.0.1:8000`
+- `BACKEND_API_BASE_URL=http://127.0.0.1:8000/api/v1`
 
 ```bash
 cd frontend/triplydev
@@ -115,8 +104,7 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 
 | Service | URL |
 |---------|-----|
-| SPA (tri-app, Docker) | [http://localhost:5173](http://localhost:5173) |
-| SPA (hors Docker, défaut) | [http://localhost:3000](http://localhost:3000) — `PORT=5173 npm run dev` pour s'aligner |
+| Front Next.js (tri-app, Docker) | [http://localhost:5173](http://localhost:5173) |
 | API | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
 | Health | [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health) |
 | Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |
