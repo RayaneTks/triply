@@ -12,4 +12,3 @@ test-results
 Dockerfile*
 docker-compose*.yml
 **/*.log
-.tmp

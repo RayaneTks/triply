@@ -35,7 +35,7 @@ help:
 	@echo   make clean             - remove containers and volumes
 	@echo   make docker-reinstall - arret, volumes projet supprimes, images SPA/PHP/workspace rebuild sans cache, puis make init (stack propre ; efface la DB Postgres dev)
 	@echo.
-	@echo Frontend dev : http://localhost:5173 = Next.js (frontend/triplydev, service tri-app Docker)
+	@echo Frontend dev : http://localhost:5173 = SPA Vite (racine du depot, service tri-app Docker)
 	@echo.
 	@echo Tools:
 	@echo   make status            - docker service status
