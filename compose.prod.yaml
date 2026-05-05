@@ -1,16 +1,16 @@
 services:
   # ====================================
-  # Frontend service using Nginx to serve the built assets from Vite.
+  # Frontend service (SPA rework at repository root).
   # ====================================
   tri-app:
     build:
-      context: ./frontend/triplydev
-      dockerfile: ./docker/production/nginx/Dockerfile
+      context: .
+      dockerfile: ./docker/spa-prod/Dockerfile
       target: production
     container_name: tri-app
     restart: unless-stopped
     env_file:
-      - ./frontend/triplydev/.env
+      - ./.env
     networks:
       - triply-production
       - web

@@ -31,7 +31,7 @@ ENV NODE_ENV=development \
 RUN apk add --no-cache su-exec
 
 COPY docker/spa-dev/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-dev.sh && chmod +x /usr/local/bin/docker-entrypoint-dev.sh
 
 COPY . .
 
@@ -42,5 +42,5 @@ USER root
 
 EXPOSE 3000
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-dev.sh"]
+ENTRYPOINT ["sh", "/usr/local/bin/docker-entrypoint-dev.sh"]
 CMD ["npm", "run", "dev"]
