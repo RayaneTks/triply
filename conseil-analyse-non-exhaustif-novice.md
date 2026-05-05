@@ -4,7 +4,7 @@
 
 ## Contexte rappelé
 
-Triply vise à centraliser hôtels, vols, activités, etc., pour simplifier l’organisation de voyage. Le dépôt combine une **SPA Vite + React à la racine** (proxifiée vers Laravel), un backend Laravel (`backend/`), une app Next.js optionnelle (`frontend/triplydev/`), et Docker + Makefile à la racine.
+Triply vise à centraliser hôtels, vols, activités, etc., pour simplifier l’organisation de voyage. Le dépôt combine une **SPA Vite + React à la racine** (proxifiée vers Laravel), un backend Laravel (`backend/`) et Docker + Makefile à la racine.
 
 ## Environnement (repères)
 
@@ -14,7 +14,6 @@ Les fichiers attendus sont en pratique :
 |------|-----------------|
 | Docker / base | `.env` racine (proxy SPA → Laravel, ex. `LARAVEL_API_URL`) |
 | Laravel | `backend/.env` (DB, clés intégrations, copilote côté serveur) |
-| Next | `frontend/triplydev/.env.local` surtout pour l’URL publique de l’API si besoin |
 
 Les secrets sensibles (Amadeus, fournisseurs, clés de modèle) doivent rester **côté serveur Laravel** (ou variables non exposées au navigateur), pas en `NEXT_PUBLIC_*` ni en dur dans le dépôt.
 

@@ -27,7 +27,7 @@ help:
 	@echo Docker workflow:
 	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
 	@echo   make install           - alias of make init
-	@echo   make ensure-dev-env    - cree .env racine + backend + triplydev depuis .env.example si absents
+	@echo   make ensure-dev-env    - cree .env racine + backend depuis .env.example si absents
 	@echo   make migrate           - run safe DB migrations in backend container
 	@echo   make up                - daily startup (rebuild images si Dockerfiles/context ont change — apres git pull)
 	@echo   make reload            - backend sync after changes

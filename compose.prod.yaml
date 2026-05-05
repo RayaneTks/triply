@@ -11,6 +11,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+    environment:
+      NODE_ENV: production
+      # Le proxy Express (server.ts) tourne dans tri-app : il doit viser le service API Docker.
+      LARAVEL_API_URL: http://tri-api:80
     networks:
       - triply-production
       - web
@@ -83,13 +87,12 @@ services:
       - POSTGRES_DB=${DB_DATABASE}
       - POSTGRES_USER=${DB_USERNAME}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
     volumes:
       - tri-postgres-data:/var/lib/postgresql/data
     networks:
       - triply-production
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_ROOT_PASSWORD || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -114,8 +117,6 @@ services:
   tri-pgadmin:
     image: dpage/pgadmin4
     environment:
-      PMA_HOST: tri-postgres
-      POSTGRES_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: ${PGADMIN_CONFIG_SERVER_MODE}

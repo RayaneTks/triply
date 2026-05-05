@@ -8,8 +8,6 @@ Planification de voyage centralisée : vols, hébergements, carte et parcours da
 |------|------|
 | **Racine** (`src/`, `server.ts`, `vite.config.ts`) | **SPA principale** — React 19, Vite 6, Express sert le build et proxifie `/api/v1` vers Laravel. |
 | **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
-| **`frontend/triplydev/`** | Next.js — pages / CI (lint) ; ce n’est pas le service web exposé par défaut en Docker. |
-| **`frontend/triply-docs-lib/`** | Bibliothèque de composants + Storybook. |
 | **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, SPA). |
 
 Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md).
@@ -29,7 +27,7 @@ Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CO
 
 ### 1) Docker + Makefile
 
-À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (racine, `backend/`, `frontend/triplydev/`) si les fichiers manquent.
+À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (racine + `backend/`) si les fichiers manquent.
 
 ```bash
 make install
@@ -77,18 +75,6 @@ php artisan serve
 ```
 
 Guide détaillé : [`backend/README.md`](backend/README.md).
-
-### 4) Next.js `triplydev` (optionnel)
-
-Utile pour la CI ou des pages sous Next :
-
-```bash
-cd frontend/triplydev
-npm ci
-npm run dev
-```
-
-Voir [`frontend/triplydev/README.md`](frontend/triplydev/README.md).
 
 ## Mise à jour de la base
 
@@ -140,6 +126,3 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 - `make down` — arrêt
 - `make docker-reinstall` — reset stack dev (destructif pour les données Postgres du volume)
 
-## Documentation front
-
-- Vue d’ensemble des dossiers `frontend/*` : [`frontend/README.md`](frontend/README.md).

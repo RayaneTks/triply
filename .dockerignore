@@ -5,11 +5,9 @@
 node_modules
 dist
 backend
-frontend
 pgadmin
 pgadmin_example
 scripts
 *.md
 docker-compose.yml.init
 compose.prod.yaml
-desktop.ini

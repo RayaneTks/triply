@@ -3,7 +3,7 @@
 namespace App\Services\Integrations;
 
 /**
- * Blocs de prompts assistant (équivalent historique frontend/src/lib/triply.ts).
+ * Blocs de prompts assistant (équivalent historique côté client).
  * Renforce l’itinéraire **multi-jours** en une seule réponse JSON.
  */
 class AssistantPrompts
@@ -79,6 +79,8 @@ Règles pour suggestedActivities (CRITIQUES) :
 
 Si la demande est hors périmètre, réponds avec reply contenant EXACTEMENT ce message de refus :
 "{$refusalText}"
+
+Important : une demande d'activités, d'itinéraire, de lieux à visiter, de budget voyage ou d'organisation de séjour est TOUJOURS considérée dans le périmètre voyage.
 
 TXT;
     }

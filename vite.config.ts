@@ -30,7 +30,6 @@ export default defineConfig(({mode}) => {
           '**/pgadmin/**',
           '**/dist/**',
           '**/node_modules/**',
-          '**/frontend/triplydev/**',
         ],
       },
     },

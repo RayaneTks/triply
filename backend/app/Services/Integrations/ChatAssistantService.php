@@ -19,7 +19,7 @@ class ChatAssistantService
     {
         $apiKey = config('integrations.openai.api_key');
         if (! is_string($apiKey) || $apiKey === '') {
-            return ['error' => 'Clé API OpenAI manquante côté serveur.', '_httpStatus' => 500];
+            return ['error' => 'Le service assistant est indisponible (clé OpenAI manquante côté serveur).', '_httpStatus' => 503];
         }
 
         $messages = is_array($body['messages'] ?? null) ? $body['messages'] : [];
