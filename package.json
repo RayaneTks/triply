@@ -31,7 +31,6 @@
     "react-markdown": "^9.1.0",
     "react-router-dom": "^6.30.3",
     "tailwind-merge": "^2.6.1",
-    "vite": "^6.2.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

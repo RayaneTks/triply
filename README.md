@@ -1,69 +1,67 @@
 # Triply
 
-Plateforme de planification de voyage : backend Laravel (`backend/`), frontend principal **SPA Vite + React** à la racine (`src/`, `server.ts`) — service Docker **`tri-app`** sur [http://localhost:5173](http://localhost:5173). Le dossier `frontend/triplydev/` (Next) reste dans le dépôt pour référence / routes résiduelles mais n’est plus le service exposé en dev par `compose.dev.yaml`.
+Planification de voyage centralisée : vols, hébergements, carte et parcours dans une seule application.
 
-Développement Docker : [compose.dev.yaml](compose.dev.yaml) et `Makefile` à la racine.
+## Structure du dépôt
 
-## Contexte produit
+| Zone | Rôle |
+|------|------|
+| **Racine** (`src/`, `server.ts`, `vite.config.ts`) | **SPA principale** — React 19, Vite 6, Express sert le build et proxifie `/api/v1` vers Laravel. |
+| **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
+| **`frontend/triplydev/`** | Next.js — pages / CI (lint) ; ce n’est pas le service web exposé par défaut en Docker. |
+| **`frontend/triply-docs-lib/`** | Bibliothèque de composants + Storybook. |
+| **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, SPA). |
 
-Triply est un assistant voyage IA tout-en-un concu pour centraliser et automatiser l'organisation d'un sejour.
-Le produit vise a reduire la charge mentale liee a la preparation d'un voyage en reunissant vols, hebergements, activites, carte et budget dans une seule experience.
+Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md).
 
-Promesse produit:
+## Prérequis
 
-- generer des itineraires personnalises en quelques minutes
-- respecter le budget comme une contrainte forte
-- limiter la fragmentation entre recherche, comparaison et planification
-- offrir une experience simple, fluide et orientee decision
+### Option A (recommandée) : Docker
 
-Personas cibles:
+- Docker Desktop, Compose v2, `make`
 
-- Lea, jeune active qui cherche surtout un gain de temps
-- Yassine, etudiant qui optimise chaque euro
-- Camille et Hugo, couple urbain qui veut deconnecter sans subir la logistique
+### Option B : local
 
-Le document canonique de contexte produit est `PRODUCT_CONTEXT.md`.
+- PHP 8.2+, Composer 2+, Node.js 20+, PostgreSQL 16+
+- Extensions PHP Laravel habituelles (`pdo_pgsql`, `mbstring`, etc.)
 
-## Prerequis
+## Installation (clone neuf)
 
-### Option A (recommandee): Docker
-- Docker Desktop
-- Docker Compose v2
-- `make`
+### 1) Docker + Makefile
 
-### Option B: Installation locale
-- PHP 8.2+
-- Composer 2+
-- Node.js 20+ et npm
-- PostgreSQL 16+ (configuration par defaut du projet)
-- Extensions PHP usuelles Laravel: `bcmath`, `ctype`, `fileinfo`, `json`, `mbstring`, `openssl`, `pdo`, `pdo_pgsql`, `tokenizer`, `xml`
-
-## Installation (fresh clone)
-
-### 1) Avec Docker + Makefile (recommande)
-Depuis la racine du repo. Au premier lancement, `make up` / `make install` exécutent **`ensure-dev-env`** : copie automatique des `.env.example` vers `.env` (racine, `backend/`, `frontend/triplydev/`) si les fichiers manquent — plus d’erreur « env file not found ».
+À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (racine, `backend/`, `frontend/triplydev/`) si les fichiers manquent.
 
 ```bash
 make install
 ```
 
-`make install` est un alias de `make init` et execute build, bootstrap DB, sync `.env`, migrations, puis regeneration Swagger.
-
-Demarrage quotidien:
+Quotidien :
 
 ```bash
 make up
 ```
 
-Verification API:
+Réinstallation complète (volumes, rebuild images SPA/PHP/workspace, migrations) :
 
 ```bash
-curl http://127.0.0.1:8000/api/v1/health
+make docker-reinstall
 ```
 
-### 2) Sans Docker (local)
+### 2) SPA à la racine, sans Docker (front seul)
 
-#### Backend Laravel
+Prérequis : API Laravel déjà joignable (ex. `http://127.0.0.1:8000`).
+
+```bash
+cp .env.example .env
+# Ajuster LARAVEL_API_URL dans .env (URL du backend, ex. http://127.0.0.1:8000)
+npm ci
+npm run dev
+```
+
+Application : [http://localhost:5173](http://localhost:5173) (port par défaut Vite ; en Docker le service **tri-app** mappe `5173:3000`).
+
+### 3) Backend Laravel seul
+
 ```bash
 cd backend
 composer install
@@ -71,92 +69,76 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Configurer la DB dans `backend/.env`:
-- `DB_CONNECTION=pgsql`
-- `DB_HOST=127.0.0.1`
-- `DB_PORT=5432`
-- `DB_DATABASE=TriplyDB`
-- `DB_USERNAME=backend`
-- `DB_PASSWORD=backend`
-
-Puis:
+Configurer la base dans `backend/.env` (hors Docker, hôte local typique `127.0.0.1`). Puis :
 
 ```bash
 php artisan migrate
 php artisan serve
 ```
 
-Sanctum est deja installe. Aucune publication supplementaire n'est necessaire pour lancer le projet dans son etat actuel.
+Guide détaillé : [`backend/README.md`](backend/README.md).
 
-#### Frontend Next.js (optionnel pour l'API, requis pour l'app web)
+### 4) Next.js `triplydev` (optionnel)
+
+Utile pour la CI ou des pages sous Next :
+
 ```bash
 cd frontend/triplydev
-npm install
+npm ci
 npm run dev
 ```
 
-## Mise a jour de la DB (base deja existante)
+Voir [`frontend/triplydev/README.md`](frontend/triplydev/README.md).
 
-### Docker
+## Mise à jour de la base
+
 ```bash
 make migrate
 ```
 
-ou:
+ou :
 
 ```bash
-docker compose exec -T backend php artisan migrate --force
+docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --force
 ```
 
-### Local
-```bash
-cd backend
-php artisan migrate
-```
+## Docker Compose sans Makefile
 
-Rollback d'une migration:
+Exemple avec les services courants (dont la SPA) :
 
 ```bash
-php artisan migrate:rollback --step=1
+docker compose -f compose.dev.yaml up -d --build tri-postgres tri-php-fpm tri-api tri-pgadmin tri-redis tri-workspace tri-app
+docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --force
 ```
 
-## Docker Compose direct (sans Makefile)
+## URLs utiles (dev)
 
-```bash
-docker compose up -d --build db backend pgadmin
-docker compose exec -T backend php artisan migrate --force
-```
+| Service | URL |
+|---------|-----|
+| SPA (tri-app) | [http://localhost:5173](http://localhost:5173) |
+| API | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
+| Health | [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health) |
+| Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |
+| PgAdmin | [http://127.0.0.1:8080](http://127.0.0.1:8080) |
 
-## URLs utiles
+## Dépannage
 
-- API: `http://127.0.0.1:8000`
-- Healthcheck: `http://127.0.0.1:8000/api/v1/health`
-- Swagger UI: `http://127.0.0.1:8000/api/documentation`
-- PgAdmin: `http://127.0.0.1:8080`
+- **DB** : vérifier `DB_*` dans `backend/.env` ; sous Docker, `DB_HOST=tri-postgres`.
+- **Migrations** : `php artisan migrate` ; rollback ciblé : `php artisan migrate:rollback --step=1`.
+- **Cache Laravel** : `php artisan optimize:clear`.
+- **Conteneur backend OK mais API KO** : `make logs-back`, puis route health.
+- **PgAdmin / pgpass** : `pgadmin/pgpass` et `pgadmin/servers.json` doivent être des **fichiers**, pas des dossiers.
 
-## Troubleshooting
+## Commandes `make` (aperçu)
 
-- Erreur de connexion DB:
-  - verifier `DB_*` dans `backend/.env`
-  - verifier que PostgreSQL est demarre et accessible
-- Migration en echec:
-  - relancer `php artisan migrate`
-  - si necessaire rollback cible: `php artisan migrate:rollback --step=1`
-- Cache Laravel incoherent:
-  - `php artisan optimize:clear`
-- Droits ecriture storage/bootstrap cache:
-  - verifier les permissions sur `backend/storage` et `backend/bootstrap/cache`
-- Container backend up mais API KO:
-  - `make logs-back` puis verifier la route health
-- Erreur Docker sur `pgadmin/pgpass`:
-  - verifier que `pgadmin/pgpass` et `pgadmin/servers.json` sont des fichiers, pas des dossiers
+- `make help` — liste des cibles
+- `make install` / `make init` — premier setup
+- `make up` — démarrage quotidien
+- `make migrate` — migrations
+- `make reload` — sync après changements backend
+- `make down` — arrêt
+- `make docker-reinstall` — reset stack dev (destructif pour les données Postgres du volume)
 
-## Commandes utiles
+## Documentation front
 
-- `make help`
-- `make install`
-- `make up`
-- `make migrate`
-- `make reload`
-- `make logs-back`
-- `make down`
+- Vue d’ensemble des dossiers `frontend/*` : [`frontend/README.md`](frontend/README.md).

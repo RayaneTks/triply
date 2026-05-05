@@ -10,9 +10,6 @@ pgadmin
 pgadmin_example
 scripts
 *.md
-conseil-analyse-non-exhaustif-novice.md
-GEMINI.md
-PRODUCT_CONTEXT.md
 docker-compose.yml.init
 compose.prod.yaml
 desktop.ini

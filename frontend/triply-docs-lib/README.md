@@ -2,6 +2,8 @@
 
 Librairie de composants React avec TypeScript et Tailwind CSS.
 
+> L’application voyage par défaut est la **SPA à la racine du dépôt** ; cette librairie sert de catalogue de composants et peut être consommée par plusieurs frontends.
+
 ## 🚀 Installation
 
 ```bash

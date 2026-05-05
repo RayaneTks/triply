@@ -45,7 +45,7 @@ Si `curl` n'est pas disponible : ouvrir `http://127.0.0.1:8000/api/v1/health` da
 Le service backend Docker est configure dans `compose.dev.yaml` (racine du repo, invoque via `Makefile`) pour utiliser PostgreSQL :
 
 - `DB_CONNECTION=pgsql`
-- `DB_HOST=db`
+- `DB_HOST=tri-postgres`
 - `DB_PORT=5432`
 - `DB_DATABASE=TriplyDB`
 - `DB_USERNAME=backend`
@@ -97,3 +97,7 @@ make init
 - API: `http://127.0.0.1:8000`
 - Health: `http://127.0.0.1:8000/api/v1/health`
 - Swagger: `http://127.0.0.1:8000/api/documentation`
+
+## Carte du code
+
+Pour savoir où placer une feature API : [`docs/BACKEND_WORKING_MAP.md`](docs/BACKEND_WORKING_MAP.md).

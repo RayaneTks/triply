@@ -20,6 +20,12 @@ Ce document sert de carte rapide pour savoir **ou coder** selon la feature.
   - Endpoints API + annotations Swagger endpoint par endpoint.
   - C'est la zone principale pour implementer la logique metier.
 
+- `backend/app/Http/Controllers/Api/V1/Integrations/`
+  - Proxies et endpoints « fournisseurs » : Amadeus (vols, hôtels, lieux), avis Google Places, chat copilote côté serveur.
+
+- `backend/app/Services/Integrations/`
+  - Clients HTTP, prompts et logique métier associée aux intégrations ci-dessus.
+
 - `backend/config/*.php`
   - Config runtime Laravel (db, cache, queue, session, auth...).
   - A toucher pour les besoins infra et execution.
