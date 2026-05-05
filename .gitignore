@@ -3,10 +3,8 @@
 Thumbs.db
 *.log
 
-# pgAdmin : ignorer les volumes locaux mais versionner les fichiers de config
+# pgAdmin : ignorer les volumes locaux (fichiers créés côté serveur ou en local)
 /pgadmin/*
-!/pgadmin/servers.json
-!/pgadmin/pgpass
 
 # --- OS & éditeurs
 .vscode/
