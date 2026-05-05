@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Triply Database",
+      "Group": "Servers",
+      "Host": "tri-postgres",
+      "Port": 5432,
+      "MaintenanceDB": "TriplyDB",
+      "Username": "laravel",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass"
+    }
+  }
+}

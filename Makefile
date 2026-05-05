@@ -2,7 +2,7 @@ NODE ?= node
 
 .PHONY: help \
 	ensure-dev-env \
-	init install migrate up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
+	init install migrate migrate-verify up run reload down rebuild restart status logs logs-back shell routes swagger test clean composer-install composer-install-dev env-sync db-ensure \
 	pgadmin-reset \
 	vendor-init composer-init \
 	verify test-auth test-feature test-unit \
@@ -94,7 +94,8 @@ docker-reinstall: ensure-dev-env
 
 migrate:
 	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
-	$(MAKE) verify
+
+migrate-verify: migrate verify
 
 up: ensure-dev-env
 	$(COMPOSE) up -d --build --remove-orphans $(DOCKER_SERVICES)

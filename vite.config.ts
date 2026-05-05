@@ -23,6 +23,16 @@ export default defineConfig(({mode}) => {
           changeOrigin: true,
         },
       },
+      watch: {
+        // Volumes Docker / fichiers de config non-source — éviter ENOTSUP sur certaines plateformes.
+        ignored: [
+          '**/backend/**',
+          '**/pgadmin/**',
+          '**/dist/**',
+          '**/node_modules/**',
+          '**/frontend/triplydev/**',
+        ],
+      },
     },
   };
 });

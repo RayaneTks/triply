@@ -53,12 +53,12 @@ Prérequis : API Laravel déjà joignable (ex. `http://127.0.0.1:8000`).
 
 ```bash
 cp .env.example .env
-# Ajuster LARAVEL_API_URL dans .env (URL du backend, ex. http://127.0.0.1:8000)
+# Ajuster LARAVEL_API_URL=http://127.0.0.1:8000 (la valeur Docker http://tri-api:80 ne marche pas hors Docker)
 npm ci
 npm run dev
 ```
 
-Application : [http://localhost:5173](http://localhost:5173) (port par défaut Vite ; en Docker le service **tri-app** mappe `5173:3000`).
+Application : [http://localhost:3000](http://localhost:3000) par défaut (`server.ts` écoute `PORT || 3000`). Pour aligner sur Docker : `PORT=5173 npm run dev` → [http://localhost:5173](http://localhost:5173). En Docker, le service **tri-app** mappe automatiquement `5173:3000`.
 
 ### 3) Backend Laravel seul
 
@@ -115,7 +115,8 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 
 | Service | URL |
 |---------|-----|
-| SPA (tri-app) | [http://localhost:5173](http://localhost:5173) |
+| SPA (tri-app, Docker) | [http://localhost:5173](http://localhost:5173) |
+| SPA (hors Docker, défaut) | [http://localhost:3000](http://localhost:3000) — `PORT=5173 npm run dev` pour s'aligner |
 | API | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
 | Health | [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health) |
 | Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |

@@ -1,11 +1,23 @@
 #!/bin/sh
+# Synchronise backend/.env avec les valeurs DB_* attendues par tri-postgres.
+# - Ne réécrit PAS APP_KEY (généré par php artisan key:generate dans make init).
+# - Ne force PAS APP_DEBUG / APP_URL : laisse ce que le dev a mis.
+# - Garde uniquement la cohérence DB pour éviter qu'un drift de mot de passe
+#   empêche Laravel de se connecter au volume Postgres existant.
 set -eu
 
 cd /app
 ENV_FILE=.env
+TEMPLATE_FILE=.env.example
 
 if [ ! -f "$ENV_FILE" ]; then
-  cp .env.docker.example "$ENV_FILE"
+  if [ -f "$TEMPLATE_FILE" ]; then
+    cp "$TEMPLATE_FILE" "$ENV_FILE"
+    echo "[ensure-env] created backend/.env from .env.example"
+  else
+    echo "[ensure-env] no $TEMPLATE_FILE, creating empty $ENV_FILE"
+    : > "$ENV_FILE"
+  fi
 fi
 
 upsert() {
@@ -19,21 +31,13 @@ upsert() {
   fi
 }
 
-upsert APP_NAME Triply
-upsert APP_ENV local
-upsert APP_DEBUG false
-upsert APP_URL http://localhost:5173
-
-upsert CACHE_STORE array
-upsert SESSION_DRIVER array
-upsert QUEUE_CONNECTION sync
-
-upsert APP_KEY base64:C8W1u5eXUoFtljES8Tu38jm84bSgDckZnjE61lzrX/c=
+DB_DATABASE_VALUE="${DB_DATABASE:-TriplyDB}"
+DB_USERNAME_VALUE="${DB_USERNAME:-laravel}"
+DB_PASSWORD_VALUE="${DB_PASSWORD:-api_password}"
 
 upsert DB_CONNECTION pgsql
 upsert DB_HOST tri-postgres
 upsert DB_PORT 5432
-upsert DB_DATABASE TriplyDB
-upsert DB_USERNAME laravel
-upsert DB_PASSWORD api_password
-upsert DB_ROOT_PASSWORD api_root_password
+upsert DB_DATABASE "$DB_DATABASE_VALUE"
+upsert DB_USERNAME "$DB_USERNAME_VALUE"
+upsert DB_PASSWORD "$DB_PASSWORD_VALUE"

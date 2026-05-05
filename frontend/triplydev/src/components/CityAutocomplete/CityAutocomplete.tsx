@@ -139,7 +139,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 .then((data) => {
                     if (requestId !== requestRef.current) return;
                     const results = Array.isArray(data) ? data : (data.data || data || []);
-                    const filtered = results.filter((r: AmadeusLocation) => r && r.iataCode);
+                    const filtered = results.filter(Boolean);
                     setSuggestions(filtered);
                     setActiveIndex(filtered.length > 0 ? 0 : -1);
                 })
@@ -157,15 +157,12 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
 
     // GESTION DE LA SÉLECTION
     const handleSelect = (feature: AmadeusLocation) => {
-        // 1. On construit le joli nom : "Rome (ROM)"
         const cityName = feature.address?.cityName || feature.name;
-        const displayName = `${cityName} (${feature.iataCode})`;
+        const iata = feature.iataCode || '';
+        const displayName = iata ? `${cityName} (${iata})` : cityName;
 
-        // 2. On met à jour l'affichage local
         setDisplayValue(displayName);
-
-        // 3. On envoie le CODE IATA au formulaire (pour les vols)
-        onChange(feature.iataCode);
+        onChange(iata);
 
         // 4. On envoie le NOM VILLE à l'Assistant (pour le chat)
         if (onSelectName) {
@@ -177,7 +174,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
             onSelectGeo({
                 latitude: g.latitude,
                 longitude: g.longitude,
-                iataCode: feature.iataCode,
+                iataCode: iata,
                 name: cityName,
             });
         }
@@ -274,9 +271,11 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                             <span className="font-bold">
                                                 {feature.address?.cityName || feature.name}
                                             </span>
-                                            <span className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono text-blue-300">
-                                                {feature.iataCode}
-                                            </span>
+                                            {feature.iataCode ? (
+                                                <span className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono text-blue-300">
+                                                    {feature.iataCode}
+                                                </span>
+                                            ) : null}
                                         </div>
                                         <div className="text-xs opacity-60 flex gap-2">
                                             <span>{feature.subType === 'AIRPORT' ? '✈️ Aéroport' : '🏙️ Ville'}</span>

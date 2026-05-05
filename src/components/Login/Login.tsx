@@ -21,10 +21,15 @@ export function Login() {
       await authClient.login({ email, password });
       navigate("/voyages");
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? extractErrorMessage(err.body) ?? (err.status === 401 ? "Identifiants invalides." : "Connexion impossible.")
-          : "Connexion impossible.";
+      let message = "Connexion impossible.";
+      if (err instanceof ApiError) {
+        const fromBody = extractErrorMessage(err.body);
+        if (fromBody) {
+          message = fromBody;
+        } else if (err.status === 401 || err.status === 422) {
+          message = "Identifiants invalides.";
+        }
+      }
       setError(message);
     } finally {
       setSubmitting(false);

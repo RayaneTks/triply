@@ -118,12 +118,22 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            $details = (object) [];
+            if (config('app.debug')) {
+                $details = [
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
+                ];
+            }
+
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'INTERNAL_SERVER_ERROR',
                     'message' => 'Une erreur interne est survenue.',
-                    'details' => (object) [],
+                    'details' => (object) $details,
                 ],
             ], 500);
         });

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -17,12 +18,13 @@ async function startServer() {
 
   // Proxy Laravel : la SPA appelle /api/v1/... sur l'origine 5173 → forwardé vers tri-api / 127.0.0.1:8000.
   // Évite CORS et permet d'attacher cookies/headers Sanctum sans configuration supplémentaire.
+  // http-proxy-middleware v3 : utiliser `pathFilter` pour conserver le préfixe original
+  // (un app.use("/api/v1", ...) le retirerait avant que le proxy ne le voie).
   app.use(
-    "/api/v1",
     createProxyMiddleware({
+      pathFilter: "/api/v1",
       target: LARAVEL_API_URL,
       changeOrigin: true,
-      pathRewrite: { "^/api/v1": "/api/v1" },
       xfwd: true,
     })
   );

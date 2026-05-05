@@ -1,0 +1,1 @@
+tri-postgres:5432:*:laravel:api_password

@@ -59,7 +59,7 @@ class AmadeusClient
         if (! $res->successful()) {
             Log::warning('Amadeus locations', ['status' => $res->status(), 'body' => $res->body()]);
 
-            return [];
+            throw new \RuntimeException('Amadeus locations HTTP '.$res->status());
         }
 
         $data = $res->json('data');

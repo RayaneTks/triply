@@ -2,7 +2,11 @@
 .DS_Store
 Thumbs.db
 *.log
-/pgadmin
+
+# pgAdmin : ignorer les volumes locaux mais versionner les fichiers de config
+/pgadmin/*
+!/pgadmin/servers.json
+!/pgadmin/pgpass
 
 # --- OS & éditeurs
 .vscode/
