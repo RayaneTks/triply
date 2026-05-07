@@ -88,8 +88,15 @@ export interface MapProps {
     initialZoom?: number;
     /** Style de la carte (par défaut: 'mapbox://styles/mapbox/standard') */
     mapStyle?: string;
-    /** Config pour Mapbox Standard (lightPreset, theme, etc.). Appliqué via setConfigProperty. */
-    mapConfig?: { lightPreset?: 'day' | 'dusk' | 'dawn' | 'night'; theme?: 'default' | 'faded' | 'monochrome' };
+    /** Config pour Mapbox Standard (lightPreset, labels, etc.). Applique via setConfigProperty. */
+    mapConfig?: {
+        lightPreset?: 'day' | 'dusk' | 'dawn' | 'night';
+        theme?: 'default' | 'faded' | 'monochrome';
+        showPlaceLabels?: boolean;
+        showPointOfInterestLabels?: boolean;
+        showRoadLabels?: boolean;
+        showTransitLabels?: boolean;
+    };
     /** Inclinaison de la carte (0 = 2D, 60 = 3D). Contrôlée par le parent si fourni. */
     pitch?: number;
     /** Orientation de la carte en degrés (0-360). Contrôlée par le parent si fourni. */
@@ -272,6 +279,34 @@ export const WorldMap: React.FC<MapProps> = ({
             }
             if (mapConfig.theme) {
                 (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty('basemap', 'theme', mapConfig.theme);
+            }
+            if (typeof mapConfig.showPlaceLabels === 'boolean') {
+                (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty(
+                    'basemap',
+                    'showPlaceLabels',
+                    mapConfig.showPlaceLabels
+                );
+            }
+            if (typeof mapConfig.showPointOfInterestLabels === 'boolean') {
+                (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty(
+                    'basemap',
+                    'showPointOfInterestLabels',
+                    mapConfig.showPointOfInterestLabels
+                );
+            }
+            if (typeof mapConfig.showRoadLabels === 'boolean') {
+                (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty(
+                    'basemap',
+                    'showRoadLabels',
+                    mapConfig.showRoadLabels
+                );
+            }
+            if (typeof mapConfig.showTransitLabels === 'boolean') {
+                (map as { setConfigProperty: (id: string, prop: string, value: unknown) => void }).setConfigProperty(
+                    'basemap',
+                    'showTransitLabels',
+                    mapConfig.showTransitLabels
+                );
             }
         } catch {
             // Style non-Standard ou config non supportée

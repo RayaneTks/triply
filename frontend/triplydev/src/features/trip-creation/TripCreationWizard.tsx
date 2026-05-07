@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
 import { TruckIcon, UserIcon, MapPinIcon, ClockIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarDaysIcon, ChevronDownIcon, BanknotesIcon, ExclamationTriangleIcon, ArrowLongDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Bike } from 'lucide-react';
+import { Button } from '@/src/components/Button/Button';
 import { TripConfigurationForm } from '@/src/components/TripConfigurationForm/TripConfigurationForm';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
@@ -1138,18 +1139,14 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 >
                                     Valider mes choix
                                 </button>
-                                <button
-                                    type="button"
+                                <Button
+                                    label={hasMinimum ? 'Créer mon itinéraire' : 'Complétez départ, destination, dates et voyageurs'}
                                     onClick={onComplete}
                                     disabled={!hasMinimum || !onComplete}
-                                    className={`min-w-0 flex-1 rounded-xl py-2.5 text-[12px] font-semibold transition-all sm:text-[13px] ${
-                                        hasMinimum
-                                            ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 active:scale-[0.98]'
-                                            : 'cursor-not-allowed bg-white/6 text-slate-400'
-                                    }`}
-                                >
-                                    {hasMinimum ? 'Générer mon itinéraire de base' : 'Complétez départ, destination, dates et voyageurs'}
-                                </button>
+                                    variant="dark"
+                                    tone="tone1"
+                                    className="min-w-0 flex-1 h-[44px]"
+                                />
                             </div>
                         )}
                     </div>

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { WorldMap, type RouteMapSegment } from '@/src/components/Map/Map';
@@ -375,7 +376,262 @@ function LoginWithMapBackground({
     );
 }
 
-export default function Home() {
+const LANDING_STORAGE_KEY = 'triply.landing.seen';
+
+function TriplyLanding({
+    onEnterApp,
+    mapboxToken,
+}: {
+    onEnterApp: () => void;
+    mapboxToken: string;
+}) {
+    const hasMapboxToken = mapboxToken.trim().length > 0;
+    const howItWorks = [
+        { step: '1', title: 'Destination', description: 'Saisissez votre destination et vos dates de voyage souhaitees.' },
+        { step: '2', title: 'Analyse IA', description: 'Triply analyse vos preferences, votre rythme et votre budget.' },
+        { step: '3', title: 'Itineraire', description: 'Recevez un plan complet optimise pour vos contraintes reelles.' },
+    ];
+
+    const aiCards = [
+        {
+            title: "Optimisation d'itineraire",
+            text: 'Reduisez vos temps de trajet grace a des parcours logiques ajustes en temps reel.',
+            tag: 'FONCTION AI',
+            note: 'Reorganisation automatique basee sur la meteo prevue',
+            icon: 'route',
+        },
+        {
+            title: 'Recommandations locales',
+            text: 'Decouvrez des adresses pertinentes selon vos gouts gastronomiques et culturels.',
+            tag: 'DATA INSIGHT',
+            note: "Score d'affinite calcule selon vos preferences",
+            icon: 'spark',
+        },
+        {
+            title: 'Gestion de budget',
+            text: 'Suivez vos depenses previsionnelles avec des alternatives pour rester maitre du cout.',
+            tag: 'BUDGET SMART',
+            note: 'Economies detectees sur hebergement et activites',
+            icon: 'wallet',
+        },
+    ];
+
+    return (
+        <div className="min-h-dvh w-full bg-background text-foreground">
+            <header className="fixed left-1/2 top-0 z-50 w-full max-w-7xl -translate-x-1/2 bg-background/80 px-6 py-4 backdrop-blur-md">
+                <div className="mx-auto flex w-full items-center justify-between">
+                    <div className="flex items-center">
+                        <Image
+                            src="/Logo-triply.svg"
+                            alt="Triply"
+                            width={150}
+                            height={50}
+                            className="h-12 w-auto object-contain"
+                        />
+                    </div>
+                    <nav className="hidden items-center gap-8 text-sm text-foreground/80 md:flex">
+                        <a href="#features" className="border-b-2 border-primary pb-1 font-semibold text-primary transition-opacity hover:opacity-80">Accueil</a>
+                        <a href="#fonctionnement" className="transition-colors hover:text-primary">Fonctionnement</a>
+                        <a href="#pricing" className="transition-colors hover:text-primary">Intelligence IA</a>
+                        <a href="#about" className="transition-colors hover:text-primary">Pourquoi Triply</a>
+                    </nav>
+                    <Button
+                        label="Get Started"
+                        onClick={onEnterApp}
+                        variant="dark"
+                        tone="tone1"
+                    />
+                </div>
+            </header>
+
+            <main>
+                <section id="features" className="relative flex min-h-[100dvh] scroll-mt-28 items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 z-0 overflow-hidden">
+                        {hasMapboxToken ? (
+                            <div className="h-[170%] w-full -translate-y-[36%]">
+                                <WorldMap
+                                    accessToken={mapboxToken}
+                                    initialLatitude={30}
+                                    initialLongitude={5}
+                                    initialZoom={1.9}
+                                    mapStyle="mapbox://styles/mapbox/standard"
+                                    mapConfig={{
+                                        lightPreset: 'night',
+                                        showPlaceLabels: false,
+                                        showPointOfInterestLabels: false,
+                                        showRoadLabels: false,
+                                        showTransitLabels: false,
+                                    }}
+                                    pitch={50}
+                                    interactive={false}
+                                    autoRotateSpeed={5}
+                                    height="100%"
+                                    width="100%"
+                                    className="h-full w-full"
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-full w-full bg-gradient-to-br from-secondary/35 via-background to-background" />
+                        )}
+                    </div>
+                    <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/70 via-background/75 to-background/90" />
+                    <div className="relative z-20 mx-auto max-w-4xl px-6 text-center">
+                        <h1 className="font-title text-4xl font-black leading-tight text-foreground md:text-6xl">
+                            Construisez un voyage sur mesure avec Triply
+                        </h1>
+                        <p className="mx-auto mt-6 max-w-2xl text-base text-foreground/85 md:text-lg">
+                            Destination, activites, budget et rythme: Triply cree un itineraire clair et actionnable en quelques instants.
+                        </p>
+                        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                            <Button
+                                label="Acceder a Triply"
+                                onClick={onEnterApp}
+                                variant="dark"
+                                tone="tone1"
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                <section id="fonctionnement" className="mx-auto w-full max-w-7xl scroll-mt-28 px-6 py-20">
+                    <div className="text-center">
+                        <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Comment ca marche</h2>
+                        <p className="mx-auto mt-3 max-w-2xl text-foreground/75">Trois etapes simples pour transformer vos envies en itineraire actionnable.</p>
+                    </div>
+                    <div className="mt-12 grid gap-6 md:grid-cols-3">
+                        {howItWorks.map((item) => (
+                            <article key={item.step} className="rounded-2xl border border-secondary/35 bg-secondary/20 p-7 text-center backdrop-blur-sm">
+                                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 text-xl font-bold text-primary">
+                                    {item.step}
+                                </div>
+                                <h3 className="font-title text-2xl font-bold text-foreground">{item.title}</h3>
+                                <p className="mt-3 text-sm leading-relaxed text-foreground/75">{item.description}</p>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+
+                <section id="pricing" className="scroll-mt-28 bg-secondary/15 py-20">
+                    <div className="mx-auto w-full max-w-7xl px-6">
+                        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                            <div className="max-w-2xl">
+                                <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Intelligence Artificielle</h2>
+                                <p className="mt-3 text-foreground/75">Des outils puissants pour une planification sans effort, sans casser la direction artistique actuelle de Triply.</p>
+                            </div>
+                            <a href="#destinations" className="text-sm font-semibold text-primary transition-colors hover:text-primary/80">Explorer toutes les fonctions</a>
+                        </div>
+                        <div className="grid gap-6 md:grid-cols-3">
+                            {aiCards.map((card) => (
+                                <article key={card.title} className="rounded-2xl border border-secondary/35 bg-secondary/20 p-6 shadow-lg shadow-secondary/25 backdrop-blur-sm">
+                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                                        {card.icon === 'route' && (
+                                            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                                                <path d="M19 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                                                <path d="M7 17h3a4 4 0 0 0 4-4V9" />
+                                                <path d="M14 9h3" />
+                                            </svg>
+                                        )}
+                                        {card.icon === 'spark' && (
+                                            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 3 9.8 8.2 5 10.4l4.8 2.2L12 18l2.2-5.4 4.8-2.2-4.8-2.2L12 3Z" />
+                                                <path d="M5 3v3" />
+                                                <path d="M3.5 4.5h3" />
+                                                <path d="M19 16v3" />
+                                                <path d="M17.5 17.5h3" />
+                                            </svg>
+                                        )}
+                                        {card.icon === 'wallet' && (
+                                            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="3" y="6" width="18" height="12" rx="2" />
+                                                <path d="M3 10h18" />
+                                                <circle cx="16.5" cy="14" r="1" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <h3 className="font-title text-2xl font-bold text-foreground">{card.title}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-foreground/75">{card.text}</p>
+                                    <div className="mt-5 rounded-lg border border-micro-design/45 bg-micro-design/15 p-3">
+                                        <p className="text-[11px] font-semibold tracking-[0.12em] text-micro-design">{card.tag}</p>
+                                        <p className="mt-1 text-xs italic text-foreground/80">{card.note}</p>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="destinations" className="mx-auto grid w-full max-w-7xl scroll-mt-28 gap-10 px-6 py-20 lg:grid-cols-[1.05fr_1fr] lg:items-center">
+                    <div className="relative overflow-hidden rounded-3xl border border-secondary/40 bg-secondary/25 p-8 shadow-xl shadow-secondary/20">
+                        <div className="relative h-[280px] overflow-hidden rounded-2xl border border-secondary/50 bg-background/45 backdrop-blur-sm">
+                            <Image
+                                src="/Triplypres.png"
+                                alt="Presentation de Triply sur tablette"
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                            />
+                        </div>
+                        <div className="absolute bottom-6 right-6 max-w-[26rem] rounded-2xl border border-micro-design/45 bg-background/65 p-5 shadow-lg shadow-secondary/25 backdrop-blur-md">
+                            <p className="text-2xl leading-none text-micro-design">&ldquo;</p>
+                            <p className="text-sm font-semibold text-foreground">Une revolution dans ma facon de voyager.</p>
+                            <p className="mt-2 text-xs text-foreground/75">Marc D. - Voyageur frequent</p>
+                        </div>
+                    </div>
+                    <div id="about" className="scroll-mt-28">
+                        <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Pourquoi choisir Triply ?</h2>
+                        <ul className="mt-6 space-y-4 text-sm text-foreground/75">
+                            <li className="rounded-xl border border-secondary/35 bg-secondary/20 p-4">Gain de temps massif: passez de longues recherches a des suggestions instantanees.</li>
+                            <li className="rounded-xl border border-secondary/35 bg-secondary/20 p-4">Precision locale: recommandations contextuelles selon vos habitudes et contraintes.</li>
+                            <li className="rounded-xl border border-secondary/35 bg-secondary/20 p-4">Multi-plateforme: continuez votre voyage sans friction entre mobile et desktop.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section className="px-6 pb-20">
+                    <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-secondary/35 bg-secondary/25 p-10 text-center md:p-14">
+                        <h2 className="font-title text-4xl font-bold text-foreground md:text-5xl">Pret a explorer ?</h2>
+                        <p className="mx-auto mt-4 max-w-2xl text-foreground/85">
+                            Rejoignez des voyageurs qui utilisent Triply pour organiser des experiences memorables en quelques minutes.
+                        </p>
+                        <Button
+                            label="Creer mon itineraire"
+                            onClick={onEnterApp}
+                            variant="light"
+                            tone="tone2"
+                            className="mt-8 inline-flex"
+                        />
+                        <p className="mt-4 text-xs text-primary/90">Gratuit pour votre premier voyage - Aucune carte requise</p>
+                    </div>
+                </section>
+            </main>
+
+            <footer className="border-t border-secondary/35 bg-secondary/15 px-6 py-10">
+                <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 md:flex-row">
+                    <div>
+                        <Image
+                            src="/Logo-triply.svg"
+                            alt="Triply"
+                            width={150}
+                            height={50}
+                            className="h-12 w-auto object-contain"
+                        />
+                        <p className="mt-1 text-xs text-foreground/60">© 2026 Triply Technologies. All rights reserved.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-foreground/75">
+                        <a href="#" className="transition-colors hover:text-primary">Privacy Policy</a>
+                        <a href="#" className="transition-colors hover:text-primary">Terms of Service</a>
+                        <a href="#" className="transition-colors hover:text-primary">Support</a>
+                        <a href="#" className="transition-colors hover:text-primary">Careers</a>
+                    </div>
+                </div>
+            </footer>
+
+        </div>
+    );
+}
+
+export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } = {}) {
     const router = useRouter();
     const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
     const hasMapboxToken = MAPBOX_TOKEN.trim().length > 0;
@@ -385,6 +641,8 @@ export default function Home() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [currentView, setCurrentView] = useState<'home' | 'login'>('home');
+    const [landingReady, setLandingReady] = useState(forceAppStart);
+    const [showLanding, setShowLanding] = useState(!forceAppStart);
     const [showTuPreferes, setShowTuPreferes] = useState(false);
     const [mapLocations, setMapLocations] = useState<LocationPoint[]>([]);
     const [, setIsLoadingHotels] = useState(false);
@@ -428,6 +686,12 @@ export default function Home() {
 
         void syncAuth();
     }, []);
+
+    useEffect(() => {
+        if (forceAppStart) return;
+        setShowLanding(true);
+        setLandingReady(true);
+    }, [forceAppStart]);
 
     // Etats Formulaire Voyage (centralisés dans un hook dédié)
     const tripConfig = useTripConfiguration();
@@ -1993,6 +2257,32 @@ export default function Home() {
         if (isNewUser) setShowTuPreferes(true);
     };
     const handleBackToHome = () => setCurrentView('home');
+    const handleEnterApp = () => {
+        setShowLanding(false);
+        try {
+            window.localStorage.setItem(LANDING_STORAGE_KEY, '1');
+        } catch {
+            // no-op
+        }
+    };
+    const handleGoToLanding = () => {
+        router.push('/');
+        setCurrentView('home');
+        setShowLanding(true);
+    };
+
+    if (!landingReady) {
+        return <div className="h-dvh w-full" style={{ backgroundColor: 'var(--background, #222222)' }} />;
+    }
+
+    if (showLanding) {
+        return (
+            <TriplyLanding
+                onEnterApp={handleEnterApp}
+                mapboxToken={MAPBOX_TOKEN}
+            />
+        );
+    }
 
     return (
         <div
@@ -2006,6 +2296,7 @@ export default function Home() {
                     isConnected={isConnected}
                     onLoginClick={handleLoginClick}
                     onLogoutClick={handleLogoutClick}
+                    onGoToLandingClick={handleGoToLanding}
                 />
             </div>
 
@@ -2028,6 +2319,7 @@ export default function Home() {
                             isConnected={isConnected}
                             onLoginClick={handleLoginClick}
                             onLogoutClick={handleLogoutClick}
+                            onGoToLandingClick={handleGoToLanding}
                         />
                     </div>
                 </>
@@ -2813,4 +3105,8 @@ export default function Home() {
             />
         </div>
     );
+}
+
+export default function Home() {
+    return <HomePage forceAppStart={false} />;
 }

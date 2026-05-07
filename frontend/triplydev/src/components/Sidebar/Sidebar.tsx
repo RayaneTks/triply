@@ -91,6 +91,7 @@ export interface SidebarProps {
     isConnected: boolean;
     onLoginClick: () => void;
     onLogoutClick: () => void;
+    onGoToLandingClick: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -102,6 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                     isConnected,
                                                     onLoginClick,
                                                     onLogoutClick,
+                                                    onGoToLandingClick,
                                                 }) => {
     const pathname = usePathname();
     const isMobile = useMediaQuery(MEDIA_MAX_LG);
@@ -222,26 +224,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </ul>
                         </nav>
 
-                        <div className={`border-t border-white/10 ${isCollapsed ? 'flex justify-center p-2' : 'p-4'}`}>
+                        <div className={`border-t border-white/10 ${isCollapsed ? 'flex justify-center gap-2 p-2' : 'p-4'}`}>
                             {isCollapsed ? (
-                                <button
-                                    type="button"
-                                    onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
-                                    title={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                    aria-label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-                                    style={{ color: 'var(--primary, #0096c7)' }}
-                                >
-                                    {effectiveIsConnected ? <LogOutIcon /> : <LogInIcon />}
-                                </button>
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
+                                        title={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
+                                        aria-label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                        style={{ color: 'var(--primary, #0096c7)' }}
+                                    >
+                                        {effectiveIsConnected ? <LogOutIcon /> : <LogInIcon />}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={onGoToLandingClick}
+                                        title="Landing page"
+                                        aria-label="Landing page"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                        style={{ color: 'var(--primary, #0096c7)' }}
+                                    >
+                                        <HomeIcon />
+                                    </button>
+                                </>
                             ) : (
-                                <Button
-                                    label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                    onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
-                                    variant="dark"
-                                    tone="tone1"
-                                    className="w-full"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
+                                        onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
+                                        variant="dark"
+                                        tone="tone1"
+                                        className="w-full"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={onGoToLandingClick}
+                                        title="Landing page"
+                                        aria-label="Landing page"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                        style={{ color: 'var(--primary, #0096c7)' }}
+                                    >
+                                        <HomeIcon />
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </>
