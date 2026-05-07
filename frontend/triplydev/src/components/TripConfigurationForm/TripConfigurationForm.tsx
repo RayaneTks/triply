@@ -83,6 +83,8 @@ interface TripConfigurationFormProps {
     setManualFlightNumber: (v: string) => void;
     manualFlightNumberReturn: string;
     setManualFlightNumberReturn: (v: string) => void;
+    manualFlightBudget: string;
+    setManualFlightBudget: (v: string) => void;
     manualHotelEntry: boolean;
     setManualHotelEntry: (v: boolean) => void;
     manualHotelName: string;
@@ -93,6 +95,8 @@ interface TripConfigurationFormProps {
     setManualHotelCheckIn: (v: string) => void;
     manualHotelCheckOut: string;
     setManualHotelCheckOut: (v: string) => void;
+    manualHotelBudget: string;
+    setManualHotelBudget: (v: string) => void;
     /** Index d’étape affichée (0…6). */
     planFormStep: number;
     /** Dernière étape accessible via le sommaire / stepper. */
@@ -130,9 +134,17 @@ const iconSparkle = (
     <path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
 );
 
-function flightRecapLine(offer: FlightOffer | null | undefined, carrierName: string, manual: boolean, airline: string, num: string, numRet: string): string {
+function flightRecapLine(
+    offer: FlightOffer | null | undefined,
+    carrierName: string,
+    manual: boolean,
+    airline: string,
+    num: string,
+    numRet: string,
+    budget: string
+): string {
     if (manual) {
-        const parts = [airline.trim(), num.trim(), numRet.trim() ? `retour ${numRet.trim()}` : ''].filter(Boolean);
+        const parts = [airline.trim(), num.trim(), numRet.trim() ? `retour ${numRet.trim()}` : '', budget.trim() ? `${budget.trim()} €` : ''].filter(Boolean);
         return parts.length ? parts.join(' · ') : 'Saisie manuelle (détails non renseignés)';
     }
     if (!offer?.itineraries?.[0]?.segments?.[0]) return 'Aucun vol sélectionné';
@@ -149,10 +161,11 @@ function hotelRecapLine(
     name: string,
     address: string,
     checkIn: string,
-    checkOut: string
+    checkOut: string,
+    budget: string
 ): string {
     if (manual) {
-        const parts = [name.trim(), address.trim(), checkIn && checkOut ? `${checkIn} → ${checkOut}` : ''].filter(Boolean);
+        const parts = [name.trim(), address.trim(), checkIn && checkOut ? `${checkIn} → ${checkOut}` : '', budget.trim() ? `${budget.trim()} €` : ''].filter(Boolean);
         return parts.length ? parts.join(' · ') : 'Saisie manuelle (détails non renseignés)';
     }
     if (!offer) return 'Aucun hébergement sélectionné';
@@ -213,6 +226,8 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         setManualFlightNumber,
         manualFlightNumberReturn,
         setManualFlightNumberReturn,
+        manualFlightBudget,
+        setManualFlightBudget,
         manualHotelEntry,
         setManualHotelEntry,
         manualHotelName,
@@ -223,6 +238,8 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         setManualHotelCheckIn,
         manualHotelCheckOut,
         setManualHotelCheckOut,
+        manualHotelBudget,
+        setManualHotelBudget,
         planFormStep,
         planFormMaxVisited,
         onPlanFormStepSelect,
@@ -399,6 +416,19 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             </div>
                         </div>
                     </div>
+                    <div>
+                        <label className="mb-1 block text-[11px] font-medium text-slate-500">Budget vol (€)</label>
+                        <div className={inputCls}>
+                            <input
+                                type="number"
+                                min="0"
+                                value={manualFlightBudget}
+                                onChange={(e) => setManualFlightBudget(e.target.value)}
+                                placeholder="optionnel"
+                                className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                            />
+                        </div>
+                    </div>
                     <p className="mb-1.5 text-[11px] font-medium text-slate-500">Horaires (optionnel)</p>
                     <p className="mb-1 text-[10px] text-slate-600">Vol aller</p>
                     <div className="mb-2 grid grid-cols-2 gap-2">
@@ -512,6 +542,19 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                                     className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 outline-none"
                                 />
                             </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-[11px] font-medium text-slate-500">Budget hôtel (€)</label>
+                        <div className={inputCls}>
+                            <input
+                                type="number"
+                                min="0"
+                                value={manualHotelBudget}
+                                onChange={(e) => setManualHotelBudget(e.target.value)}
+                                placeholder="optionnel"
+                                className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
+                            />
                         </div>
                     </div>
                     {selectedHotel ? (
@@ -672,7 +715,8 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
             manualFlightEntry,
             manualFlightAirline,
             manualFlightNumber,
-            manualFlightNumberReturn
+            manualFlightNumberReturn,
+            manualFlightBudget
         );
         const hotelLine = hotelRecapLine(
             selectedHotel ?? null,
@@ -680,7 +724,8 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
             manualHotelName,
             manualHotelAddress,
             manualHotelCheckIn,
-            manualHotelCheckOut
+            manualHotelCheckOut,
+            manualHotelBudget
         );
         const prefParts = [
             budget.trim() ? `Budget ${budget} €` : '',

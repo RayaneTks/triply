@@ -993,11 +993,13 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
                 manualFlightAirline: tripConfig.manualFlightAirline,
                 manualFlightNumber: tripConfig.manualFlightNumber,
                 manualFlightNumberReturn: tripConfig.manualFlightNumberReturn,
+                manualFlightBudget: tripConfig.manualFlightBudget,
                 manualHotelEntry: tripConfig.manualHotelEntry,
                 manualHotelName: tripConfig.manualHotelName,
                 manualHotelAddress: tripConfig.manualHotelAddress,
                 manualHotelCheckIn: tripConfig.manualHotelCheckIn,
                 manualHotelCheckOut: tripConfig.manualHotelCheckOut,
+                manualHotelBudget: tripConfig.manualHotelBudget,
             };
             saveTripConfigDraft(uid, { trip, wizardView, selectedDay, planFormStep, planFormMaxVisited });
         }, 200);
@@ -1022,11 +1024,13 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
         tripConfig.manualFlightAirline,
         tripConfig.manualFlightNumber,
         tripConfig.manualFlightNumberReturn,
+        tripConfig.manualFlightBudget,
         tripConfig.manualHotelEntry,
         tripConfig.manualHotelName,
         tripConfig.manualHotelAddress,
         tripConfig.manualHotelCheckIn,
         tripConfig.manualHotelCheckOut,
+        tripConfig.manualHotelBudget,
         wizardView,
         selectedDay,
         planFormStep,
@@ -1145,6 +1149,7 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
                       manualFlightAirline: tripConfig.manualFlightAirline,
                       manualFlightNumber: tripConfig.manualFlightNumber,
                       manualFlightNumberReturn: tripConfig.manualFlightNumberReturn,
+                      manualFlightBudget: tripConfig.manualFlightBudget,
                   })
                 : selectedFlightOffer,
         [
@@ -1160,6 +1165,7 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
             tripConfig.manualFlightAirline,
             tripConfig.manualFlightNumber,
             tripConfig.manualFlightNumberReturn,
+            tripConfig.manualFlightBudget,
             selectedFlightOffer,
         ]
     );
@@ -1186,6 +1192,7 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
                       manualHotelAddress: tripConfig.manualHotelAddress,
                       manualHotelCheckIn: tripConfig.manualHotelCheckIn,
                       manualHotelCheckOut: tripConfig.manualHotelCheckOut,
+                      manualHotelBudget: tripConfig.manualHotelBudget,
                       arrivalCity: tripConfig.arrivalCity,
                   })
                 : selectedHotelOffer,
@@ -1195,6 +1202,7 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
             tripConfig.manualHotelAddress,
             tripConfig.manualHotelCheckIn,
             tripConfig.manualHotelCheckOut,
+            tripConfig.manualHotelBudget,
             tripConfig.arrivalCity,
             selectedHotelOffer,
         ]
@@ -2268,10 +2276,10 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
             // no-op
         }
     };
-    const handleGoToLanding = () => {
+    const handleGoToHome = () => {
         router.push('/');
         setCurrentView('home');
-        setShowLanding(true);
+        setShowLanding(false);
     };
 
     if (!landingReady) {
@@ -2299,7 +2307,7 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
                     isConnected={isConnected}
                     onLoginClick={handleLoginClick}
                     onLogoutClick={handleLogoutClick}
-                    onGoToLandingClick={handleGoToLanding}
+                    onHomeClick={handleGoToHome}
                 />
             </div>
 
@@ -2322,7 +2330,7 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
                             isConnected={isConnected}
                             onLoginClick={handleLoginClick}
                             onLogoutClick={handleLogoutClick}
-                            onGoToLandingClick={handleGoToLanding}
+                            onHomeClick={handleGoToHome}
                         />
                     </div>
                 </>

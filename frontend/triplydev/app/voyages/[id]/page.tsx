@@ -7,7 +7,12 @@ import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { Button } from '@/src/components/Button/Button';
 import { clearSession, getStoredSession } from '@/src/lib/auth-client';
 import { getTrip, type TripSummary } from '@/src/lib/trips-client';
-import { googleMapsDirectionsEmbedUrl, googleMapsDirectionsLink } from '@/src/lib/plan-snapshot';
+import {
+    googleMapsDirectionsEmbedUrl,
+    googleMapsDirectionsIframeFallbackUrl,
+    googleMapsDirectionsLink,
+    mapboxStaticWaypointsMapUrl,
+} from '@/src/lib/plan-snapshot';
 
 const parseAmount = (value: unknown): number => {
     const n = Number.parseFloat(String(value ?? '').replace(',', '.'));
@@ -97,14 +102,17 @@ export default function VoyageDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [trip, setTrip] = useState<TripSummary | null>(null);
+    const [mapboxImageErrors, setMapboxImageErrors] = useState<Record<number, boolean>>({});
 
     const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY;
+    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     const tripBudget = trip ? getComputedBudget(trip) : null;
     const tripDestination = trip ? getDisplayDestination(trip) : 'Destination';
     const flightSummary = trip?.plan_snapshot?.flightSummary;
     const hotelSummary = trip?.plan_snapshot?.hotelSummary;
     const stayNights = getStayNights(hotelSummary?.checkInDate, hotelSummary?.checkOutDate);
     const hotelMapUrl = buildHotelMapUrl(hotelSummary?.latitude, hotelSummary?.longitude, hotelSummary?.address);
+    const safeStatus = (trip?.status || 'en attente').replace('_', ' ');
 
     useEffect(() => {
         let active = true;
@@ -152,6 +160,7 @@ export default function VoyageDetailPage() {
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 isConnected={isConnected}
                 onLoginClick={() => router.push('/')}
+                onHomeClick={() => router.push('/')}
                 onLogoutClick={() => {
                     clearSession();
                     router.push('/');
@@ -159,7 +168,7 @@ export default function VoyageDetailPage() {
             />
 
             <main className="flex-1 overflow-y-auto min-w-0">
-                <div className="max-w-3xl mx-auto p-4 sm:p-6 md:p-8 lg:p-12">
+                <div className="mx-auto max-w-5xl p-4 sm:p-6 md:p-8 lg:p-10">
                     <div className="flex items-center gap-4 mb-8">
                         <Link
                             href="/voyages"
@@ -202,22 +211,67 @@ export default function VoyageDetailPage() {
                                     Voyage enregistré avec succès. Retrouvez ci-dessous le détail de votre planning.
                                 </div>
                             )}
-                            <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
-                                {trip.title}
-                            </h1>
-                            <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                                Destination: {tripDestination}
-                            </p>
+                            <section
+                                className="mb-8 rounded-3xl border p-6 sm:p-8"
+                                style={{
+                                    borderColor: 'rgba(255,255,255,0.12)',
+                                    background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.14) 0%, rgba(255, 255, 255, 0.04) 60%)',
+                                }}
+                            >
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    <div>
+                                        <p className="mb-2 text-xs uppercase tracking-[0.2em]" style={{ color: 'rgba(255, 255, 255, 0.62)' }}>
+                                            Votre voyage
+                                        </p>
+                                        <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
+                                            {trip.title}
+                                        </h1>
+                                        <p className="mt-2 text-sm sm:text-base" style={{ color: 'rgba(255,255,255,0.78)' }}>
+                                            {tripDestination} - {trip.travel_days} jours
+                                        </p>
+                                    </div>
+                                    <span
+                                        className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                                        style={{
+                                            borderColor: 'rgba(0, 188, 212, 0.35)',
+                                            color: '#95f6ff',
+                                            backgroundColor: 'rgba(0, 188, 212, 0.12)',
+                                        }}
+                                    >
+                                        {safeStatus}
+                                    </span>
+                                </div>
+                                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Depart</p>
+                                        <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{formatDate(trip.start_date)}</p>
+                                    </div>
+                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Retour</p>
+                                        <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{formatDate(trip.end_date)}</p>
+                                    </div>
+                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Voyageurs</p>
+                                        <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{trip.travelers_count}</p>
+                                    </div>
+                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Budget estime</p>
+                                        <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--primary)' }}>
+                                            {Math.round(tripBudget?.amount ?? 0)} {tripBudget?.currency || trip.currency}
+                                        </p>
+                                    </div>
+                                </div>
+                            </section>
 
                             <section className="mb-8">
                                 <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
                                     Informations generales
                                 </h3>
                                 <div
-                                    className="rounded-2xl p-6 grid gap-4 sm:grid-cols-2"
+                                    className="grid gap-4 rounded-2xl border p-6 sm:grid-cols-2"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                        borderColor: 'rgba(255, 255, 255, 0.14)',
                                     }}
                                 >
                                     <div>
@@ -247,7 +301,7 @@ export default function VoyageDetailPage() {
                                     <div>
                                         <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Statut</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
-                                            {trip.status}
+                                            {safeStatus}
                                         </p>
                                     </div>
                                     <div>
@@ -264,10 +318,10 @@ export default function VoyageDetailPage() {
                                     Details du vol
                                 </h3>
                                 <div
-                                    className="rounded-2xl p-6 grid gap-4 sm:grid-cols-2"
+                                    className="grid gap-4 rounded-2xl border p-6 sm:grid-cols-2"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                        borderColor: 'rgba(255, 255, 255, 0.14)',
                                     }}
                                 >
                                     <div>
@@ -326,10 +380,10 @@ export default function VoyageDetailPage() {
                                     Details de l&apos;hebergement
                                 </h3>
                                 <div
-                                    className="rounded-2xl p-6 grid gap-4 sm:grid-cols-2"
+                                    className="grid gap-4 rounded-2xl border p-6 sm:grid-cols-2"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                        borderColor: 'rgba(255, 255, 255, 0.14)',
                                     }}
                                 >
                                     <div>
@@ -411,36 +465,51 @@ export default function VoyageDetailPage() {
                                     <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
                                         Planning par jour
                                     </h3>
-                                    <div className="flex flex-col gap-8">
+                                    <div className="flex flex-col gap-5">
                                         {trip.plan_snapshot.days.map((day) => {
                                             const waypoints = day.activities.map((a) => ({ lat: a.lat, lng: a.lng }));
                                             const embedSrc = googleMapsDirectionsEmbedUrl(waypoints, embedKey);
+                                            const fallbackEmbedSrc = googleMapsDirectionsIframeFallbackUrl(waypoints);
+                                            const mapboxStaticSrc = mapboxStaticWaypointsMapUrl(waypoints, mapboxToken);
+                                            const mapboxStaticFailed = mapboxImageErrors[day.dayIndex] === true;
                                             const externalLink = googleMapsDirectionsLink(waypoints);
                                             return (
                                                 <div
                                                     key={day.dayIndex}
-                                                    className="rounded-2xl p-5"
+                                                    className="rounded-2xl border p-5 sm:p-6"
                                                     style={{
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                                        borderColor: 'rgba(255, 255, 255, 0.14)',
                                                     }}
                                                 >
-                                                    <h4 className="text-base font-semibold text-cyan-400 mb-3">
+                                                    <h4 className="mb-4 text-base font-semibold text-cyan-400">
                                                         Jour {day.dayIndex}
                                                     </h4>
                                                     {day.activities.length === 0 ? (
                                                         <p className="text-sm text-slate-500">Aucune activité</p>
                                                     ) : (
-                                                        <ol className="list-decimal list-inside space-y-2 text-sm text-slate-200 mb-4">
+                                                        <ol className="mb-4 space-y-3 text-sm text-slate-200">
                                                             {day.activities.map((a, i) => (
-                                                                <li key={`${day.dayIndex}-${i}-${a.title}`}>
-                                                                    {a.title}
-                                                                    {a.durationHours != null && (
-                                                                        <span className="text-slate-500">
-                                                                            {' '}
-                                                                            (~{a.durationHours} h)
-                                                                        </span>
-                                                                    )}
+                                                                <li
+                                                                    key={`${day.dayIndex}-${i}-${a.title}`}
+                                                                    className="flex items-start gap-3 rounded-xl border px-3 py-2"
+                                                                    style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.12)' }}
+                                                                >
+                                                                    <span
+                                                                        className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full text-[11px] font-semibold"
+                                                                        style={{ backgroundColor: 'rgba(0,188,212,0.16)', color: '#8cf2ff' }}
+                                                                    >
+                                                                        {i + 1}
+                                                                    </span>
+                                                                    <span className="flex-1">
+                                                                        {a.title}
+                                                                        {a.durationHours != null && (
+                                                                            <span className="text-slate-400">
+                                                                                {' '}
+                                                                                (~{a.durationHours} h)
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
                                                                 </li>
                                                             ))}
                                                         </ol>
@@ -456,6 +525,48 @@ export default function VoyageDetailPage() {
                                                                     allowFullScreen
                                                                     referrerPolicy="no-referrer-when-downgrade"
                                                                 />
+                                                            ) : fallbackEmbedSrc && mapboxStaticFailed ? (
+                                                                <div className="space-y-2">
+                                                                    {externalLink && (
+                                                                        <a
+                                                                            href={externalLink}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="inline-flex text-sm font-medium text-cyan-400 hover:underline"
+                                                                        >
+                                                                            Ouvrir l&apos;itinéraire dans Google Maps
+                                                                        </a>
+                                                                    )}
+                                                                    <iframe
+                                                                        title={`Itineraire Google Maps jour ${day.dayIndex}`}
+                                                                        src={fallbackEmbedSrc}
+                                                                        className="h-64 w-full rounded-xl border border-white/10"
+                                                                        loading="lazy"
+                                                                        allowFullScreen
+                                                                        referrerPolicy="no-referrer-when-downgrade"
+                                                                    />
+                                                                </div>
+                                                            ) : mapboxStaticSrc && !mapboxStaticFailed ? (
+                                                                <a
+                                                                    href={externalLink || undefined}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="group block overflow-hidden rounded-xl border border-white/10"
+                                                                    aria-label={`Ouvrir l'itineraire du jour ${day.dayIndex} dans Google Maps`}
+                                                                >
+                                                                    <img
+                                                                        src={mapboxStaticSrc}
+                                                                        alt={`Carte statique de l'itineraire du jour ${day.dayIndex}`}
+                                                                        className="h-64 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                                                                        loading="lazy"
+                                                                        onError={() =>
+                                                                            setMapboxImageErrors((prev) => ({
+                                                                                ...prev,
+                                                                                [day.dayIndex]: true,
+                                                                            }))
+                                                                        }
+                                                                    />
+                                                                </a>
                                                             ) : externalLink ? (
                                                                 <a
                                                                     href={externalLink}
@@ -466,10 +577,11 @@ export default function VoyageDetailPage() {
                                                                     Ouvrir l&apos;itinéraire dans Google Maps
                                                                 </a>
                                                             ) : null}
-                                                            {!embedSrc && (
+                                                            {!embedSrc && !(mapboxStaticFailed && fallbackEmbedSrc) && (
                                                                 <p className="mt-2 text-[11px] text-slate-500">
-                                                                    Pour une carte intégrée, ajoutez NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY
-                                                                    dans l&apos;environnement frontend.
+                                                                    {mapboxStaticFailed && !fallbackEmbedSrc
+                                                                        ? 'La carte statique Mapbox n’a pas pu se charger (token, style ou coordonnees invalides).'
+                                                                        : 'Ajoutez NEXT_PUBLIC_MAPBOX_TOKEN pour afficher une carte statique integree.'}
                                                                 </p>
                                                             )}
                                                         </div>

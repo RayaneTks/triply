@@ -27,6 +27,7 @@ export type ManualFlightBuildInput = {
     manualFlightAirline: string;
     manualFlightNumber: string;
     manualFlightNumberReturn: string;
+    manualFlightBudget: string;
 };
 
 /** Vol minimal pour cartes / modales / append aéroport (saisie manuelle). */
@@ -62,9 +63,11 @@ export function buildManualFlightOffer(i: ManualFlightBuildInput): FlightOffer |
         });
     }
 
+    const budget = i.manualFlightBudget.trim();
+    const displayPrice = budget || '—';
     return {
         id: 'manual-flight',
-        price: { grandTotal: '—', currency: 'EUR' },
+        price: { grandTotal: displayPrice, currency: 'EUR' },
         validatingAirlineCodes: [],
         itineraries,
     };
@@ -76,6 +79,7 @@ export type ManualHotelBuildInput = {
     manualHotelAddress: string;
     manualHotelCheckIn: string;
     manualHotelCheckOut: string;
+    manualHotelBudget: string;
     arrivalCity: string;
 };
 
@@ -88,6 +92,8 @@ export function buildManualHotelOffer(i: ManualHotelBuildInput): HotelOffer | nu
     if (!i.manualHotelCheckIn.trim() || !i.manualHotelCheckOut.trim()) return null;
     const cc = padIata(i.arrivalCity) || '—';
     const displayName = name && addr && name !== addr ? `${name} · ${addr}` : title;
+    const budget = i.manualHotelBudget.trim();
+    const displayPrice = budget || '—';
     return {
         id: 'manual-hotel',
         hotelId: 'manual',
@@ -96,6 +102,6 @@ export function buildManualHotelOffer(i: ManualHotelBuildInput): HotelOffer | nu
         cityCode: cc.length >= 2 ? cc.slice(0, 3) : '—',
         checkInDate: i.manualHotelCheckIn.trim(),
         checkOutDate: i.manualHotelCheckOut.trim(),
-        price: { total: '—', currency: 'EUR' },
+        price: { total: displayPrice, currency: 'EUR' },
     };
 }

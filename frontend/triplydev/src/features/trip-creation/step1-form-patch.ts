@@ -137,11 +137,13 @@ export function buildStep1FormSnapshotForAssistant(state: TripConfigurationState
         manualFlightAirline: state.manualFlightAirline,
         manualFlightNumber: state.manualFlightNumber,
         manualFlightNumberReturn: state.manualFlightNumberReturn,
+        manualFlightBudget: state.manualFlightBudget,
         manualHotelEntry: state.manualHotelEntry,
         manualHotelName: state.manualHotelName,
         manualHotelAddress: state.manualHotelAddress,
         manualHotelCheckIn: state.manualHotelCheckIn,
         manualHotelCheckOut: state.manualHotelCheckOut,
+        manualHotelBudget: state.manualHotelBudget,
     };
 }
 
@@ -186,16 +188,20 @@ export function buildStep1ActivityConstraintsPromptFragment(snapshot: Record<str
         const airline = snapshot.manualFlightAirline;
         const num = snapshot.manualFlightNumber;
         const chunks = [airline, num].filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+        if (typeof snapshot.manualFlightBudget === 'string' && snapshot.manualFlightBudget.trim()) {
+            chunks.push(`budget ${snapshot.manualFlightBudget.trim()} EUR`);
+        }
         if (chunks.length) bits.push(`vol saisi : ${chunks.join(' ')}`);
     }
 
     if (snapshot.manualHotelEntry === true) {
         const hn = snapshot.manualHotelName;
         const ha = snapshot.manualHotelAddress;
+        const hb = typeof snapshot.manualHotelBudget === 'string' ? snapshot.manualHotelBudget.trim() : '';
         if (typeof hn === 'string' && hn.trim()) {
             const line =
                 typeof ha === 'string' && ha.trim() ? `${hn.trim()} (${ha.trim()})` : hn.trim();
-            bits.push(`hébergement saisi : ${line}`);
+            bits.push(`hébergement saisi : ${line}${hb ? ` · budget ${hb} EUR` : ''}`);
         }
     }
 

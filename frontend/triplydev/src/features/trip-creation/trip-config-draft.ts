@@ -87,6 +87,8 @@ export function parseTripConfigDraft(raw: unknown): TripConfigDraftV1 | null {
     if (mfn !== undefined) trip.manualFlightNumber = mfn;
     const mfnr = normString(s('manualFlightNumberReturn'));
     if (mfnr !== undefined) trip.manualFlightNumberReturn = mfnr;
+    const mfb = normString(s('manualFlightBudget'));
+    if (mfb !== undefined) trip.manualFlightBudget = mfb;
     const mhe = normBool(s('manualHotelEntry'));
     if (mhe !== undefined) trip.manualHotelEntry = mhe;
     const mhn = normString(s('manualHotelName'));
@@ -97,6 +99,8 @@ export function parseTripConfigDraft(raw: unknown): TripConfigDraftV1 | null {
     if (mhci !== undefined) trip.manualHotelCheckIn = mhci;
     const mhco = normString(s('manualHotelCheckOut'));
     if (mhco !== undefined) trip.manualHotelCheckOut = mhco;
+    const mhb = normString(s('manualHotelBudget'));
+    if (mhb !== undefined) trip.manualHotelBudget = mhb;
 
     let wizardView: 'plan' | 'activity' | undefined;
     if (raw.wizardView === 'plan' || raw.wizardView === 'activity') wizardView = raw.wizardView;
@@ -175,11 +179,13 @@ export function applyTripConfigPartial(trip: Partial<TripConfigurationState>, cf
     if (trip.manualFlightAirline !== undefined) cfg.setManualFlightAirline(trip.manualFlightAirline);
     if (trip.manualFlightNumber !== undefined) cfg.setManualFlightNumber(trip.manualFlightNumber);
     if (trip.manualFlightNumberReturn !== undefined) cfg.setManualFlightNumberReturn(trip.manualFlightNumberReturn);
+    if (trip.manualFlightBudget !== undefined) cfg.setManualFlightBudget(trip.manualFlightBudget);
     if (trip.manualHotelEntry !== undefined) cfg.setManualHotelEntry(trip.manualHotelEntry);
     if (trip.manualHotelName !== undefined) cfg.setManualHotelName(trip.manualHotelName);
     if (trip.manualHotelAddress !== undefined) cfg.setManualHotelAddress(trip.manualHotelAddress);
     if (trip.manualHotelCheckIn !== undefined) cfg.setManualHotelCheckIn(trip.manualHotelCheckIn);
     if (trip.manualHotelCheckOut !== undefined) cfg.setManualHotelCheckOut(trip.manualHotelCheckOut);
+    if (trip.manualHotelBudget !== undefined) cfg.setManualHotelBudget(trip.manualHotelBudget);
 }
 
 /** Copie le brouillon anonyme vers le compte après connexion (une seule fois si la cible est vide). */

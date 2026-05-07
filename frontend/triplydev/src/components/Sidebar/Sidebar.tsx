@@ -91,7 +91,7 @@ export interface SidebarProps {
     isConnected: boolean;
     onLoginClick: () => void;
     onLogoutClick: () => void;
-    onGoToLandingClick: () => void;
+    onHomeClick: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -103,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                     isConnected,
                                                     onLoginClick,
                                                     onLogoutClick,
-                                                    onGoToLandingClick,
+                                                    onHomeClick,
                                                 }) => {
     const pathname = usePathname();
     const isMobile = useMediaQuery(MEDIA_MAX_LG);
@@ -123,6 +123,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const handleToggle = () => {
         onToggle?.();
+    };
+    const isItemActive = (itemPath?: string): boolean => {
+        if (!itemPath) return false;
+        if (itemPath === '/') return pathname === '/';
+        return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
     };
 
     return (
@@ -183,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <nav className={`flex-1 py-4 ${isCollapsed ? 'px-1.5' : 'px-4'}`}>
                             <ul className={isCollapsed ? 'flex flex-col items-center gap-0.5' : 'space-y-1'}>
                                 {navItems.map((item) => {
-                                    const isActive = item.path ? pathname === item.path : false;
+                                    const isActive = isItemActive(item.path);
                                     const Icon = item.Icon;
                                     const itemBase =
                                         'rounded-xl text-sm font-medium transition-all duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 flex items-center text-slate-200';
@@ -232,17 +237,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         onClick={effectiveIsConnected ? onLogoutClick : onLoginClick}
                                         title={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
                                         aria-label={effectiveIsConnected ? 'Déconnexion' : 'Connexion'}
-                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                                         style={{ color: 'var(--primary, #0096c7)' }}
                                     >
                                         {effectiveIsConnected ? <LogOutIcon /> : <LogInIcon />}
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={onGoToLandingClick}
-                                        title="Landing page"
-                                        aria-label="Landing page"
-                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                        onClick={onHomeClick}
+                                        title="Accueil"
+                                        aria-label="Accueil"
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                                         style={{ color: 'var(--primary, #0096c7)' }}
                                     >
                                         <HomeIcon />
@@ -259,9 +264,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     />
                                     <button
                                         type="button"
-                                        onClick={onGoToLandingClick}
-                                        title="Landing page"
-                                        aria-label="Landing page"
+                                        onClick={onHomeClick}
+                                        title="Accueil"
+                                        aria-label="Accueil"
                                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                                         style={{ color: 'var(--primary, #0096c7)' }}
                                     >

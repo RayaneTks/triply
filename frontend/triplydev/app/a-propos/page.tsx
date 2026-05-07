@@ -62,6 +62,7 @@ export default function AProposPage() {
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isConnected={isConnected}
         onLoginClick={() => router.push('/')}
+        onHomeClick={() => router.push('/')}
         onLogoutClick={() => {
           clearSession();
           router.push('/');

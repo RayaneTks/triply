@@ -242,6 +242,7 @@ export default function ProfilPage() {
                 onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 isConnected={isConnected}
                 onLoginClick={() => router.push('/')}
+                onHomeClick={() => router.push('/')}
                 onLogoutClick={handleLogout}
             />
 

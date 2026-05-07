@@ -139,6 +139,7 @@ export default function PricingPage() {
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isConnected={isConnected}
         onLoginClick={() => router.push('/')}
+        onHomeClick={() => router.push('/')}
         onLogoutClick={() => {
           clearSession();
           router.push('/');

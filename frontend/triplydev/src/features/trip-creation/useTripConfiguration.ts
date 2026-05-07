@@ -50,12 +50,14 @@ export interface TripConfigurationState {
     manualFlightAirline: string;
     manualFlightNumber: string;
     manualFlightNumberReturn: string;
+    manualFlightBudget: string;
     /** Saisie hôtel sans recherche */
     manualHotelEntry: boolean;
     manualHotelName: string;
     manualHotelAddress: string;
     manualHotelCheckIn: string;
     manualHotelCheckOut: string;
+    manualHotelBudget: string;
 }
 
 export interface UseTripConfigurationResult extends TripConfigurationState {
@@ -78,11 +80,13 @@ export interface UseTripConfigurationResult extends TripConfigurationState {
     setManualFlightAirline: (v: string) => void;
     setManualFlightNumber: (v: string) => void;
     setManualFlightNumberReturn: (v: string) => void;
+    setManualFlightBudget: (v: string) => void;
     setManualHotelEntry: (v: boolean) => void;
     setManualHotelName: (v: string) => void;
     setManualHotelAddress: (v: string) => void;
     setManualHotelCheckIn: (v: string) => void;
     setManualHotelCheckOut: (v: string) => void;
+    setManualHotelBudget: (v: string) => void;
 }
 
 export function useTripConfiguration(initial?: Partial<TripConfigurationState>): UseTripConfigurationResult {
@@ -107,11 +111,13 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
     const [manualFlightAirline, setManualFlightAirline] = useState(initial?.manualFlightAirline ?? '');
     const [manualFlightNumber, setManualFlightNumber] = useState(initial?.manualFlightNumber ?? '');
     const [manualFlightNumberReturn, setManualFlightNumberReturn] = useState(initial?.manualFlightNumberReturn ?? '');
+    const [manualFlightBudget, setManualFlightBudget] = useState(initial?.manualFlightBudget ?? '');
     const [manualHotelEntry, setManualHotelEntry] = useState(initial?.manualHotelEntry ?? false);
     const [manualHotelName, setManualHotelName] = useState(initial?.manualHotelName ?? '');
     const [manualHotelAddress, setManualHotelAddress] = useState(initial?.manualHotelAddress ?? '');
     const [manualHotelCheckIn, setManualHotelCheckIn] = useState(initial?.manualHotelCheckIn ?? '');
     const [manualHotelCheckOut, setManualHotelCheckOut] = useState(initial?.manualHotelCheckOut ?? '');
+    const [manualHotelBudget, setManualHotelBudget] = useState(initial?.manualHotelBudget ?? '');
 
     const computedDays = daysBetween(outboundDate, returnDate);
     const travelDays = computedDays > 0 ? computedDays : travelDaysFallback;
@@ -144,11 +150,13 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         manualFlightAirline,
         manualFlightNumber,
         manualFlightNumberReturn,
+        manualFlightBudget,
         manualHotelEntry,
         manualHotelName,
         manualHotelAddress,
         manualHotelCheckIn,
         manualHotelCheckOut,
+        manualHotelBudget,
         setDepartureCity,
         setArrivalCity,
         setArrivalCityName,
@@ -168,10 +176,12 @@ export function useTripConfiguration(initial?: Partial<TripConfigurationState>):
         setManualFlightAirline,
         setManualFlightNumber,
         setManualFlightNumberReturn,
+        setManualFlightBudget,
         setManualHotelEntry,
         setManualHotelName,
         setManualHotelAddress,
         setManualHotelCheckIn,
         setManualHotelCheckOut,
+        setManualHotelBudget,
     };
 }
