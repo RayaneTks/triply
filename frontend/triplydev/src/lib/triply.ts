@@ -166,9 +166,12 @@ export function getTripPlanningAssistantContext(p: {
     travelDays: number;
     planningMode: string;
     currentDayActivityTitles: string[];
+    otherDaysActivityTitles: string[];
 }): string {
     const titles =
         p.currentDayActivityTitles.length > 0 ? p.currentDayActivityTitles.join(', ') : 'aucune activité encore';
+    const otherTitles =
+        p.otherDaysActivityTitles.length > 0 ? p.otherDaysActivityTitles.join(', ') : 'aucune';
     return `
 
 CONTEXTE PLANIFICATEUR (session courante) :
@@ -177,7 +180,8 @@ CONTEXTE PLANIFICATEUR (session courante) :
 - Budget temps activités ce jour : environ ${p.maxActivityHoursPerDay} h
 - Mode utilisateur : ${p.planningMode}
 - Activités déjà ajoutées ce jour : ${titles}
-- Pour suggestedActivities : propose des lieux complémentaires, sans dupliquer les titres déjà listés.
+- Activités déjà planifiées sur les autres jours du voyage : ${otherTitles}
+- Pour suggestedActivities : propose des lieux complémentaires, sans dupliquer aucun des titres listés ci-dessus (ni ce jour, ni les autres jours).
 `;
 }
 

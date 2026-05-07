@@ -127,6 +127,9 @@ export async function POST(req: Request) {
         const currentDayActivityTitles: string[] = Array.isArray(body.currentDayActivityTitles)
             ? body.currentDayActivityTitles.filter((x: unknown) => typeof x === 'string')
             : [];
+        const otherDaysActivityTitles: string[] = Array.isArray(body.otherDaysActivityTitles)
+            ? body.otherDaysActivityTitles.filter((x: unknown) => typeof x === 'string')
+            : [];
 
         const step1FormSnapshot =
             body.step1FormSnapshot && typeof body.step1FormSnapshot === 'object' && !Array.isArray(body.step1FormSnapshot)
@@ -215,6 +218,7 @@ export async function POST(req: Request) {
                         travelDays,
                         planningMode,
                         currentDayActivityTitles,
+                        otherDaysActivityTitles,
                     })
                   : '';
 

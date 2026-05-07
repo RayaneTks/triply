@@ -60,6 +60,7 @@ export interface AssistantPlanningContext {
     travelDays: number;
     planningMode: string;
     currentDayActivityTitles: string[];
+    otherDaysActivityTitles: string[];
 }
 
 export type AssistantHandle = {
@@ -309,6 +310,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         travelDays: ctx?.travelDays,
                         planningMode: ctx?.planningMode,
                         currentDayActivityTitles: ctx?.currentDayActivityTitles,
+                        otherDaysActivityTitles: ctx?.otherDaysActivityTitles,
                         step1FormSnapshot: s1.snapshot,
                         step1HotelOptionLabels: s1.hotelLabels,
                         step1DietaryLabels: s1.dietaryLabels,

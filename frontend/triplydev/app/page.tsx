@@ -1708,6 +1708,9 @@ export function HomePage({ forceAppStart = false }: { forceAppStart?: boolean } 
             travelDays: td,
             planningMode: planningMode ?? 'semi_ai',
             currentDayActivityTitles: (dayActivitiesByDay[selectedDay] ?? []).map((p) => getDayActivityLabel(p)),
+            otherDaysActivityTitles: Object.entries(dayActivitiesByDay)
+                .filter(([day]) => parseInt(day) !== selectedDay)
+                .flatMap(([, acts]) => acts.map((p) => getDayActivityLabel(p))),
         };
     }, [
             activityHoursByDay,
