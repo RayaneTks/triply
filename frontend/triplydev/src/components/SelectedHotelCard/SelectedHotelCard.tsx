@@ -30,9 +30,9 @@ export const SelectedHotelCard: React.FC<SelectedHotelCardProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && onClick()}
             className="rounded-xl border p-4 cursor-pointer transition-all hover:border-[#0096c7] hover:bg-white/5"
             style={{
-                backgroundColor: 'var(--background, #222222)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: '#e5e5e5',
+                backgroundColor: 'var(--background)',
+                borderColor: 'var(--border)',
+                color: 'var(--foreground)',
             }}
         >
             <div className="flex items-center justify-between gap-3">
@@ -44,10 +44,10 @@ export const SelectedHotelCard: React.FC<SelectedHotelCardProps> = ({
                         <span className="text-lg">🏨</span>
                     </div>
                     <div className="min-w-0">
-                        <div className="font-semibold truncate" style={{ color: '#f5f5f5' }}>
+                        <div className="font-semibold truncate" style={{ color: 'var(--foreground)' }}>
                             {offer.hotelName}
                         </div>
-                        <div className="text-sm flex items-center gap-2 mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                        <div className="text-sm flex items-center gap-2 mt-0.5" style={{ color: 'var(--text-muted)' }}>
                             <span>{offer.cityCode}</span>
                             <span>•</span>
                             <span>{formatDate(offer.checkInDate)} – {formatDate(offer.checkOutDate)}</span>

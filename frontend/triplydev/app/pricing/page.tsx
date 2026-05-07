@@ -153,7 +153,7 @@ export default function PricingPage() {
               <Link
                 href="/"
                 className="text-sm font-medium hover:underline"
-                style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 {'<- Retour a l\'application'}
               </Link>

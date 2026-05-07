@@ -9,6 +9,8 @@ import { Sidebar } from '@/src/components/Sidebar/Sidebar';
 import { WorldMap, type RouteMapSegment } from '@/src/components/Map/Map';
 import type { MapboxPoiFeature } from '@/src/components/Map/Map';
 import { Button } from '@/src/components/Button/Button';
+import { useTheme } from '@/src/hooks/useTheme';
+import { ThemeToggle } from '@/src/components/ThemeToggle/ThemeToggle';
 import { Login } from "@/src/components/Login/Login";
 import {
     TuPreferes,
@@ -385,6 +387,7 @@ function TriplyLanding({
     onEnterApp: () => void;
     mapboxToken: string;
 }) {
+    const { theme, toggle: toggleTheme } = useTheme();
     const hasMapboxToken = mapboxToken.trim().length > 0;
     const howItWorks = [
         { step: '1', title: 'Destination', description: 'Saisissez votre destination et vos dates de voyage souhaitees.' },
@@ -422,7 +425,7 @@ function TriplyLanding({
                 <div className="mx-auto flex w-full items-center justify-between">
                     <div className="flex items-center">
                         <Image
-                            src="/Logo-triply.svg"
+                            src={theme === 'light' ? '/Logo-triply-light.png' : '/Logo-triply-dark.png'}
                             alt="Triply"
                             width={150}
                             height={50}
@@ -435,12 +438,15 @@ function TriplyLanding({
                         <a href="#pricing" className="transition-colors hover:text-primary">Intelligence IA</a>
                         <a href="#about" className="transition-colors hover:text-primary">Pourquoi Triply</a>
                     </nav>
-                    <Button
-                        label="Get Started"
-                        onClick={onEnterApp}
-                        variant="dark"
-                        tone="tone1"
-                    />
+                    <div className="flex items-center gap-3">
+                        <ThemeToggle className="h-9 w-9" />
+                        <Button
+                            label="Get Started"
+                            onClick={onEnterApp}
+                            variant="dark"
+                            tone="tone1"
+                        />
+                    </div>
                 </div>
             </header>
 

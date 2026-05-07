@@ -12,32 +12,32 @@ const SECTIONS = [
     id: 'mission',
     title: 'Notre mission : des voyages mieux préparés',
     paragraphs: [
-      'Préparer un voyage prend du temps : on ouvre dix onglets, on note des adresses au hasard, on oublie un créneau ou un budget réaliste. Triply existe pour rassembler tout cela dans une expérience fluide, du premier coup d’œil sur la carte jusqu’au détail du dernier jour.',
-      'Nous croyons qu’un bon voyage commence par une vision claire : où aller, comment s’y rendre, où dormir, quoi vivre sur place — sans sacrifier la spontanéité. L’objectif n’est pas de tout verrouiller à l’avance, mais de vous donner assez de repères pour partir l’esprit léger.',
+      "Préparer un voyage prend du temps : on ouvre dix onglets, on note des adresses au hasard, on oublie un créneau ou un budget réaliste. Triply existe pour rassembler tout cela dans une expérience fluide, du premier coup d'œil sur la carte jusqu'au détail du dernier jour.",
+      "Nous croyons qu'un bon voyage commence par une vision claire : où aller, comment s'y rendre, où dormir, quoi vivre sur place — sans sacrifier la spontanéité. L'objectif n'est pas de tout verrouiller à l'avance, mais de vous donner assez de repères pour partir l'esprit léger.",
     ],
   },
   {
     id: 'proposition',
     title: 'Ce que Triply vous apporte au quotidien',
     paragraphs: [
-      'Triply vous accompagne comme un carnet de voyage intelligent : vous visualisez votre parcours, vous comparez des options de transport et d’hébergement, vous recevez des pistes d’activités et de restauration alignées avec votre rythme et vos envies.',
-      'Un assistant conversationnel, entièrement centré sur le voyage, aide à débloquer les moments où vous hésitez : trop de choix, budget serré, contraintes horaires, envie de découvrir un quartier plutôt qu’un autre. Il complète l’interface sans la remplacer : vous gardez la main sur vos décisions.',
+      "Triply vous accompagne comme un carnet de voyage intelligent : vous visualisez votre parcours, vous comparez des options de transport et d'hébergement, vous recevez des pistes d'activités et de restauration alignées avec votre rythme et vos envies.",
+      "Un assistant conversationnel, entièrement centré sur le voyage, aide à débloquer les moments où vous hésitez : trop de choix, budget serré, contraintes horaires, envie de découvrir un quartier plutôt qu'un autre. Il complète l'interface sans la remplacer : vous gardez la main sur vos décisions.",
     ],
   },
   {
     id: 'pour-qui',
     title: 'Pour qui ?',
     paragraphs: [
-      'Les week-endistes qui veulent un fil conducteur sans passer leur samedi dans des tableurs. Les familles qui doivent jongler entre les horaires des uns et les envies des autres. Les voyageurs solo qui cherchent confiance et repères avant de partir. Les habitués des longs séjours qui veulent une base solide avant d’improviser sur place.',
-      'Que vous partiez une fois par an ou plusieurs fois par saison, Triply s’adapte : des formules gratuites pour tester, des offres payantes lorsque le voyage devient un vrai sport.',
+      "Les week-endistes qui veulent un fil conducteur sans passer leur samedi dans des tableurs. Les familles qui doivent jongler entre les horaires des uns et les envies des autres. Les voyageurs solo qui cherchent confiance et repères avant de partir. Les habitués des longs séjours qui veulent une base solide avant d'improviser sur place.",
+      "Que vous partiez une fois par an ou plusieurs fois par saison, Triply s'adapte : des formules gratuites pour tester, des offres payantes lorsque le voyage devient un vrai sport.",
     ],
   },
   {
     id: 'engagement',
     title: 'Notre engagement',
     paragraphs: [
-      'Nous améliorons Triply en continu : parcours plus clairs, suggestions plus pertinentes, contenus plus utiles. La page que vous lisez a aussi vocation à évoluer : elle décrit notre intention — vous aider à voyager avec plus de sérénité et moins de dispersion.',
-      'Pour passer à l’action, vous pouvez créer un compte gratuit, explorer l’application et, lorsque vous serez prêt, choisir une formule qui correspond à votre rythme sur notre page tarifs.',
+      "Nous améliorons Triply en continu : parcours plus clairs, suggestions plus pertinentes, contenus plus utiles. La page que vous lisez a aussi vocation à évoluer : elle décrit notre intention — vous aider à voyager avec plus de sérénité et moins de dispersion.",
+      "Pour passer à l'action, vous pouvez créer un compte gratuit, explorer l'application et, lorsque vous serez prêt, choisir une formule qui correspond à votre rythme sur notre page tarifs.",
     ],
   },
 ];
@@ -75,9 +75,9 @@ export default function AProposPage() {
             <Link
               href="/"
               className="text-sm font-medium hover:underline"
-              style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+              style={{ color: 'var(--text-muted)' }}
             >
-              {'<- Retour à l’application'}
+              {"<- Retour à l'application"}
             </Link>
           </div>
 
@@ -95,7 +95,7 @@ export default function AProposPage() {
               <span style={{ color: 'var(--primary)' }}>sereins</span>
             </h1>
             <p className="text-lg leading-relaxed text-slate-400">
-              Triply est une application de planification de voyage qui réunit carte interactive, idées d’itinéraires,
+              Triply est une application de planification de voyage qui réunit carte interactive, idées d'itinéraires,
               pistes pour vos vols et hébergements, et un assistant pensé uniquement pour vous aider à préparer votre
               prochain séjour — du week-end à la grande escapade.
             </p>

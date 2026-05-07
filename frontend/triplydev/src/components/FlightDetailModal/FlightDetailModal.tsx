@@ -62,16 +62,16 @@ export const FlightDetailModal: React.FC<FlightDetailModalProps> = ({
                     >
                         <div
                             className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0"
-                            style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
+                            style={{ borderColor: 'var(--border-subtle)' }}
                         >
-                            <h2 id="flight-detail-title" className="text-xl font-semibold" style={{ color: '#ededed' }}>
+                            <h2 id="flight-detail-title" className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
                                 Détail du billet
                             </h2>
                             <button
                                 onClick={onClose}
                                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
                                 aria-label="Fermer"
-                                style={{ color: '#ededed' }}
+                                style={{ color: 'var(--foreground)' }}
                             >
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M18 6L6 18M6 6l12 12" />

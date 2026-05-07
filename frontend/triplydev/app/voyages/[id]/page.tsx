@@ -173,14 +173,14 @@ export default function VoyageDetailPage() {
                         <Link
                             href="/voyages"
                             className="text-sm font-medium hover:underline"
-                            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             {'<- Retour aux voyages'}
                         </Link>
                     </div>
 
                     {loading && (
-                        <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                        <p style={{ color: 'var(--text-muted)' }}>
                             Chargement du voyage...
                         </p>
                     )}
@@ -255,7 +255,7 @@ export default function VoyageDetailPage() {
                                         <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{trip.travelers_count}</p>
                                     </div>
                                     <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Budget estime</p>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Budget estime</p>
                                         <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--primary)' }}>
                                             {Math.round(tripBudget?.amount ?? 0)} {tripBudget?.currency || trip.currency}
                                         </p>
@@ -275,37 +275,37 @@ export default function VoyageDetailPage() {
                                     }}
                                 >
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Depart</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Depart</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {formatDate(trip.start_date)}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Retour</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Retour</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {formatDate(trip.end_date)}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Duree</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Duree</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {trip.travel_days} jours
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Voyageurs</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Voyageurs</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {trip.travelers_count}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Statut</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Statut</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {safeStatus}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Budget</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Budget</span>
                                         <p className="font-medium" style={{ color: 'var(--primary)' }}>
                                             {Math.round(tripBudget?.amount ?? 0)} {tripBudget?.currency || trip.currency}
                                         </p>
@@ -325,37 +325,37 @@ export default function VoyageDetailPage() {
                                     }}
                                 >
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Compagnie</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Compagnie</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {flightSummary?.carrier || trip.flight?.carrier || 'Non renseignee'}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Prix du vol</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Prix du vol</span>
                                         <p className="font-medium" style={{ color: 'var(--primary)' }}>
                                             {flightSummary?.price || trip.flight?.price || '-'} {flightSummary?.currency || trip.currency}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Trajet</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Trajet</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {(flightSummary?.originIata || '---')} → {(flightSummary?.destinationIata || '---')}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Depart (heure)</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Depart (heure)</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {formatDateTime(flightSummary?.outboundAt)}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Retour (heure)</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Retour (heure)</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {formatDateTime(flightSummary?.returnAt)}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Reference destination</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Reference destination</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {tripDestination}
                                         </p>
@@ -387,19 +387,19 @@ export default function VoyageDetailPage() {
                                     }}
                                 >
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Nom</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Nom</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {hotelSummary?.name || 'Non renseigne'}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Prix total</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Prix total</span>
                                         <p className="font-medium" style={{ color: 'var(--primary)' }}>
                                             {hotelSummary?.totalPrice || '-'} {hotelSummary?.currency || trip.currency}
                                         </p>
                                     </div>
                                     <div className="sm:col-span-2">
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Adresse</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Adresse</span>
                                         <div className="mt-0.5 flex items-center gap-2">
                                             <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                                 {hotelSummary?.address || hotelSummary?.cityName || 'Non renseignee'}
@@ -422,25 +422,25 @@ export default function VoyageDetailPage() {
                                         </div>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Check-in</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Check-in</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {formatDate(hotelSummary?.checkInDate || '')}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Check-out</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Check-out</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {formatDate(hotelSummary?.checkOutDate || '')}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Duree du sejour</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Duree du sejour</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {stayNights != null ? `${stayNights} nuit${stayNights > 1 ? 's' : ''}` : '-'}
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Localisation</span>
+                                        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Localisation</span>
                                         <p className="font-medium" style={{ color: 'var(--foreground)' }}>
                                             {hotelSummary?.cityName || tripDestination}
                                         </p>

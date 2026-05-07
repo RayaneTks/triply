@@ -14,9 +14,10 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         <div
             className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
                 isUser
-                    ? 'ml-auto bg-cyan-500/15 border border-cyan-400/40 text-slate-50'
-                    : 'mr-auto bg-slate-900/80 border border-white/10 text-slate-100'
+                    ? 'ml-auto bg-cyan-500/15 border border-cyan-400/40'
+                    : 'mr-auto bg-slate-900/80 border border-white/10'
             }`}
+            style={{ color: 'var(--foreground)' }}
         >
             <ReactMarkdown
                 components={{
@@ -29,7 +30,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                     h3: ({ node: _node, ...props }) => (
                         <h3 className="mt-2 mb-1 text-sm font-semibold" {...props} />
                     ),
-                    p: ({ node: _node, ...props }) => <p className="mb-1 text-slate-200" {...props} />,
+                    p: ({ node: _node, ...props }) => <p className="mb-1" style={{ color: 'var(--foreground)' }} {...props} />,
                     ul: ({ node: _node, ...props }) => (
                         <ul className="my-1 list-inside list-disc space-y-1" {...props} />
                     ),

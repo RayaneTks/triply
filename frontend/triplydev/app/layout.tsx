@@ -21,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className="overflow-x-hidden">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
         <link rel="preload" href="/fonts/Chillax-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/Gotham-Book.otf" as="font" type="font/otf" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/Gotham-Medium.otf" as="font" type="font/otf" crossOrigin="anonymous" />

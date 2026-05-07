@@ -31,7 +31,8 @@ export const ImageCard: React.FC<ImageCardProps> = ({
             className={`group w-64 bg-transparent [perspective:1000px] ${className}`}
         >
             <div
-                className="relative flex flex-col bg-white rounded-lg shadow-lg overflow-hidden transition-shadow duration-300 ease-in-out hover:shadow-xl"
+                className="relative flex flex-col rounded-lg shadow-lg overflow-hidden transition-shadow duration-300 ease-in-out hover:shadow-xl"
+            style={{ backgroundColor: 'var(--card)', color: 'var(--card-foreground)' }}
             >
                 {/* Image fixe - ne bouge jamais */}
                 <div
@@ -74,13 +75,14 @@ export const ImageCard: React.FC<ImageCardProps> = ({
                                     ease: "easeInOut"
                                 }
                             }}
-                            className="flex flex-col bg-white origin-top overflow-hidden"
+                            className="flex flex-col origin-top overflow-hidden"
+                            style={{ backgroundColor: 'var(--card)' }}
                         >
                             <div className="p-4 flex flex-col flex-grow">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--card-foreground)' }}>
                                     {title}
                                 </h3>
-                                <div className="text-gray-600 text-sm flex-grow mb-4">
+                                <div className="text-sm flex-grow mb-4" style={{ color: 'var(--text-muted)' }}>
                                     {description}
                                 </div>
                                 <div className="mt-auto">

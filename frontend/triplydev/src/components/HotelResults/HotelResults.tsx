@@ -97,7 +97,7 @@ export const HotelResults = ({ data, onSelectOffer }: HotelResultsProps) => {
     }
 
     return (
-        <div className="flex flex-col gap-4 p-4 pb-20 max-w-4xl mx-auto w-full" style={{ color: '#e5e5e5' }}>
+        <div className="flex flex-col gap-4 p-4 pb-20 max-w-4xl mx-auto w-full" style={{ color: 'var(--foreground)' }}>
             {offers.map((offer) => (
                 <HotelOfferCard
                     key={offer.id}

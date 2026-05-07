@@ -29,8 +29,9 @@ export const SlidingDoorCard: React.FC<SlidingDoorCardProps> = ({
             data-isOpen={isOpen}
             onClick={() => setIsOpen(!isOpen)}
             transition={{ layout: { duration: 0.5, type: "spring", bounce: 0.15 } }}
-            className={`relative bg-white rounded-xl shadow-xl overflow-hidden cursor-pointer group ${className}`}
+            className={`relative rounded-xl shadow-xl overflow-hidden cursor-pointer group ${className}`}
             style={{
+                backgroundColor: 'var(--card)',
                 width: isOpen ? '600px' : '280px',
                 height: '320px'
             }}
@@ -73,16 +74,18 @@ export const SlidingDoorCard: React.FC<SlidingDoorCardProps> = ({
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className="flex-grow p-6 flex flex-col justify-between bg-white"
+                            className="flex-grow p-6 flex flex-col justify-between"
+                            style={{ backgroundColor: 'var(--card)' }}
                         >
                             <div>
                                 <motion.h3
                                     layout="position"
-                                    className="text-2xl font-bold text-gray-800 mb-3"
+                                    className="text-2xl font-bold mb-3"
+                                    style={{ color: 'var(--card-foreground)' }}
                                 >
                                     {title}
                                 </motion.h3>
-                                <p className="text-gray-600 text-sm leading-relaxed">
+                                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                                     {description}
                                 </p>
                             </div>

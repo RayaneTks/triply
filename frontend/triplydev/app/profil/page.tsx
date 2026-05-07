@@ -67,7 +67,7 @@ function PreferenceRow({ label, values }: { label: string; values: string[] }) {
     if (!values.length) return null;
     return (
         <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                 {label}
             </span>
             <div className="flex flex-wrap gap-2">
@@ -252,7 +252,7 @@ export default function ProfilPage() {
                         <Link
                             href="/"
                             className="text-sm font-medium hover:underline"
-                            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             {'<- Retour à l\'application'}
                         </Link>
@@ -261,13 +261,13 @@ export default function ProfilPage() {
                     <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--foreground, #ededed)', fontFamily: 'var(--font-title)' }}>
                         Mon profil
                     </h1>
-                    <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                    <p className="mb-10" style={{ color: 'var(--text-muted)' }}>
                         Gère tes informations personnelles
                     </p>
 
                     {!isConnected && (
-                        <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                            <p style={{ color: 'rgba(255, 255, 255, 0.85)' }}>Tu dois être connecté pour accéder au profil.</p>
+                        <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
+                            <p style={{ color: 'var(--foreground)' }}>Tu dois être connecté pour accéder au profil.</p>
                             <Button label="Se connecter" variant="dark" tone="tone1" onClick={() => router.push('/')} className="mt-4" />
                         </div>
                     )}
@@ -277,8 +277,8 @@ export default function ProfilPage() {
                             <div
                                 className="rounded-2xl p-6 mb-6"
                                 style={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    backgroundColor: 'var(--surface)',
+                                    border: '1px solid var(--border-subtle)',
                                 }}
                             >
                                 <div className="flex items-center gap-6">
@@ -286,7 +286,7 @@ export default function ProfilPage() {
                                         className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold shrink-0"
                                         style={{
                                             backgroundColor: 'var(--primary, #0096c7)',
-                                            color: '#fff',
+                                            color: '#ffffff',
                                         }}
                                     >
                                         {initials.toUpperCase()}
@@ -295,7 +295,7 @@ export default function ProfilPage() {
                                         <h2 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
                                             {profile.firstName} {profile.lastName}
                                         </h2>
-                                        <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>{profile.email}</p>
+                                        <p style={{ color: 'var(--text-muted)' }}>{profile.email}</p>
                                     </div>
                                 </div>
                             </div>
@@ -307,12 +307,12 @@ export default function ProfilPage() {
                                 <div
                                     className="rounded-2xl p-6 space-y-4"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'var(--surface)',
+                                        border: '1px solid var(--border-subtle)',
                                     }}
                                 >
                                     <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                                             Prénom
                                         </label>
                                         <input
@@ -323,7 +323,7 @@ export default function ProfilPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                                             Nom
                                         </label>
                                         <input
@@ -334,13 +334,13 @@ export default function ProfilPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                                             Email
                                         </label>
                                         <input type="email" value={profile.email} readOnly className="input-assistant w-full opacity-80" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                                             Téléphone
                                         </label>
                                         <input
@@ -372,8 +372,8 @@ export default function ProfilPage() {
                                 <div
                                     className="rounded-2xl p-6"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'var(--surface)',
+                                        border: '1px solid var(--border-subtle)',
                                     }}
                                 >
                                     {hasPreferences ? (
@@ -386,7 +386,7 @@ export default function ProfilPage() {
                                         </div>
                                     ) : (
                                         <div className="text-center py-4">
-                                            <p className="text-sm mb-3" style={{ color: 'rgba(255, 255, 255, 0.4)' }}>
+                                            <p className="text-sm mb-3" style={{ color: 'var(--text-dim)' }}>
                                                 Aucune préférence configurée
                                             </p>
                                             <button
@@ -413,8 +413,8 @@ export default function ProfilPage() {
                                 <div
                                     className="rounded-2xl p-6 space-y-4"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: 'var(--surface)',
+                                        border: '1px solid var(--border-subtle)',
                                     }}
                                 >
                                     <label className="flex items-center justify-between cursor-pointer">

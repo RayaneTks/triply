@@ -76,8 +76,8 @@ const ChevronIcon = () => (
 function statusStyle(status: string): { backgroundColor: string; color: string } {
     if (status === 'Termine') {
         return {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            color: 'rgba(255, 255, 255, 0.7)',
+            backgroundColor: 'var(--border-subtle)',
+            color: 'var(--text-muted)',
         };
     }
 
@@ -176,7 +176,7 @@ export default function VoyagesPage() {
                         <Link
                             href="/"
                             className="text-sm font-medium hover:underline"
-                            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             {'<- Retour a l\'application'}
                         </Link>
@@ -187,7 +187,7 @@ export default function VoyagesPage() {
                             <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
                                 Mes voyages
                             </h1>
-                            <p className="mb-10" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                            <p className="mb-10" style={{ color: 'var(--text-muted)' }}>
                                 Consultez et gerez tous vos voyages
                             </p>
                         </div>
@@ -200,7 +200,7 @@ export default function VoyagesPage() {
                                     className="rounded-lg border px-3 py-1.5 text-sm"
                                     style={{
                                         backgroundColor: 'var(--background)',
-                                        borderColor: 'rgba(255, 255, 255, 0.18)',
+                                        borderColor: 'var(--border)',
                                         color: 'var(--foreground)',
                                     }}
                                 >
@@ -212,7 +212,7 @@ export default function VoyagesPage() {
                     </div>
 
                     {loading && (
-                        <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                        <p style={{ color: 'var(--text-muted)' }}>
                             Chargement des voyages...
                         </p>
                     )}
@@ -237,8 +237,8 @@ export default function VoyagesPage() {
                                     <article
                                         className="rounded-2xl p-5 h-full cursor-pointer transition-all hover:border-primary hover:bg-white/5"
                                         style={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            backgroundColor: 'var(--surface)',
+                                            border: '1px solid var(--border-subtle)',
                                         }}
                                     >
                                         <div className="flex items-start justify-between gap-3 mb-3">
@@ -258,15 +258,15 @@ export default function VoyagesPage() {
                                             </span>
                                         </div>
 
-                                        <p className="text-sm mb-2 truncate" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                                        <p className="text-sm mb-2 truncate" style={{ color: 'var(--text-dim)' }}>
                                             {getTripCity(trip)}
                                         </p>
 
-                                        <p className="text-sm mb-2" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                        <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
                                             {formatShortDate(trip.start_date)} - {formatShortDate(trip.end_date)}
                                         </p>
 
-                                        <p className="text-sm mb-3" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                        <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
                                             {trip.travel_days} jours{trip.flight?.carrier ? ` - ${trip.flight.carrier}` : ''}
                                         </p>
 
@@ -274,7 +274,7 @@ export default function VoyagesPage() {
                                             <span className="font-bold" style={{ color: 'var(--primary)' }}>
                                                 {Math.round(getComputedBudget(trip).amount)} {getComputedBudget(trip).currency}
                                             </span>
-                                            <span className="flex items-center gap-1" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                                            <span className="flex items-center gap-1" style={{ color: 'var(--text-dim)' }}>
                                                 Voir le detail
                                                 <ChevronIcon />
                                             </span>
@@ -289,11 +289,11 @@ export default function VoyagesPage() {
                         <div
                             className="rounded-2xl p-12 text-center"
                             style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                backgroundColor: 'var(--surface)',
+                                border: '1px solid var(--border-subtle)',
                             }}
                         >
-                            <p className="mb-4" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                            <p className="mb-4" style={{ color: 'var(--text-muted)' }}>
                                 Aucun voyage pour le moment
                             </p>
                             <Link href="/">

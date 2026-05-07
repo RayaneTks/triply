@@ -20,10 +20,10 @@ function isAmadeusResponse(d: FlightResultsProps['data']): d is AmadeusResponse 
 }
 
 export const FlightResults = ({ data, onSelectOffer }: FlightResultsProps) => {
-    if (!isAmadeusResponse(data) || !data.data.length) return <div className="text-white">Aucun résultat.</div>;
+    if (!isAmadeusResponse(data) || !data.data.length) return <div style={{ color: 'var(--foreground)' }}>Aucun résultat.</div>;
 
     return (
-        <div className="flex flex-col gap-4 p-4 pb-20 max-w-4xl mx-auto w-full" style={{ color: '#e5e5e5' }}>
+        <div className="flex flex-col gap-4 p-4 pb-20 max-w-4xl mx-auto w-full" style={{ color: 'var(--foreground)' }}>
             {data.data.map((offer) => {
                 const carrierCode = offer.validatingAirlineCodes?.[0];
                 const carrierName = data.dictionaries?.carriers?.[carrierCode || ''] || carrierCode || 'Compagnie';

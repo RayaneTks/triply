@@ -46,9 +46,9 @@ export const SelectedFlightCard: React.FC<SelectedFlightCardProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && onClick()}
             className="rounded-xl border p-4 cursor-pointer transition-all hover:border-[#0096c7] hover:bg-white/5"
             style={{
-                backgroundColor: 'var(--background, #222222)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: '#e5e5e5',
+                backgroundColor: 'var(--background)',
+                borderColor: 'var(--border)',
+                color: 'var(--foreground)',
             }}
         >
             <div className="flex items-center justify-between gap-3">
@@ -64,10 +64,10 @@ export const SelectedFlightCard: React.FC<SelectedFlightCardProps> = ({
                         }}
                     />
                     <div className="min-w-0">
-                        <div className="font-semibold truncate" style={{ color: '#f5f5f5' }}>
+                        <div className="font-semibold truncate" style={{ color: 'var(--foreground)' }}>
                             {carrierName}
                         </div>
-                        <div className="text-sm flex items-center gap-2 mt-0.5" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                        <div className="text-sm flex items-center gap-2 mt-0.5" style={{ color: 'var(--text-muted)' }}>
                             <span>{firstSeg?.departure?.iataCode || '–'}</span>
                             <span>→</span>
                             <span>{lastSeg?.arrival?.iataCode || '–'}</span>
@@ -82,7 +82,7 @@ export const SelectedFlightCard: React.FC<SelectedFlightCardProps> = ({
                         <div className="font-bold" style={{ color: '#22c55e' }}>
                             {offer.price.grandTotal} {offer.price.currency}
                         </div>
-                        <div className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                             {formatTime(firstSeg?.departure?.at || '')} – {formatTime(lastSeg?.arrival?.at || '')}
                         </div>
                     </div>
