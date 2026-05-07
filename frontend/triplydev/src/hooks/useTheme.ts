@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type Theme = 'dark' | 'light';
 
@@ -10,7 +10,14 @@ function getInitialTheme(): Theme {
 }
 
 export function useTheme() {
-    const [theme, setTheme] = useState<Theme>(getInitialTheme);
+    const [theme, setTheme] = useState<Theme>('dark');
+
+    // Garde un rendu initial SSR/client identique, puis synchronise le vrai thème après hydratation.
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            setTheme(getInitialTheme());
+        }
+    }, []);
 
     const toggle = () => {
         setTheme((prev) => {

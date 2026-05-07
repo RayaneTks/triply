@@ -175,7 +175,7 @@ export default function PricingPage() {
               sans les galères
             </span>
           </h1>
-          <p className="mx-auto max-w-2xl text-lg text-slate-400">
+          <p className="mx-auto max-w-2xl text-lg text-slate-300">
             Rassemblez inspirations, comparatifs et conseils dans une seule expérience pensée pour les voyageurs.
             Choisissez la formule qui suit votre rythme.
           </p>
@@ -195,7 +195,7 @@ export default function PricingPage() {
             >
               <span className="mb-3 block text-2xl">{f.icon}</span>
               <h3 className="mb-2 font-semibold" style={{ color: 'var(--foreground)' }}>{f.title}</h3>
-              <p className="text-sm text-slate-400">{f.desc}</p>
+              <p className="text-sm text-slate-300">{f.desc}</p>
             </div>
           ))}
         </motion.section>
@@ -223,7 +223,7 @@ export default function PricingPage() {
               type="button"
               onClick={() => setIsAnnual(false)}
               className={`relative z-10 flex min-w-0 items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${
-                !isAnnual ? 'text-white' : 'text-slate-400 hover:text-white'
+                !isAnnual ? 'text-white' : 'text-slate-300 hover:text-white'
               }`}
             >
               Mensuel
@@ -233,7 +233,7 @@ export default function PricingPage() {
               type="button"
               onClick={() => setIsAnnual(true)}
               className={`relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${
-                isAnnual ? 'text-white' : 'text-slate-400 hover:text-white'
+                isAnnual ? 'text-white' : 'text-slate-300 hover:text-white'
               }`}
             >
               Annuel
@@ -279,7 +279,7 @@ export default function PricingPage() {
 
                 <div className="mb-6">
                   <h3 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{plan.name}</h3>
-                  <p className="mt-2 text-sm text-slate-400">{plan.description}</p>
+                  <p className="mt-2 text-sm text-slate-300">{plan.description}</p>
                 </div>
 
                 <div className="mb-6 min-w-0">
@@ -299,10 +299,10 @@ export default function PricingPage() {
                         </motion.span>
                       </AnimatePresence>
                     </span>
-                    <span className="shrink-0 text-sm text-slate-500 sm:text-base">{period}</span>
+                    <span className="shrink-0 text-sm text-slate-400 sm:text-base">{period}</span>
                   </div>
                   {isAnnual && plan.monthlyPrice > 0 && (
-                    <p className="mt-1 text-xs leading-snug text-slate-500">
+                    <p className="mt-1 text-xs leading-snug text-slate-400">
                       soit {Math.round((plan.annualPrice / 12) * 10) / 10}€/mois
                     </p>
                   )}
@@ -351,7 +351,7 @@ export default function PricingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-16 text-center text-sm text-slate-500"
+          className="mt-16 text-center text-sm text-slate-400"
         >
           Tous les plans incluent un essai gratuit. Sans engagement.
         </motion.p>

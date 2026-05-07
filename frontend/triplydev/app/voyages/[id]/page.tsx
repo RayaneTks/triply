@@ -113,6 +113,14 @@ export default function VoyageDetailPage() {
     const stayNights = getStayNights(hotelSummary?.checkInDate, hotelSummary?.checkOutDate);
     const hotelMapUrl = buildHotelMapUrl(hotelSummary?.latitude, hotelSummary?.longitude, hotelSummary?.address);
     const safeStatus = (trip?.status || 'en attente').replace('_', ' ');
+    const panelStyle = {
+        backgroundColor: 'var(--surface)',
+        borderColor: 'var(--border)',
+    } as const;
+    const softPanelStyle = {
+        backgroundColor: 'var(--surface-hover)',
+        borderColor: 'var(--border-subtle)',
+    } as const;
 
     useEffect(() => {
         let active = true;
@@ -189,9 +197,9 @@ export default function VoyageDetailPage() {
                         <div
                             className="rounded-2xl p-6"
                             style={{
-                                backgroundColor: 'rgba(255, 0, 0, 0.08)',
-                                border: '1px solid rgba(255, 0, 0, 0.25)',
-                                color: '#ffb3b3',
+                                backgroundColor: 'color-mix(in srgb, #ef4444 14%, transparent)',
+                                border: '1px solid color-mix(in srgb, #ef4444 35%, transparent)',
+                                color: 'color-mix(in srgb, var(--foreground) 85%, #ef4444)',
                             }}
                         >
                             <p className="mb-4">{error}</p>
@@ -205,7 +213,12 @@ export default function VoyageDetailPage() {
                         <>
                             {justValidated && (
                                 <div
-                                    className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
+                                    className="mb-6 rounded-2xl border px-4 py-3 text-sm"
+                                    style={{
+                                        borderColor: 'color-mix(in srgb, #10b981 48%, transparent)',
+                                        backgroundColor: 'color-mix(in srgb, #10b981 14%, transparent)',
+                                        color: 'color-mix(in srgb, var(--foreground) 88%, #10b981)',
+                                    }}
                                     role="status"
                                 >
                                     Voyage enregistré avec succès. Retrouvez ci-dessous le détail de votre planning.
@@ -214,47 +227,48 @@ export default function VoyageDetailPage() {
                             <section
                                 className="mb-8 rounded-3xl border p-6 sm:p-8"
                                 style={{
-                                    borderColor: 'rgba(255,255,255,0.12)',
-                                    background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.14) 0%, rgba(255, 255, 255, 0.04) 60%)',
+                                    borderColor: 'var(--border)',
+                                    background:
+                                        'linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent) 0%, var(--surface) 62%)',
                                 }}
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                     <div>
-                                        <p className="mb-2 text-xs uppercase tracking-[0.2em]" style={{ color: 'rgba(255, 255, 255, 0.62)' }}>
+                                        <p className="mb-2 text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--text-dim)' }}>
                                             Votre voyage
                                         </p>
                                         <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}>
                                             {trip.title}
                                         </h1>
-                                        <p className="mt-2 text-sm sm:text-base" style={{ color: 'rgba(255,255,255,0.78)' }}>
+                                        <p className="mt-2 text-sm sm:text-base" style={{ color: 'var(--text-muted)' }}>
                                             {tripDestination} - {trip.travel_days} jours
                                         </p>
                                     </div>
                                     <span
                                         className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                                         style={{
-                                            borderColor: 'rgba(0, 188, 212, 0.35)',
-                                            color: '#95f6ff',
-                                            backgroundColor: 'rgba(0, 188, 212, 0.12)',
+                                            borderColor: 'color-mix(in srgb, var(--primary) 45%, transparent)',
+                                            color: 'var(--primary)',
+                                            backgroundColor: 'color-mix(in srgb, var(--primary) 14%, transparent)',
                                         }}
                                     >
                                         {safeStatus}
                                     </span>
                                 </div>
                                 <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Depart</p>
+                                    <div className="rounded-xl border p-3" style={softPanelStyle}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Depart</p>
                                         <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{formatDate(trip.start_date)}</p>
                                     </div>
-                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Retour</p>
+                                    <div className="rounded-xl border p-3" style={softPanelStyle}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Retour</p>
                                         <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{formatDate(trip.end_date)}</p>
                                     </div>
-                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>Voyageurs</p>
+                                    <div className="rounded-xl border p-3" style={softPanelStyle}>
+                                        <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>Voyageurs</p>
                                         <p className="mt-1 text-sm font-medium" style={{ color: 'var(--foreground)' }}>{trip.travelers_count}</p>
                                     </div>
-                                    <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                                    <div className="rounded-xl border p-3" style={softPanelStyle}>
                                         <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Budget estime</p>
                                         <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--primary)' }}>
                                             {Math.round(tripBudget?.amount ?? 0)} {tripBudget?.currency || trip.currency}
@@ -269,10 +283,7 @@ export default function VoyageDetailPage() {
                                 </h3>
                                 <div
                                     className="grid gap-4 rounded-2xl border p-6 sm:grid-cols-2"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                        borderColor: 'rgba(255, 255, 255, 0.14)',
-                                    }}
+                                    style={panelStyle}
                                 >
                                     <div>
                                         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Depart</span>
@@ -319,10 +330,7 @@ export default function VoyageDetailPage() {
                                 </h3>
                                 <div
                                     className="grid gap-4 rounded-2xl border p-6 sm:grid-cols-2"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                        borderColor: 'rgba(255, 255, 255, 0.14)',
-                                    }}
+                                    style={panelStyle}
                                 >
                                     <div>
                                         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Compagnie</span>
@@ -366,7 +374,8 @@ export default function VoyageDetailPage() {
                                                 href={flightSummary.bookingUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-sm font-medium text-cyan-400 hover:underline"
+                                                className="text-sm font-medium hover:underline"
+                                                style={{ color: 'var(--primary)' }}
                                             >
                                                 Ouvrir le lien de reservation du vol
                                             </a>
@@ -381,10 +390,7 @@ export default function VoyageDetailPage() {
                                 </h3>
                                 <div
                                     className="grid gap-4 rounded-2xl border p-6 sm:grid-cols-2"
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                        borderColor: 'rgba(255, 255, 255, 0.14)',
-                                    }}
+                                    style={panelStyle}
                                 >
                                     <div>
                                         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Nom</span>
@@ -409,7 +415,12 @@ export default function VoyageDetailPage() {
                                                     href={hotelMapUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-400/40 text-cyan-400 hover:bg-cyan-400/10"
+                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors"
+                                                    style={{
+                                                        borderColor: 'color-mix(in srgb, var(--primary) 42%, transparent)',
+                                                        color: 'var(--primary)',
+                                                        backgroundColor: 'transparent',
+                                                    }}
                                                     aria-label="Ouvrir l'adresse dans Google Maps"
                                                     title="Ouvrir l'adresse dans Google Maps"
                                                 >
@@ -451,7 +462,8 @@ export default function VoyageDetailPage() {
                                                 href={hotelSummary.bookingUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-sm font-medium text-cyan-400 hover:underline"
+                                                className="text-sm font-medium hover:underline"
+                                                style={{ color: 'var(--primary)' }}
                                             >
                                                 Ouvrir le lien de reservation de l&apos;hebergement
                                             </a>
@@ -477,34 +489,34 @@ export default function VoyageDetailPage() {
                                                 <div
                                                     key={day.dayIndex}
                                                     className="rounded-2xl border p-5 sm:p-6"
-                                                    style={{
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.14)',
-                                                    }}
+                                                    style={panelStyle}
                                                 >
-                                                    <h4 className="mb-4 text-base font-semibold text-cyan-400">
+                                                    <h4 className="mb-4 text-base font-semibold" style={{ color: 'var(--primary)' }}>
                                                         Jour {day.dayIndex}
                                                     </h4>
                                                     {day.activities.length === 0 ? (
-                                                        <p className="text-sm text-slate-500">Aucune activité</p>
+                                                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucune activité</p>
                                                     ) : (
-                                                        <ol className="mb-4 space-y-3 text-sm text-slate-200">
+                                                        <ol className="mb-4 space-y-3 text-sm" style={{ color: 'var(--foreground)' }}>
                                                             {day.activities.map((a, i) => (
                                                                 <li
                                                                     key={`${day.dayIndex}-${i}-${a.title}`}
                                                                     className="flex items-start gap-3 rounded-xl border px-3 py-2"
-                                                                    style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.12)' }}
+                                                                    style={softPanelStyle}
                                                                 >
                                                                     <span
                                                                         className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full text-[11px] font-semibold"
-                                                                        style={{ backgroundColor: 'rgba(0,188,212,0.16)', color: '#8cf2ff' }}
+                                                                        style={{
+                                                                            backgroundColor: 'color-mix(in srgb, var(--primary) 16%, transparent)',
+                                                                            color: 'var(--primary)',
+                                                                        }}
                                                                     >
                                                                         {i + 1}
                                                                     </span>
                                                                     <span className="flex-1">
                                                                         {a.title}
                                                                         {a.durationHours != null && (
-                                                                            <span className="text-slate-400">
+                                                                            <span style={{ color: 'var(--text-muted)' }}>
                                                                                 {' '}
                                                                                 (~{a.durationHours} h)
                                                                             </span>
@@ -520,7 +532,8 @@ export default function VoyageDetailPage() {
                                                                 <iframe
                                                                     title={`Carte jour ${day.dayIndex}`}
                                                                     src={embedSrc}
-                                                                    className="h-64 w-full rounded-xl border border-white/10"
+                                                                    className="h-64 w-full rounded-xl border"
+                                                                    style={{ borderColor: 'var(--border-subtle)' }}
                                                                     loading="lazy"
                                                                     allowFullScreen
                                                                     referrerPolicy="no-referrer-when-downgrade"
@@ -532,7 +545,8 @@ export default function VoyageDetailPage() {
                                                                             href={externalLink}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            className="inline-flex text-sm font-medium text-cyan-400 hover:underline"
+                                                                            className="inline-flex text-sm font-medium hover:underline"
+                                                                            style={{ color: 'var(--primary)' }}
                                                                         >
                                                                             Ouvrir l&apos;itinéraire dans Google Maps
                                                                         </a>
@@ -540,7 +554,8 @@ export default function VoyageDetailPage() {
                                                                     <iframe
                                                                         title={`Itineraire Google Maps jour ${day.dayIndex}`}
                                                                         src={fallbackEmbedSrc}
-                                                                        className="h-64 w-full rounded-xl border border-white/10"
+                                                                        className="h-64 w-full rounded-xl border"
+                                                                        style={{ borderColor: 'var(--border-subtle)' }}
                                                                         loading="lazy"
                                                                         allowFullScreen
                                                                         referrerPolicy="no-referrer-when-downgrade"
@@ -551,7 +566,8 @@ export default function VoyageDetailPage() {
                                                                     href={externalLink || undefined}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="group block overflow-hidden rounded-xl border border-white/10"
+                                                                    className="group block overflow-hidden rounded-xl border"
+                                                                    style={{ borderColor: 'var(--border-subtle)' }}
                                                                     aria-label={`Ouvrir l'itineraire du jour ${day.dayIndex} dans Google Maps`}
                                                                 >
                                                                     <img
@@ -572,13 +588,14 @@ export default function VoyageDetailPage() {
                                                                     href={externalLink}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="inline-flex text-sm font-medium text-cyan-400 hover:underline"
+                                                                    className="inline-flex text-sm font-medium hover:underline"
+                                                                            style={{ color: 'var(--primary)' }}
                                                                 >
                                                                     Ouvrir l&apos;itinéraire dans Google Maps
                                                                 </a>
                                                             ) : null}
                                                             {!embedSrc && !(mapboxStaticFailed && fallbackEmbedSrc) && (
-                                                                <p className="mt-2 text-[11px] text-slate-500">
+                                                                <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
                                                                     {mapboxStaticFailed && !fallbackEmbedSrc
                                                                         ? 'La carte statique Mapbox n’a pas pu se charger (token, style ou coordonnees invalides).'
                                                                         : 'Ajoutez NEXT_PUBLIC_MAPBOX_TOKEN pour afficher une carte statique integree.'}

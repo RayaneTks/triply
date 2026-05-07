@@ -94,7 +94,7 @@ export default function AProposPage() {
               Triply, votre copilote pour des voyages plus{' '}
               <span style={{ color: 'var(--primary)' }}>sereins</span>
             </h1>
-            <p className="text-lg leading-relaxed text-slate-400">
+            <p className="text-lg leading-relaxed text-slate-300">
               Triply est une application de planification de voyage qui réunit carte interactive, idées d'itinéraires,
               pistes pour vos vols et hébergements, et un assistant pensé uniquement pour vous aider à préparer votre
               prochain séjour — du week-end à la grande escapade.
@@ -113,7 +113,7 @@ export default function AProposPage() {
                 <h2 className="mb-4 text-xl font-semibold sm:text-2xl" style={{ color: 'var(--foreground)' }}>
                   {section.title}
                 </h2>
-                <div className="space-y-4 text-base leading-relaxed text-slate-400">
+                <div className="space-y-4 text-base leading-relaxed text-slate-300">
                   {section.paragraphs.map((p, j) => (
                     <p key={`${section.id}-${j}`}>{p}</p>
                   ))}
@@ -129,7 +129,7 @@ export default function AProposPage() {
             className="mt-16 flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/2 p-6 sm:flex-row sm:items-center sm:justify-between"
             aria-label="Liens utiles"
           >
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-300">
               Prêt à structurer votre prochain voyage ? Comparez les formules et lancez-vous.
             </p>
             <Link

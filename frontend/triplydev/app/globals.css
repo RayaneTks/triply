@@ -22,12 +22,12 @@
   --foreground: #1a1f2e;
   --card: #ffffff;
   --card-foreground: #1a1f2e;
-  --surface: rgba(0, 0, 0, 0.04);
-  --surface-hover: rgba(0, 0, 0, 0.08);
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border: rgba(0, 0, 0, 0.15);
-  --text-muted: rgba(0, 0, 0, 0.50);
-  --text-dim: rgba(0, 0, 0, 0.38);
+  --surface: rgba(17, 24, 39, 0.04);
+  --surface-hover: rgba(17, 24, 39, 0.08);
+  --border-subtle: rgba(17, 24, 39, 0.10);
+  --border: rgba(17, 24, 39, 0.18);
+  --text-muted: rgba(17, 24, 39, 0.72);
+  --text-dim: rgba(17, 24, 39, 0.58);
   --overlay: rgba(0, 0, 0, 0.45);
 }
 
@@ -53,6 +53,8 @@
 [data-theme="light"] .bg-black\/50 { background-color: rgba(0,0,0,0.25) !important; }
 [data-theme="light"] .bg-black\/70 { background-color: rgba(0,0,0,0.35) !important; }
 [data-theme="light"] .bg-slate-900\/80 { background-color: rgba(230,236,245,0.96) !important; }
+[data-theme="light"] .bg-slate-900\/95 { background-color: rgba(236,241,248,0.98) !important; }
+[data-theme="light"] .bg-slate-950\/95 { background-color: rgba(232,238,247,0.98) !important; }
 [data-theme="light"] .bg-cyan-500\/15 { background-color: rgba(0,150,199,0.12) !important; }
 
 [data-theme="light"] .border-white\/5  { border-color: rgba(0,0,0,0.04) !important; }
@@ -66,12 +68,24 @@
 [data-theme="light"] .text-slate-100  { color: #1a1f2e !important; }
 [data-theme="light"] .text-slate-200  { color: #2d3748 !important; }
 [data-theme="light"] .text-slate-300  { color: #4a5568 !important; }
-[data-theme="light"] .text-slate-400  { color: #718096 !important; }
-[data-theme="light"] .text-slate-500  { color: #a0aec0 !important; }
+[data-theme="light"] .text-slate-400  { color: #526075 !important; }
+[data-theme="light"] .text-slate-500  { color: #66758c !important; }
+[data-theme="light"] .text-slate-600  { color: #526075 !important; }
+[data-theme="light"] .text-cyan-100   { color: #0f5f78 !important; }
+[data-theme="light"] .text-cyan-200   { color: #0e6f8b !important; }
+[data-theme="light"] .text-cyan-300   { color: #0a7f9f !important; }
+[data-theme="light"] .text-cyan-400   { color: #0284a8 !important; }
+[data-theme="light"] .text-emerald-100 { color: #1f7a5a !important; }
+[data-theme="light"] .text-emerald-300 { color: #0f8a5f !important; }
 
 [data-theme="light"] .hover\:bg-white\/5:hover  { background-color: rgba(0,0,0,0.04) !important; }
 [data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .hover\:text-slate-200:hover { color: #2d3748 !important; }
+[data-theme="light"] .hover\:bg-\[\#333333\]:hover { background-color: rgba(17,24,39,0.08) !important; }
+[data-theme="light"] .focus-visible\:ring-offset-slate-900,
+[data-theme="light"] .focus-visible\:ring-offset-slate-950 {
+  --tw-ring-offset-color: var(--background) !important;
+}
 
 /* Import Chillax via @font-face */
 @font-face {

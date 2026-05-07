@@ -88,10 +88,10 @@ type DayPlanActionTone = 'emerald' | 'cyan' | 'neutral';
 
 function dayPlanActionItemClass(tone: DayPlanActionTone): string {
     if (tone === 'emerald') {
-        return 'text-emerald-100 hover:bg-emerald-500/15';
+        return 'text-emerald-300 hover:bg-emerald-500/15';
     }
     if (tone === 'cyan') {
-        return 'text-cyan-100 hover:bg-cyan-500/15';
+        return 'text-cyan-300 hover:bg-cyan-500/15';
     }
     return 'text-slate-200 hover:bg-white/10';
 }
@@ -230,7 +230,7 @@ function DayPlanActionsDropdown({
                             role="menuitem"
                             disabled={it.disabled}
                             onClick={it.onClick}
-                            className={`flex w-full px-4 py-3 text-left text-[12px] font-medium transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${dayPlanActionItemClass(it.tone)}`}
+                            className={`flex w-full px-4 py-3 text-left text-[12px] font-medium transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-75 ${dayPlanActionItemClass(it.tone)}`}
                         >
                             {it.label}
                         </button>
@@ -1179,7 +1179,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                             type="button"
                                             onClick={onRequestAiDaySuggestions}
                                             disabled={aiSuggestionsLoading}
-                                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-left text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="rounded-xl border border-cyan-500/45 bg-cyan-500/20 px-3 py-2 text-left text-[12px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             {aiSuggestionsLoading ? 'Suggestions en cours…' : 'Suggestions IA pour ce jour'}
                                         </button>
@@ -1189,7 +1189,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                             type="button"
                                             onClick={onRequestAiAllDaysSuggestions}
                                             disabled={aiAllDaysSuggestionsLoading}
-                                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-left text-[12px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="rounded-xl border border-cyan-500/45 bg-cyan-500/16 px-3 py-2 text-left text-[12px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/26 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             {aiAllDaysSuggestionsLoading
                                                 ? 'Génération du séjour en cours…'

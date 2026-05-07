@@ -148,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     const { theme, toggle: toggleTheme } = useTheme();
+    const effectiveTheme = hasHydrated ? theme : 'dark';
 
     return (
         <>
@@ -174,7 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="shrink-0 w-full h-full flex items-center justify-center overflow-hidden">
                             <Image
-                                src={theme === 'light' ? '/Logo-triply-light.png' : '/Logo-triply-dark.png'}
+                                src={effectiveTheme === 'light' ? '/Logo-triply-light.png' : '/Logo-triply-dark.png'}
                                 alt="Triply"
                                 width={100}
                                 height={36}
@@ -184,7 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 ) : (
                     <div className="flex shrink-0 items-center justify-center" aria-hidden>
-                        <Image src={theme === 'light' ? '/Logo-triply-light.png' : '/Logo-triply-dark.png'} alt="" width={28} height={28} className="object-contain opacity-90" />
+                        <Image src={effectiveTheme === 'light' ? '/Logo-triply-light.png' : '/Logo-triply-dark.png'} alt="" width={28} height={28} className="object-contain opacity-90" />
                     </div>
                 )}
                 <button
@@ -254,12 +255,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <button
                                         type="button"
                                         onClick={toggleTheme}
-                                        title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-                                        aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+                                        title={effectiveTheme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+                                        aria-label={effectiveTheme === 'dark' ? 'Mode clair' : 'Mode sombre'}
                                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80"
                                         style={{ color: 'var(--text-muted)' }}
                                     >
-                                        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                                        {effectiveTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
                                     </button>
                                     <button
                                         type="button"
@@ -294,12 +295,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <button
                                         type="button"
                                         onClick={toggleTheme}
-                                        title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-                                        aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+                                        title={effectiveTheme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+                                        aria-label={effectiveTheme === 'dark' ? 'Mode clair' : 'Mode sombre'}
                                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80"
                                         style={{ color: 'var(--text-muted)' }}
                                     >
-                                        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                                        {effectiveTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
                                     </button>
                                     <button
                                         type="button"

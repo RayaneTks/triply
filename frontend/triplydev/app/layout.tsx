@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="overflow-x-hidden">
+    <html lang="fr" className="overflow-x-hidden" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
         <link rel="preload" href="/fonts/Chillax-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />

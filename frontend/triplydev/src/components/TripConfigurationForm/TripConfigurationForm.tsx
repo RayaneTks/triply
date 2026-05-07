@@ -110,8 +110,8 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; tag?: string; ch
     <fieldset className="min-w-0">
         <div className="mb-2.5 flex items-center gap-2">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: 'var(--primary, #0096c7)' }}>{icon}</span>
-            <legend className="text-[12px] font-semibold uppercase tracking-wider text-slate-300">{title}</legend>
-            {tag && <span className="ml-auto rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-500">{tag}</span>}
+            <legend className="text-[12px] font-semibold uppercase tracking-wider text-slate-200">{title}</legend>
+            {tag && <span className="ml-auto rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-400">{tag}</span>}
         </div>
         {children}
     </fieldset>
@@ -247,7 +247,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
     } = props;
 
     const inputCls =
-        'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/4 px-2.5 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
+        'flex h-10 w-full min-w-0 items-center rounded-lg border border-white/15 bg-white/4 px-2.5 text-[13px] text-slate-100 placeholder:text-slate-500 outline-none focus-within:border-cyan-500/60 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-colors overflow-hidden';
     const step = clampPlanFormStep(planFormStep);
     const maxV = clampPlanFormStep(planFormMaxVisited);
     const stepHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -343,7 +343,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
         <div className="rounded-xl border border-white/10 bg-white/3 px-3 py-2.5">
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
                     <p className="mt-0.5 text-[13px] text-slate-100">{value || '—'}</p>
                 </div>
                 <button
@@ -376,7 +376,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 />
                 <span className="text-[12px] leading-snug text-slate-300">
                     <span className="font-semibold text-slate-200">Saisir un vol manuellement</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-500">Masque la recherche. Horaires précis ci-dessous (optionnel).</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-400">Masque la recherche. Horaires précis ci-dessous (optionnel).</span>
                 </span>
             </label>
             {manualFlightEntry ? (
@@ -392,7 +392,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-slate-500">N° vol aller</label>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-400">N° vol aller</label>
                             <div className={inputCls}>
                                 <input
                                     type="text"
@@ -404,7 +404,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             </div>
                         </div>
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-slate-500">N° vol retour</label>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-400">N° vol retour</label>
                             <div className={inputCls}>
                                 <input
                                     type="text"
@@ -417,7 +417,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                         </div>
                     </div>
                     <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-500">Budget vol (€)</label>
+                        <label className="mb-1 block text-[11px] font-medium text-slate-400">Budget vol (€)</label>
                         <div className={inputCls}>
                             <input
                                 type="number"
@@ -429,13 +429,13 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             />
                         </div>
                     </div>
-                    <p className="mb-1.5 text-[11px] font-medium text-slate-500">Horaires (optionnel)</p>
-                    <p className="mb-1 text-[10px] text-slate-600">Vol aller</p>
+                    <p className="mb-1.5 text-[11px] font-medium text-slate-400">Horaires (optionnel)</p>
+                    <p className="mb-1 text-[10px] text-slate-500">Vol aller</p>
                     <div className="mb-2 grid grid-cols-2 gap-2">
                         <TimePicker value={outboundDepartureTime} onChange={setOutboundDepartureTime} label="Décollage" />
                         <TimePicker value={outboundArrivalTime} onChange={setOutboundArrivalTime} label="Atterrissage" />
                     </div>
-                    <p className="mb-1 text-[10px] text-slate-600">Vol retour</p>
+                    <p className="mb-1 text-[10px] text-slate-500">Vol retour</p>
                     <div className="mb-2 grid grid-cols-2 gap-2">
                         <TimePicker value={returnDepartureTime} onChange={setReturnDepartureTime} label="Décollage" />
                         <TimePicker value={returnArrivalTime} onChange={setReturnArrivalTime} label="Atterrissage" />
@@ -448,7 +448,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             onRemove={onRemoveFlight}
                         />
                     ) : (
-                        <p className="text-[11px] text-slate-500">Renseignez départ, destination et dates plus haut pour afficher le récapitulatif.</p>
+                        <p className="text-[11px] text-slate-400">Renseignez départ, destination et dates plus haut pour afficher le récapitulatif.</p>
                     )}
                 </div>
             ) : selectedFlight ? (
@@ -467,7 +467,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     </span>
                     <span className="min-w-0">
                         <span className="block text-[13px] font-medium text-slate-200">Rechercher un vol</span>
-                        <span className="block text-[11px] text-slate-500">Trouvez les meilleurs tarifs</span>
+                        <span className="block text-[11px] text-slate-400">Trouvez les meilleurs tarifs</span>
                     </span>
                 </button>
             )}
@@ -497,7 +497,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                 />
                 <span className="text-[12px] leading-snug text-slate-300">
                     <span className="font-semibold text-slate-200">Saisir un hôtel manuellement</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-500">Masque la recherche. Adresse et dates d&apos;hébergement.</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-400">Masque la recherche. Adresse et dates d&apos;hébergement.</span>
                 </span>
             </label>
             {manualHotelEntry ? (
@@ -522,7 +522,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-slate-500">Check-in</label>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-400">Check-in</label>
                             <div className={inputCls}>
                                 <input
                                     type="date"
@@ -533,7 +533,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                             </div>
                         </div>
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-slate-500">Check-out</label>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-400">Check-out</label>
                             <div className={inputCls}>
                                 <input
                                     type="date"
@@ -545,7 +545,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                         </div>
                     </div>
                     <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-500">Budget hôtel (€)</label>
+                        <label className="mb-1 block text-[11px] font-medium text-slate-400">Budget hôtel (€)</label>
                         <div className={inputCls}>
                             <input
                                 type="number"
@@ -560,7 +560,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     {selectedHotel ? (
                         <SelectedHotelCard offer={selectedHotel} onClick={onHotelCardClick || (() => {})} onRemove={onRemoveHotel} />
                     ) : (
-                        <p className="text-[11px] text-slate-500">Nom ou adresse + dates pour afficher le récapitulatif.</p>
+                        <p className="text-[11px] text-slate-400">Nom ou adresse + dates pour afficher le récapitulatif.</p>
                     )}
                 </div>
             ) : selectedHotel ? (
@@ -579,7 +579,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     </span>
                     <span className="min-w-0">
                         <span className="block text-[13px] font-medium text-slate-200">Rechercher un hôtel</span>
-                        <span className="block text-[11px] text-slate-500">Comparez les offres d&apos;hébergement</span>
+                        <span className="block text-[11px] text-slate-400">Comparez les offres d&apos;hébergement</span>
                     </span>
                 </button>
             )}
@@ -593,7 +593,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                     <div className="min-w-0">
                         <label className="mb-1 block text-[12px] font-medium text-slate-300">Budget</label>
                         <div className={inputCls}>
-                            <span className="mr-1 shrink-0 text-[12px] text-slate-500">€</span>
+                            <span className="mr-1 shrink-0 text-[12px] text-slate-400">€</span>
                             <input
                                 type="number"
                                 value={budget}
@@ -615,7 +615,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                                 max="24"
                                 className="h-full w-full min-w-0 bg-transparent text-[13px] text-slate-100 placeholder:text-slate-600 outline-none"
                             />
-                            <span className="ml-1 shrink-0 text-[12px] text-slate-500">h</span>
+                            <span className="ml-1 shrink-0 text-[12px] text-slate-400">h</span>
                         </div>
                     </div>
                 </div>
@@ -737,7 +737,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
 
         stepBody = (
             <div className="space-y-3">
-                <p className="text-[12px] text-slate-400">Vérifiez les informations avant de générer l’itinéraire ou de valider sur la carte.</p>
+                <p className="text-[12px] text-slate-300">Vérifiez les informations avant de générer l’itinéraire ou de valider sur la carte.</p>
                 {recapRow('Destination', destLine, 0)}
                 {recapRow('Dates', dateLine, 1)}
                 {recapRow('Voyageurs & séjour', travelersLine, 2)}
@@ -803,7 +803,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
                                     onClick={() => canSelectStep(i) && onPlanFormStepSelect(i)}
                                     className={`flex min-w-0 shrink-0 items-center gap-1 rounded-lg border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:text-[11px] ${
                                         active
-                                            ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-200'
+                                            ? 'border-cyan-500/55 bg-cyan-500/20 text-cyan-300'
                                             : disabled
                                               ? 'cursor-not-allowed border-white/5 bg-transparent text-slate-600'
                                               : 'border-white/10 bg-white/3 text-slate-400 hover:border-white/20 hover:text-slate-200'
@@ -833,7 +833,7 @@ export const TripConfigurationForm: React.FC<TripConfigurationFormProps> = (prop
 
                     <h3 ref={stepHeadingRef} tabIndex={-1} className="text-[13px] font-semibold text-slate-100 outline-none">
                         {PLAN_FORM_STEP_LABELS[step]}
-                        <span className="ml-1.5 font-normal text-slate-500">
+                        <span className="ml-1.5 font-normal text-slate-400">
                             ({step + 1}/{PLAN_FORM_STEP_COUNT})
                         </span>
                     </h3>
