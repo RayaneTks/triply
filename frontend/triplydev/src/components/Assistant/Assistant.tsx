@@ -241,7 +241,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
     }, [loading, stopRequest]);
 
     const postUserMessage = useCallback(
-        async (currentMessageText: string, opts?: { forceItinerary?: boolean }, targetDay?: number) => {
+        async (currentMessageText: string, opts?: { forceItinerary?: boolean; otherDaysOverride?: string[] }, targetDay?: number) => {
             if (!currentMessageText.trim() || loading) return;
 
             const session = getStoredSession();
@@ -310,7 +310,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         travelDays: ctx?.travelDays,
                         planningMode: ctx?.planningMode,
                         currentDayActivityTitles: ctx?.currentDayActivityTitles,
-                        otherDaysActivityTitles: ctx?.otherDaysActivityTitles,
+                        otherDaysActivityTitles: opts?.otherDaysOverride ?? ctx?.otherDaysActivityTitles,
                         step1FormSnapshot: s1.snapshot,
                         step1HotelOptionLabels: s1.hotelLabels,
                         step1DietaryLabels: s1.dietaryLabels,
@@ -354,6 +354,8 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 if (applyItineraryEffects && data.step1FormPatch && onApplyStep1Form) {
                     onApplyStep1Form(data.step1FormPatch);
                 }
+
+                return data;
             } catch (error) {
                 if (error instanceof Error && error.name === 'AbortError') {
                     setMessages((prev) => (prev.length > 0 && prev[prev.length - 1]?.role === 'user' ? prev.slice(0, -1) : prev));
@@ -413,17 +415,20 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 const step1Line = buildStep1ActivityConstraintsPromptFragment(step1ApiRef.current.snapshot);
                 const prefix = step1Line ? `${step1Line} ` : '';
 
-                await dayIndexes.reduce(
-                    (chain, day) =>
-                        chain.then(() =>
-                            postUserMessage(
-                                `${prefix}Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
-                                undefined,
-                                day
-                            )
-                        ),
-                    Promise.resolve()
-                );
+                const accumulator: string[] = [];
+
+                for (const day of dayIndexes) {
+                    const result = await postUserMessage(
+                        `${prefix}Propose-moi des activités concrètes pour le jour ${day} à ${dest}. Respecte environ ${maxH} h d'activités au total. Remplis suggestedActivities avec des coordonnées GPS réalistes.`,
+                        { otherDaysOverride: [...accumulator] },
+                        day
+                    );
+                    if (result?.suggestedActivities) {
+                        for (const act of result.suggestedActivities) {
+                            if (act.title) accumulator.push(act.title);
+                        }
+                    }
+                }
             },
         }),
         [destination, postUserMessage]
