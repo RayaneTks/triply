@@ -1,23 +1,13 @@
 # Next.js (App Router) dev image — service Docker tri-app.
-FROM node:22-alpine AS base
+# Stratégie : image légère qui ne contient QUE les binaires Node + node_modules.
+# Le code source vient via bind-mount Compose (cf. compose.dev.yaml), pas via COPY.
+# Conséquences :
+#   - pas de COPY frontend/triplydev/ ./ (qui invaliderait le cache à chaque save)
+#   - pas de chown -R /app (qui scannait node_modules entier, ~5 minutes)
+#   - npm ci tourne avec cache mount → ré-exécutions rapides
+FROM node:22-alpine
 
 WORKDIR /app/frontend/triplydev
-
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs && \
-    chown -R nodejs:nodejs /app
-
-FROM base AS build-deps
-
-COPY frontend/triplydev/package.json frontend/triplydev/package-lock.json* ./
-
-RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    npm ci --no-audit --no-fund && \
-    npm cache clean --force
-
-RUN chown -R nodejs:nodejs /app
-
-FROM build-deps AS development
 
 ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -25,17 +15,19 @@ ENV NODE_ENV=development \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 
-RUN apk add --no-cache su-exec
+RUN apk add --no-cache su-exec && \
+    addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
+COPY frontend/triplydev/package.json frontend/triplydev/package-lock.json* ./
+
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --no-audit --no-fund && \
+    chown -R nodejs:nodejs /app/frontend/triplydev
 
 COPY docker/spa-dev/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
-RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-dev.sh && chmod +x /usr/local/bin/docker-entrypoint-dev.sh
-
-COPY frontend/triplydev/ ./
-
-RUN mkdir -p /app/frontend/triplydev/.next && \
-    chown -R nodejs:nodejs /app
-
-USER root
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-dev.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint-dev.sh
 
 EXPOSE 3000
 

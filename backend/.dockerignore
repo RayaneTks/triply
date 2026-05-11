@@ -1,26 +1,40 @@
+# Contexte de build pour backend (php-fpm + workspace). On copie tout `backend/` mais on exclut :
 .git
 .gitignore
+.gitattributes
 .github
-README.md
-README_DEV.md
-API_PLAN.md
+.idea
+.vscode
+.claude
+.cursor
+*.md
 docs
 
+# Dépendances et caches : recréées par composer install dans l'image
+vendor
 node_modules
 npm-debug.log*
 yarn-error.log*
+.phpunit.cache
+.phpunit.result.cache
+coverage
 
-vendor
+# Caches et logs runtime (ne doivent jamais être figés dans une image)
 storage/logs
-storage/framework/cache/*
-storage/framework/sessions/*
-storage/framework/views/*
-storage/framework/testing/*
+storage/framework/cache/data
+storage/framework/sessions
+storage/framework/views
+storage/framework/testing
+storage/app/public
+storage/api-docs
 bootstrap/cache/*.php
 
+# Secrets et fichiers locaux
 .env
 .env.*
 !.env.example
+*.local
 
+# Tests : à reconstituer en CI plutôt qu'à embarquer dans une image prod
 tests
 phpunit.xml

@@ -8,6 +8,7 @@ services:
       dockerfile: ./docker/spa-prod/Dockerfile
       target: production
     container_name: tri-app
+    # Le serveur standalone Next.js écoute sur PORT=3000 ; pas de bind-mount, code figé dans l'image.
     restart: unless-stopped
     env_file:
       - ./frontend/triplydev/.env

@@ -1,13 +1,77 @@
-# Build context racine pour tri-app (SPA Vite) — exclure tout ce qui n’est pas nécessaire au npm ci / image dev.
+# Build context global. Tout ce qui n'est pas strictement nécessaire à un build doit etre exclu :
+# - .dockerignore est partagé par tous les Dockerfiles construits depuis la racine (spa-dev, spa-prod, php-fpm, workspace).
+# - Chaque Dockerfile ne COPY que ce dont il a besoin, mais le contexte envoyé au daemon est commun.
+
+# Git, CI, éditeurs, docs
 .git
+.gitignore
+.gitattributes
 .github
+.gitlab
 .claude
-node_modules
-dist
-backend
+.cursor
+.vscode
+.idea
+*.md
+LICENSE
+
+# Fichiers d'exemples / templates root (ne servent pas au build)
+.env
+.env.*
+*.local
+docker-compose.yml.init
+
+# PgAdmin host-only
 pgadmin
 pgadmin_example
+
+# Scripts d'orchestration host (utilisés via Makefile, jamais dans une image)
 scripts
-*.md
-docker-compose.yml.init
+
+# Fichiers Compose non utilisés au build (le compose lit ./compose.dev.yaml / compose.prod.yaml depuis l'host)
+compose.dev.yaml
 compose.prod.yaml
+
+# ====================================================================
+# Frontend Next.js : exclure les dépendances build-time et artefacts
+# ====================================================================
+# node_modules : recréé par "npm ci" dans l'image (sinon contexte multi-GB envoyé pour rien)
+node_modules
+**/node_modules
+
+# Artefacts Next.js / build
+**/.next
+**/dist
+**/.turbo
+**/out
+
+# Logs et fichiers de session
+*.log
+**/*.log
+
+# Storybook lib : non utilisée par le service tri-app
+frontend/triply-docs-lib
+
+# Polices brutes redondantes : seules celles dans public/fonts (utilisées par Next) sont nécessaires
+frontend/triplydev/src/assets/font
+
+# ====================================================================
+# Backend Laravel
+# ====================================================================
+backend/vendor
+backend/node_modules
+backend/.phpunit.cache
+backend/.phpunit.result.cache
+backend/storage/logs
+backend/storage/framework/cache
+backend/storage/framework/sessions
+backend/storage/framework/views
+backend/storage/framework/testing
+backend/storage/app/public
+backend/storage/api-docs
+backend/bootstrap/cache/*.php
+backend/coverage
+backend/tests
+
+# Backend : exclure ses propres Dockerfiles du contexte spa (économie marginale, mais propre)
+backend/docker/development/postgres

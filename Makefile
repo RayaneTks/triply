@@ -10,7 +10,7 @@ NODE ?= node
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
 	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-test-auth docker-test-feature docker-test-unit docker-swagger docker-routes docker-clean \
-	docker-reinstall \
+	docker-reinstall docker-fresh-rebuild docker-prune docker-clean-cache docker-image-sizes \
 	bootstrap
 
 BACKEND_DIR := backend
@@ -25,31 +25,36 @@ help:
 	@echo Usage: make target
 	@echo.
 	@echo Docker workflow:
-	@echo   make init              - full setup (build + db/bootstrap + env + migrate + swagger)
-	@echo   make install           - alias of make init
-	@echo   make ensure-dev-env    - cree .env racine + backend + frontend/triplydev si absents
-	@echo   make migrate           - run safe DB migrations in backend container
-	@echo   make up                - daily startup (rebuild images si Dockerfiles/context ont change — apres git pull)
-	@echo   make reload            - backend sync after changes
-	@echo   make down              - stop containers
-	@echo   make clean             - remove containers and volumes
-	@echo   make docker-reinstall - arret, volumes projet supprimes, images SPA/PHP/workspace rebuild sans cache, puis make init (stack propre ; efface la DB Postgres dev)
+	@echo   make init                  - full setup (build + db/bootstrap + env + migrate + swagger)
+	@echo   make install               - alias of make init
+	@echo   make ensure-dev-env        - cree .env racine + backend + frontend/triplydev si absents
+	@echo   make migrate               - run safe DB migrations in backend container
+	@echo   make up                    - daily startup (utilise le cache de build, ne reconstruit que si necessaire)
+	@echo   make rebuild               - force le rebuild des images (cache actif) sans toucher aux volumes
+	@echo   make reload                - backend sync after changes
+	@echo   make down                  - stop containers
+	@echo   make clean                 - remove containers and volumes
+	@echo   make docker-reinstall      - reset stack dev avec rebuild AVEC cache (rapide ; efface DB Postgres dev)
+	@echo   make docker-fresh-rebuild  - reset stack dev avec rebuild SANS cache (lent ; uniquement si dependencies sytemiques changees)
+	@echo   make docker-prune          - purge images dangling + reseaux + containers stoppes
+	@echo   make docker-clean-cache    - purge build cache (peut liberer plusieurs GB ; equivalent buildx prune)
+	@echo   make docker-image-sizes    - affiche taille des images du projet
 	@echo.
 	@echo Frontend dev : http://localhost:5173 = Next.js (frontend/triplydev, service tri-app Docker)
 	@echo.
 	@echo Tools:
-	@echo   make status            - docker service status
-	@echo   make logs              - all logs
-	@echo   make logs-back         - backend logs
-	@echo   make pgadmin-reset     - reset pgadmin container data and reload preconfigured server
-	@echo   make shell             - backend shell
-	@echo   make routes            - list API routes
-	@echo   make swagger           - regenerate swagger
-	@echo   make verify            - full backend checks (composer dev deps + tests)
-	@echo   make test              - backend tests (all)
-	@echo   make test-auth         - auth tests only
-	@echo   make test-feature      - feature tests only
-	@echo   make test-unit         - unit tests only
+	@echo   make status                - docker service status
+	@echo   make logs                  - all logs
+	@echo   make logs-back             - backend logs
+	@echo   make pgadmin-reset         - reset pgadmin container data and reload preconfigured server
+	@echo   make shell                 - backend shell
+	@echo   make routes                - list API routes
+	@echo   make swagger               - regenerate swagger
+	@echo   make verify                - full backend checks (composer dev deps + tests)
+	@echo   make test                  - backend tests (all)
+	@echo   make test-auth             - auth tests only
+	@echo   make test-feature          - feature tests only
+	@echo   make test-unit             - unit tests only
 
 # -----------------------------------------
 # Recommended workflow (Docker-first)
@@ -76,29 +81,63 @@ composer-init:
 
 install: init
 
-# Réinstallation complète : volumes nommés (node_modules SPA, vendor PHP, données Postgres),
-# puis rebuild sans cache des images construites localement, puis init (migrations, etc.).
+# Réinstallation : volumes projet supprimes, rebuild AVEC cache (rapide).
+# Utiliser docker-fresh-rebuild si vraiment besoin de tout reconstruire de zéro.
 docker-reinstall: ensure-dev-env
 	@echo ""
-	@echo "======== docker-reinstall : état Docker du projet remis à zéro ========"
-	@echo "  - volumes : tri-spa-node_modules, tri-backend-vendor, tri-postgres-data"
-	@echo "  - images rebuild (--no-cache) : tri-app, tri-php-fpm, tri-workspace"
-	@echo "======================================================================="
+	@echo "======== docker-reinstall : reset stack dev (cache de build actif) ========"
+	@echo "  - volumes effaces : tri-spa-node_modules, tri-backend-vendor, tri-postgres-data"
+	@echo "  - images rebuild AVEC cache (rapide) : tri-app, tri-php-fpm, tri-workspace"
+	@echo "  - pour un rebuild --no-cache : make docker-fresh-rebuild"
+	@echo "==========================================================================="
+	@echo ""
+	$(COMPOSE) down -v --remove-orphans
+	$(COMPOSE) build tri-app tri-php-fpm tri-workspace
+	$(MAKE) init
+	@echo ""
+	@echo "[docker-reinstall] Termine. Front : http://localhost:5173  |  API : http://localhost:8000"
+	@echo ""
+
+# Rebuild --no-cache : pour la rare situation où on veut tout reconstruire depuis zéro
+# (ex. apt packages bloques, layers corrompus). 10-15 min ; preferer docker-reinstall sinon.
+docker-fresh-rebuild: ensure-dev-env
+	@echo ""
+	@echo "======== docker-fresh-rebuild : reset complet SANS cache ========"
+	@echo "  Operation longue (10-15 min). Utiliser uniquement si docker-reinstall ne suffit pas."
+	@echo "================================================================="
 	@echo ""
 	$(COMPOSE) down -v --remove-orphans
 	$(COMPOSE) build --no-cache tri-app tri-php-fpm tri-workspace
 	$(MAKE) init
 	@echo ""
-	@echo "[docker-reinstall] Terminé. Front : http://localhost:5173  |  API : http://localhost:8000"
+	@echo "[docker-fresh-rebuild] Termine. Front : http://localhost:5173  |  API : http://localhost:8000"
 	@echo ""
+
+# Purge des artefacts Docker inutilises (containers stoppes, reseaux, images dangling).
+# Ne touche pas aux volumes nommes ni au build cache (-> docker-clean-cache pour ca).
+docker-prune:
+	docker container prune -f
+	docker image prune -f
+	docker network prune -f
+
+# Purge du build cache Docker (peut liberer plusieurs GB). A executer si "docker system df"
+# affiche un Build Cache eleve. Le prochain build sera plus long mais l'image finale identique.
+docker-clean-cache:
+	docker builder prune -af
+
+# Affiche la taille des images du projet (utile pour verifier l'effet des optimisations).
+docker-image-sizes:
+	@docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | findstr /R "REPOSITORY triply postgres nginx redis pgadmin"
 
 migrate:
 	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
 
 migrate-verify: migrate verify
 
+# up : demarrage quotidien. Pas de --build pour rester rapide. Si une image manque, Compose la
+# construit automatiquement. Pour forcer un rebuild apres modif Dockerfile : make rebuild.
 up: ensure-dev-env
-	$(COMPOSE) up -d --build --remove-orphans $(DOCKER_SERVICES)
+	$(COMPOSE) up -d --remove-orphans $(DOCKER_SERVICES)
 
 run: up
 

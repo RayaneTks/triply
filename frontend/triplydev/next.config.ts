@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Mode standalone : Next produit dans .next/standalone/ un serveur autonome contenant
+  // uniquement les dépendances réellement utilisées. L'image runtime passe de ~2 GB à
+  // ~150-300 MB sans node_modules complet à embarquer.
+  output: "standalone",
   turbopack: {
     root: __dirname,
   },

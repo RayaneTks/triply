@@ -6,7 +6,6 @@ services:
     build:
       context: .
       dockerfile: docker/spa-dev/Dockerfile
-      target: development
     container_name: tri-app
     # App Next.js (App Router) dans frontend/triplydev. http://localhost:5173 -> conteneur 3000.
     ports:

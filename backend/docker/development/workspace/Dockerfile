@@ -1,87 +1,75 @@
-# docker/development/workspace/Dockerfile
-# Use the official PHP CLI image as the base
+# Workspace dev : container "boîte à outils PHP" pour composer install initial,
+# tinker manuel, scripts ad-hoc. Plus léger que l'ancien (NVM + Node 24.14.0 supprimés
+# car jamais utilisés en pratique — make commands utilisent toujours tri-php-fpm).
 FROM php:8.4-cli
 
-# Set environment variables for user and group ID
 ARG UID=1000
 ARG GID=1000
-ARG NODE_VERSION=24.14.0
 
-# Install system dependencies and build libraries
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    unzip \
-    libpq-dev \
-    libonig-dev \
-    libssl-dev \
-    libxml2-dev \
-    libcurl4-openssl-dev \
-    libicu-dev \
-    libzip-dev \
-    && docker-php-ext-install -j$(nproc) \
-    pdo_mysql \
-    pdo_pgsql \
-    pgsql \
-    opcache \
-    intl \
-    zip \
-    bcmath \
-    soap \
-    && pecl install redis xdebug \
-    && docker-php-ext-enable redis xdebug\
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ENV COMPOSER_HOME=/tmp/composer-cache \
+    COMPOSER_ALLOW_SUPERUSER=1
 
-# Use ARG to define environment variables passed from the Docker build command or Docker Compose.
-ARG XDEBUG_ENABLED
-ARG XDEBUG_MODE
-ARG XDEBUG_HOST
-ARG XDEBUG_IDE_KEY
-ARG XDEBUG_LOG
-ARG XDEBUG_LOG_LEVEL
+# Active le caching apt (idem php-fpm)
+RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 
-# Configure Xdebug if enabled
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        unzip \
+        sudo \
+        libpq-dev \
+        libonig-dev \
+        libssl-dev \
+        libxml2-dev \
+        libcurl4-openssl-dev \
+        libicu-dev \
+        libzip-dev && \
+    docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        pdo_pgsql \
+        pgsql \
+        opcache \
+        intl \
+        zip \
+        bcmath \
+        soap && \
+    pecl install redis xdebug && \
+    docker-php-ext-enable redis xdebug
+
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+# xdebug optionnel via ARG
+ARG XDEBUG_ENABLED=true
+ARG XDEBUG_MODE=develop,coverage,debug,profile
+ARG XDEBUG_HOST=host.docker.internal
+ARG XDEBUG_IDE_KEY=DOCKER
+ARG XDEBUG_LOG=/dev/stdout
+ARG XDEBUG_LOG_LEVEL=0
+
 RUN if [ "${XDEBUG_ENABLED}" = "true" ]; then \
-    docker-php-ext-enable xdebug && \
-    echo "xdebug.mode=${XDEBUG_MODE}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-    echo "xdebug.idekey=${XDEBUG_IDE_KEY}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-    echo "xdebug.log=${XDEBUG_LOG}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-    echo "xdebug.log_level=${XDEBUG_LOG_LEVEL}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-    echo "xdebug.client_host=${XDEBUG_HOST}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini ; \
-    echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini ; \
-fi
+        { \
+            echo "xdebug.mode=${XDEBUG_MODE}"; \
+            echo "xdebug.idekey=${XDEBUG_IDE_KEY}"; \
+            echo "xdebug.log=${XDEBUG_LOG}"; \
+            echo "xdebug.log_level=${XDEBUG_LOG_LEVEL}"; \
+            echo "xdebug.client_host=${XDEBUG_HOST}"; \
+            echo "xdebug.start_with_request=yes"; \
+        } >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini ; \
+    fi
 
-# If the group already exists, use it; otherwise, create the 'www' group
+# Utilisateur www aligné UID/GID hôte
 RUN if getent group ${GID}; then \
-      useradd -m -u ${UID} -g ${GID} -s /bin/bash www; \
+        useradd -m -u ${UID} -g ${GID} -s /bin/bash www; \
     else \
-      groupadd -g ${GID} www && \
-      useradd -m -u ${UID} -g www -s /bin/bash www; \
+        groupadd -g ${GID} www && \
+        useradd -m -u ${UID} -g www -s /bin/bash www; \
     fi && \
     usermod -aG sudo www && \
     echo 'www ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# Switch to the non-root user to install NVM and Node.js
-USER www
-
-# Install NVM (Node Version Manager) as the www user
-RUN export NVM_DIR="$HOME/.nvm" && \
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash && \
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
-    nvm install ${NODE_VERSION} && \
-    nvm alias default ${NODE_VERSION} && \
-    nvm use default
-
-# Ensure NVM is available for all future shells
-RUN echo 'export NVM_DIR="$HOME/.nvm"' >> /home/www/.bashrc && \
-    echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /home/www/.bashrc && \
-    echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> /home/www/.bashrc
-
-# Set the working directory
 WORKDIR /var/www
 
-# Override the entrypoint to avoid the default php entrypoint
 ENTRYPOINT []
-
-# Default command to keep the container running
 CMD ["bash"]
