@@ -108,27 +108,7 @@ export async function getTrip(token: string, tripId: string): Promise<TripSummar
 }
 
 export async function createTrip(token: string, body: CreateTripPayload): Promise<TripSummary> {
-    const url = getApiUrl('/trips');
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/e8d24975-b2be-4d00-96d2-ddcaae8b1c5d', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'cc5fd8' },
-        body: JSON.stringify({
-            sessionId: 'cc5fd8',
-            hypothesisId: 'G',
-            location: 'trips-client.ts:createTrip:pre',
-            message: 'createTrip request',
-            data: {
-                url,
-                hasToken: Boolean(token?.length),
-                bodyKeys: Object.keys(body),
-                hasPlanSnapshot: body.plan_snapshot != null,
-            },
-            timestamp: Date.now(),
-        }),
-    }).catch(() => {});
-    // #endregion
-    const response = await fetch(url, {
+    const response = await fetch(getApiUrl('/trips'), {
         method: 'POST',
         headers: {
             Accept: 'application/json',
@@ -137,21 +117,6 @@ export async function createTrip(token: string, body: CreateTripPayload): Promis
         },
         body: JSON.stringify(body),
     });
-
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/e8d24975-b2be-4d00-96d2-ddcaae8b1c5d', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'cc5fd8' },
-        body: JSON.stringify({
-            sessionId: 'cc5fd8',
-            hypothesisId: 'G',
-            location: 'trips-client.ts:createTrip:post',
-            message: 'createTrip response',
-            data: { status: response.status, ok: response.ok },
-            timestamp: Date.now(),
-        }),
-    }).catch(() => {});
-    // #endregion
 
     const payload = (await response.json().catch(() => null)) as ApiSuccess<TripSummary> | ApiError | null;
     if (!response.ok) {
@@ -228,7 +193,29 @@ export const tripsClient = {
     validate(tripId: string): Promise<void> {
         return validateTripApi(requireToken(), tripId);
     },
+    delete(tripId: string): Promise<void> {
+        return deleteTrip(requireToken(), tripId);
+    },
 };
+
+export async function deleteTrip(token: string, tripId: string): Promise<void> {
+    const response = await fetch(getApiUrl(`/trips/${tripId}`), {
+        method: 'DELETE',
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (response.status === 204) {
+        return;
+    }
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccess<unknown> | ApiError | null;
+    if (!response.ok) {
+        throw new Error(getErrorMessage(payload as ApiError | null, 'Impossible de supprimer le voyage.'));
+    }
+}
 
 export async function validateTripApi(token: string, tripId: string): Promise<void> {
     const response = await fetch(getApiUrl(`/trips/${tripId}/validate`), {

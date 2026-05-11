@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -29,6 +29,9 @@ import type { PlanningNeeds } from "../../types/planning-needs";
 import { appendTripFromWizard } from "../../lib/local-trips-store";
 import { formatTripDateRange } from "../../lib/format-trip-dates";
 import type { AssistantPlannerContext, Step1FormPatch } from "../../lib/integrations/assistant";
+import { authClient, fetchPreferences } from "../../lib/auth-client";
+import { tripsClient } from "../../lib/trips-client";
+import type { PlanSnapshot } from "../../lib/plan-snapshot";
 
 function travelDaysBetween(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 1;
@@ -90,24 +93,87 @@ export function Wizard() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [datesFlexible, setDatesFlexible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [visitedCities, setVisitedCities] = useState<string[]>([]);
+
+  useEffect(() => {
+    const token = authClient.getToken();
+    if (!token) return;
+    let cancelled = false;
+    void fetchPreferences(token)
+      .then((prefs) => {
+        if (!cancelled && Array.isArray(prefs.visited_cities)) {
+          setVisitedCities(prefs.visited_cities);
+        }
+      })
+      .catch(() => {
+        // L'absence de préférences ne doit pas bloquer le wizard.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const stepsOrder: WizardStep[] = ['destination', 'dates', 'travelers', 'budget', 'styles', 'needs', 'review'];
   const currentIndex = stepsOrder.indexOf(step);
 
+  const buildPlanSnapshot = (): PlanSnapshot => ({
+    days: [],
+    planningMode: needs.activities ? 'semi_ai' : 'full_ai',
+    destinationSummary: destination.trim()
+      ? { cityName: destination.trim() }
+      : undefined,
+  });
+
+  const finalize = async () => {
+    if (submitting) return;
+
+    const titleBase = destination.trim() || 'Mon prochain voyage';
+    const formattedDates = formatTripDateRange(startDate || undefined, endDate || undefined);
+    const title = formattedDates ? `${titleBase} · ${formattedDates}` : titleBase;
+    const planSnapshot = buildPlanSnapshot();
+
+    setSubmitError(null);
+
+    const token = authClient.getToken();
+    if (token) {
+      setSubmitting(true);
+      try {
+        const trip = await tripsClient.create({
+          title,
+          destination: destination.trim() || 'À préciser',
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          travelers_count: travelers,
+          plan_snapshot: planSnapshot,
+        });
+        router.push(`/voyages/${trip.id}`);
+        return;
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Sauvegarde impossible.');
+        setSubmitting(false);
+        // En cas d'échec API, on tombe dans le fallback localStorage pour ne pas perdre la saisie.
+      }
+    }
+
+    appendTripFromWizard({
+      destination: destination.trim() || 'Destination à préciser',
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      datesFlexible,
+      budget,
+      travelers,
+      styles: [...selectedStyles],
+      needs: { ...needs },
+      status: 'planned',
+    });
+    router.push('/voyages');
+  };
+
   const next = () => {
     if (currentIndex === stepsOrder.length - 1) {
-      appendTripFromWizard({
-        destination: destination.trim() || "Destination à préciser",
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        datesFlexible,
-        budget,
-        travelers,
-        styles: [...selectedStyles],
-        needs: { ...needs },
-        status: "planned",
-      });
-      router.push("/itineraire");
+      void finalize();
     } else {
       setStep(stepsOrder[currentIndex + 1]);
     }
@@ -230,30 +296,44 @@ export function Wizard() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-12"
             >
-              <StepRenderer step={step} state={formState} actions={formActions} />
+              <StepRenderer step={step} state={formState} actions={formActions} visitedCities={visitedCities} />
             </motion.div>
           </AnimatePresence>
 
         </div>
 
         {/* Sticky Actions Bar */}
-        <div className="fixed bottom-[64px] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex items-center justify-between z-40">
-           <button 
-            onClick={prev}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-2 font-bold text-light-muted hover:text-light-foreground disabled:opacity-0 transition-all px-4"
-           >
-             <ChevronLeft size={20} />
-             Précédent
-           </button>
-           
-           <button 
-            onClick={next}
-            className="btn-primary flex items-center gap-2"
-           >
-             {currentIndex === stepsOrder.length - 1 ? "Valider l'itinéraire" : currentIndex === stepsOrder.length - 2 ? "Voir le récap" : "Continuer"}
-             <ChevronRight size={18} />
-           </button>
+        <div className="fixed bottom-[64px] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex flex-col gap-2 z-40">
+           {submitError && (
+             <p className="text-xs font-medium text-error" role="alert">
+               {submitError}
+             </p>
+           )}
+           <div className="flex items-center justify-between">
+             <button
+              onClick={prev}
+              disabled={currentIndex === 0 || submitting}
+              className="flex items-center gap-2 font-bold text-light-muted hover:text-light-foreground disabled:opacity-0 transition-all px-4"
+             >
+               <ChevronLeft size={20} />
+               Précédent
+             </button>
+
+             <button
+              onClick={next}
+              disabled={submitting}
+              className="btn-primary flex items-center gap-2 disabled:opacity-60"
+             >
+               {submitting
+                 ? 'Enregistrement…'
+                 : currentIndex === stepsOrder.length - 1
+                   ? "Valider l'itinéraire"
+                   : currentIndex === stepsOrder.length - 2
+                     ? 'Voir le récap'
+                     : 'Continuer'}
+               <ChevronRight size={18} />
+             </button>
+           </div>
         </div>
       </div>
 
@@ -274,11 +354,17 @@ function StepRenderer({
   step,
   state,
   actions,
+  visitedCities,
 }: {
   step: WizardStep;
   state: WizardFormState;
   actions: WizardFormActions;
+  visitedCities: string[];
 }) {
+  const normalizedVisited = useMemo(
+    () => new Set(visitedCities.map((c) => c.trim().toLowerCase())),
+    [visitedCities],
+  );
   switch (step) {
     case 'destination':
       return (
@@ -288,19 +374,33 @@ function StepRenderer({
              <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Destination</label>
              <CityAutocomplete value={state.destination} onChange={actions.setDestination} />
              <div className="flex flex-wrap gap-2 mt-4">
-                {["Rome", "Lisbonne", "Tokyo", "Berlin"].map(city => (
-                  <button 
-                    key={city} 
-                    onClick={() => actions.setDestination(city)}
-                    className={cn(
-                      "px-4 py-2 bg-card border rounded-full text-xs font-bold transition-all",
-                      state.destination === city ? "border-brand text-brand opacity-100" : "border-light-border text-light-muted opacity-60 hover:opacity-100"
-                    )}
-                  >
-                    {city}
-                  </button>
-                ))}
+                {["Rome", "Lisbonne", "Tokyo", "Berlin", ...visitedCities].map(city => {
+                  const alreadyVisited = normalizedVisited.has(city.toLowerCase());
+                  return (
+                    <button
+                      key={city}
+                      onClick={() => actions.setDestination(city)}
+                      className={cn(
+                        "px-4 py-2 bg-card border rounded-full text-xs font-bold transition-all flex items-center gap-2",
+                        state.destination === city ? "border-brand text-brand opacity-100" : "border-light-border text-light-muted opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      {city}
+                      {alreadyVisited && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                          Déjà visitée
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
              </div>
+             {visitedCities.length > 0 && (
+               <p className="text-xs text-light-muted">
+                 Astuce : Triply met en avant les villes que vous avez déjà visitées pour vous aider à choisir une
+                 nouvelle destination ou y retourner.
+               </p>
+             )}
           </div>
         </div>
       );
