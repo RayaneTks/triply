@@ -25,6 +25,23 @@ export interface UserPreferences {
     breakfast_included?: boolean | null;
     max_budget?: number | null;
     visited_cities?: string[];
+    done_activities?: Record<string, string[]>;
+    reminders_day_before?: boolean | null;
+    reminders_morning?: boolean | null;
+}
+
+export interface ProfileAttributes {
+    name: string;
+    email: string;
+    photo_url?: string | null;
+    timezone?: string | null;
+    preferences: UserPreferences;
+}
+
+export interface ProfileResource {
+    id: number | string;
+    type: 'profile';
+    attributes: ProfileAttributes;
 }
 
 interface ApiSuccess<T> {
@@ -179,7 +196,10 @@ export async function logout(token: string): Promise<void> {
     }
 }
 
-export async function updateProfile(token: string, payload: { name?: string }): Promise<void> {
+export async function updateProfile(
+    token: string,
+    payload: { name?: string; photo_url?: string | null; timezone?: string | null },
+): Promise<ProfileResource> {
     const response = await fetch(getApiUrl('/profile'), {
         method: 'PATCH',
         headers: {
@@ -190,13 +210,10 @@ export async function updateProfile(token: string, payload: { name?: string }): 
         body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-        const errorPayload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
-        throw new Error(getErrorMessage(errorPayload, 'Mise a jour du profil impossible.'));
-    }
+    return parseJsonResponse<ProfileResource>(response, 'Mise a jour du profil impossible.');
 }
 
-export async function fetchPreferences(token: string): Promise<UserPreferences> {
+export async function fetchProfile(token: string): Promise<ProfileResource> {
     const response = await fetch(getApiUrl('/profile'), {
         method: 'GET',
         headers: {
@@ -205,12 +222,12 @@ export async function fetchPreferences(token: string): Promise<UserPreferences> 
         },
     });
 
-    const data = await parseJsonResponse<{ attributes: { preferences: UserPreferences } }>(
-        response,
-        'Impossible de charger les preferences.',
-    );
+    return parseJsonResponse<ProfileResource>(response, 'Impossible de charger le profil.');
+}
 
-    return data.attributes?.preferences ?? {};
+export async function fetchPreferences(token: string): Promise<UserPreferences> {
+    const profile = await fetchProfile(token);
+    return profile.attributes?.preferences ?? {};
 }
 
 export async function updatePreferences(token: string, payload: UserPreferences): Promise<void> {
