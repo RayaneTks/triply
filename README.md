@@ -119,6 +119,15 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 | Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |
 | PgAdmin | [http://127.0.0.1:8080](http://127.0.0.1:8080) |
 
+## Ajouter une dépendance npm (important)
+
+`node_modules` du frontend vit dans le volume nommé `tri-spa-node_modules`, isolé du host. Un `npm install` local **ne se propage pas** au conteneur.
+
+```bash
+# Toujours installer via Docker :
+docker compose -f compose.dev.yaml exec tri-app npm install <package>
+```
+
 ## Dépannage
 
 - **DB** : vérifier `DB_*` dans `backend/.env` ; sous Docker, `DB_HOST=tri-postgres`.
