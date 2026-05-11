@@ -1,15 +1,32 @@
 'use client';
 
 import React, { useState } from "react";
-import { Check, Map, Sparkles, Plane, ListChecks } from "lucide-react";
+import { Check, Map, Sparkles, Plane, ListChecks, Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import Link from "next/link";
 
 export function PricingView() {
   const [isAnnual, setIsAnnual] = useState(true);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  async function handleCheckout(planId: string) {
+    setLoadingPlan(planId);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planId, billing: isAnnual ? 'annual' : 'monthly' }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
 
   const tiers = [
     {
+      id: null,
       name: "Découverte",
       price: 0,
       features: ["1 voyage actif", "Assistant de base", "Exports PDF"],
@@ -17,6 +34,7 @@ export function PricingView() {
       highlight: false
     },
     {
+      id: "voyageur",
       name: "Voyageur",
       price: isAnnual ? 9 : 12,
       features: ["3 voyages actifs", "Assistant contextuel", "Budget en temps réel", "Synchronisation calendrier"],
@@ -24,6 +42,7 @@ export function PricingView() {
       highlight: true
     },
     {
+      id: "pilote",
       name: "Pilote",
       price: isAnnual ? 19 : 24,
       features: ["Voyages illimités", "Assistant Pro", "Gestion de groupe", "Support prioritaire"],
@@ -85,12 +104,27 @@ export function PricingView() {
               ))}
             </ul>
 
-            <Link href="/planifier" className={cn(
-              "w-full py-4 rounded-xl font-bold transition-all text-center",
-              tier.highlight ? "bg-brand text-white hover:bg-brand-hover" : "bg-light-bg text-light-foreground hover:bg-light-border"
-            )}>
-              {tier.cta}
-            </Link>
+            {tier.id ? (
+              <button
+                onClick={() => handleCheckout(tier.id!)}
+                disabled={loadingPlan === tier.id}
+                className={cn(
+                  "w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                  tier.highlight ? "bg-brand text-white hover:bg-brand-hover" : "bg-light-bg text-light-foreground hover:bg-light-border",
+                  loadingPlan === tier.id && "opacity-70 cursor-not-allowed"
+                )}
+              >
+                {loadingPlan === tier.id && <Loader2 size={16} className="animate-spin" />}
+                {tier.cta}
+              </button>
+            ) : (
+              <Link href="/planifier" className={cn(
+                "w-full py-4 rounded-xl font-bold transition-all text-center block",
+                "bg-light-bg text-light-foreground hover:bg-light-border"
+              )}>
+                {tier.cta}
+              </Link>
+            )}
           </div>
         ))}
       </div>
