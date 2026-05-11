@@ -71,6 +71,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/trips', [TripController::class, 'index']);
         Route::get('/trips/{trip}', [TripController::class, 'show']);
         Route::patch('/trips/{trip}', [TripController::class, 'update']);
+        Route::delete('/trips/{trip}', [TripController::class, 'destroy']);
+        Route::delete('/trips/{trip}/cities/{city}', [TripController::class, 'destroyCity'])
+            ->where('city', '.*');
         Route::post('/trips/{trip}/duplicate', [TripController::class, 'duplicate']);
         Route::post('/trips/{trip}/validate', [TripController::class, 'validateTrip']);
 

@@ -6,6 +6,7 @@ use App\Models\Journee;
 use App\Models\Voyage;
 use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\TripServiceInterface;
+use App\Services\Geo\CityCountryResolverInterface;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
@@ -14,78 +15,41 @@ use Illuminate\Support\Facades\Auth;
 
 class TripService implements TripServiceInterface
 {
-    public function __construct(private readonly CurrencyConverterInterface $currencyConverter)
-    {
+    public function __construct(
+        private readonly CurrencyConverterInterface $currencyConverter,
+        private readonly CityCountryResolverInterface $cityCountryResolver,
+    ) {
     }
 
     public function createTrip(array $payload): array
     {
-        // #region agent log
-        $agentLog = static function (string $hypothesisId, string $location, string $message, array $data = []): void {
-            $p = storage_path('logs/debug-cc5fd8.log');
-            file_put_contents(
-                $p,
-                json_encode([
-                    'sessionId' => 'cc5fd8',
-                    'hypothesisId' => $hypothesisId,
-                    'location' => $location,
-                    'message' => $message,
-                    'data' => $data,
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_UNICODE)."\n",
-                FILE_APPEND | LOCK_EX
-            );
-        };
-        // #endregion
-
-        try {
-            $agentLog('A', 'TripService::createTrip', 'entry', ['payload_keys' => array_keys($payload)]);
-
-            $user = Auth::user();
-            if (! $user) {
-                throw new ModelNotFoundException('Utilisateur non authentifie.');
-            }
-
-            $startDate = $payload['start_date'] ?? now()->toDateString();
-            $endDate = $payload['end_date'] ?? $startDate;
-            $planSnapshot = $payload['plan_snapshot'] ?? null;
-            $storedSnapshot = $this->compactSnapshotForStorage($planSnapshot);
-
-            $voyage = Voyage::query()->create([
-                'titre' => $payload['title'],
-                'destination' => $this->resolveDestination($payload['destination'], $planSnapshot),
-                'date_debut' => $startDate,
-                'date_fin' => $endDate,
-                'budget_total' => $this->extractBudgetTotal($planSnapshot),
-                'nb_voyageurs' => $payload['travelers_count'] ?? 1,
-                'description' => null,
-                'user_id' => $user->id,
-                'plan_snapshot' => $storedSnapshot,
-            ]);
-
-            $agentLog('B', 'TripService::createTrip', 'after_voyage_create', ['voyage_id' => $voyage->id]);
-
-            if (is_array($planSnapshot)) {
-                $agentLog('C', 'TripService::createTrip', 'before_sync', []);
-                $this->syncStructuredTripData($voyage, $planSnapshot);
-                $agentLog('D', 'TripService::createTrip', 'after_sync', []);
-            }
-
-            $out = $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
-            $agentLog('E', 'TripService::createTrip', 'success', []);
-
-            return $out;
-        } catch (\Throwable $e) {
-            // #region agent log
-            $agentLog('X', 'TripService::createTrip', 'exception', [
-                'class' => $e::class,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            // #endregion
-            throw $e;
+        $user = Auth::user();
+        if (! $user) {
+            throw new ModelNotFoundException('Utilisateur non authentifie.');
         }
+
+        $startDate = $payload['start_date'] ?? now()->toDateString();
+        $endDate = $payload['end_date'] ?? $startDate;
+        $planSnapshot = $payload['plan_snapshot'] ?? null;
+        $storedSnapshot = $this->compactSnapshotForStorage($planSnapshot);
+
+        $voyage = Voyage::query()->create([
+            'titre' => $payload['title'],
+            'destination' => $this->resolveDestination($payload['destination'], $planSnapshot),
+            'date_debut' => $startDate,
+            'date_fin' => $endDate,
+            'budget_total' => $this->extractBudgetTotal($planSnapshot),
+            'nb_voyageurs' => $payload['travelers_count'] ?? 1,
+            'description' => null,
+            'user_id' => $user->id,
+            'plan_snapshot' => $storedSnapshot,
+        ]);
+
+        if (is_array($planSnapshot)) {
+            $this->syncStructuredTripData($voyage, $planSnapshot);
+        }
+
+        return $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
     }
 
     public function listTrips(): array
@@ -186,6 +150,71 @@ class TripService implements TripServiceInterface
         ];
     }
 
+    public function deleteTrip(string $tripId): void
+    {
+        $trip = $this->findUserTrip($tripId);
+
+        // Suppression en cascade : étapes (soft delete via le trait SoftDeletes du modèle),
+        // journées, hébergements, transports puis le voyage lui-même.
+        foreach ($trip->journees as $journee) {
+            $journee->etapes()->delete();
+        }
+        $trip->journees()->delete();
+        $trip->hebergements()->delete();
+        $trip->transports()->delete();
+        $trip->delete();
+    }
+
+    public function deleteTripCity(string $tripId, string $city): array
+    {
+        $trip = $this->findUserTrip($tripId);
+        $cityName = trim($city);
+        if ($cityName === '') {
+            throw new ModelNotFoundException('Nom de ville invalide.');
+        }
+
+        // Soft-delete de toutes les etapes du voyage rattachees a cette ville (insensible a la casse).
+        $deletedCount = 0;
+        foreach ($trip->journees as $journee) {
+            foreach ($journee->etapes()->whereRaw('LOWER(ville) = ?', [mb_strtolower($cityName)])->get() as $etape) {
+                $etape->delete();
+                $deletedCount++;
+            }
+        }
+
+        // Nettoyer aussi le plan_snapshot pour eviter que la ville reapparaisse lors d'un refresh.
+        $snapshot = is_array($trip->plan_snapshot) ? $trip->plan_snapshot : [];
+        if (isset($snapshot['days']) && is_array($snapshot['days'])) {
+            $cityLower = mb_strtolower($cityName);
+            $snapshot['days'] = array_values(array_map(function ($day) use ($cityLower) {
+                if (! is_array($day) || ! isset($day['activities']) || ! is_array($day['activities'])) {
+                    return $day;
+                }
+                $day['activities'] = array_values(array_filter(
+                    $day['activities'],
+                    function ($activity) use ($cityLower) {
+                        if (! is_array($activity)) {
+                            return true;
+                        }
+                        $aCity = isset($activity['city']) && is_string($activity['city']) ? $activity['city'] : '';
+
+                        return mb_strtolower($aCity) !== $cityLower;
+                    }
+                ));
+
+                return $day;
+            }, $snapshot['days']));
+        }
+        $trip->plan_snapshot = $snapshot;
+        $trip->save();
+
+        return [
+            'trip_id' => (string) $trip->id,
+            'city' => $cityName,
+            'deleted_count' => $deletedCount,
+        ];
+    }
+
     public function listDays(string $tripId): array
     {
         $trip = $this->findUserTrip($tripId);
@@ -236,12 +265,162 @@ class TripService implements TripServiceInterface
     public function recap(string $tripId): array
     {
         $trip = $this->findUserTrip($tripId);
+        $tripData = $this->serializeTrip($trip);
+
+        $sections = [];
+
+        // Section 1 : Vols
+        foreach ($trip->transports->sortBy('depart_le') as $transport) {
+            $type = strtolower((string) ($transport->type ?? ''));
+            if ($type === '' || str_contains($type, 'vol') || str_contains($type, 'flight') || str_contains($type, 'avion')) {
+                $sections[] = [
+                    'type' => 'flight',
+                    'transport_id' => (string) $transport->id,
+                    'depart_lieu' => $transport->depart_lieu,
+                    'arrivee_lieu' => $transport->arrivee_lieu,
+                    'depart_le' => $transport->depart_le?->toIso8601String(),
+                    'arrivee_le' => $transport->arrivee_le?->toIso8601String(),
+                    'information_supplementaire' => $transport->information_supplementaire,
+                    'prix' => $transport->prix,
+                    'devise' => $transport->devise,
+                ];
+            }
+        }
+
+        // Section 2 : Hebergements
+        foreach ($trip->hebergements->sortBy('arrivee_le') as $hebergement) {
+            $sections[] = [
+                'type' => 'hotel',
+                'nom' => $hebergement->nom,
+                'adresse' => $hebergement->adresse,
+                'ville' => $hebergement->ville,
+                'arrivee_le' => $hebergement->arrivee_le?->toIso8601String(),
+                'depart_le' => $hebergement->depart_le?->toIso8601String(),
+                'prix' => $hebergement->prix,
+                'devise' => $hebergement->devise,
+                'latitude' => $hebergement->latitude,
+                'longitude' => $hebergement->longitude,
+            ];
+        }
+
+        // Section 3 : Journees + activites + polyline simplifiee
+        foreach ($trip->journees->sortBy('numero_jour') as $journee) {
+            $activities = [];
+            $waypoints = [];
+
+            foreach ($journee->etapes->sortBy('ordre') as $etape) {
+                $extra = [];
+                if (is_string($etape->description) && trim($etape->description) !== '') {
+                    $decoded = json_decode($etape->description, true);
+                    if (is_array($decoded)) {
+                        $extra = $decoded;
+                    }
+                }
+                $lat = isset($extra['lat']) && is_numeric($extra['lat']) ? (float) $extra['lat'] : null;
+                $lng = isset($extra['lng']) && is_numeric($extra['lng']) ? (float) $extra['lng'] : null;
+
+                $activities[] = [
+                    'id' => (string) $etape->id,
+                    'title' => $etape->titre,
+                    'city' => $etape->ville,
+                    'country' => $etape->pays,
+                    'duration' => $etape->temps_estime,
+                    'cost' => $etape->prix_estime,
+                    'liked_state' => $etape->liked_state ?? 'neutral',
+                    'lat' => $lat,
+                    'lng' => $lng,
+                ];
+
+                if ($lat !== null && $lng !== null) {
+                    $waypoints[] = ['lat' => $lat, 'lng' => $lng];
+                }
+            }
+
+            $sections[] = [
+                'type' => 'day',
+                'day_id' => (string) $journee->id,
+                'day_index' => $journee->numero_jour,
+                'date' => $journee->date_jour,
+                'activities' => $activities,
+                'route_polyline' => $waypoints,
+            ];
+        }
 
         return [
             'id' => (string) $trip->id,
-            'trip' => $this->serializeTrip($trip),
-            'sections' => [],
+            'trip' => $tripData,
+            'sections' => $sections,
         ];
+    }
+
+    /**
+     * Construit la liste des segments « activite -> activite » par journee, avec un profil
+     * de transport par defaut (driving) ou marche (< 2km).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listRoutes(string $tripId): array
+    {
+        $trip = $this->findUserTrip($tripId);
+        $segments = [];
+
+        foreach ($trip->journees->sortBy('numero_jour') as $journee) {
+            $points = [];
+            foreach ($journee->etapes->sortBy('ordre') as $etape) {
+                $extra = [];
+                if (is_string($etape->description) && trim($etape->description) !== '') {
+                    $decoded = json_decode($etape->description, true);
+                    if (is_array($decoded)) {
+                        $extra = $decoded;
+                    }
+                }
+                if (! isset($extra['lat'], $extra['lng']) || ! is_numeric($extra['lat']) || ! is_numeric($extra['lng'])) {
+                    continue;
+                }
+                $points[] = [
+                    'id' => (string) $etape->id,
+                    'title' => $etape->titre,
+                    'lat' => (float) $extra['lat'],
+                    'lng' => (float) $extra['lng'],
+                ];
+            }
+
+            for ($i = 0; $i < count($points) - 1; $i++) {
+                $a = $points[$i];
+                $b = $points[$i + 1];
+                $distanceKm = $this->haversineKm($a['lat'], $a['lng'], $b['lat'], $b['lng']);
+                $profile = $distanceKm < 2.0 ? 'walking' : 'driving';
+                $segments[] = [
+                    'day_id' => (string) $journee->id,
+                    'day_index' => $journee->numero_jour,
+                    'from' => $a,
+                    'to' => $b,
+                    'profile' => $profile,
+                    'distance_km' => round($distanceKm, 2),
+                    'estimated_minutes' => $this->estimateMinutes($distanceKm, $profile),
+                ];
+            }
+        }
+
+        return $segments;
+    }
+
+    private function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthKm = 6371.0;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthKm * $c;
+    }
+
+    private function estimateMinutes(float $distanceKm, string $profile): int
+    {
+        $speedKmh = $profile === 'walking' ? 5.0 : ($profile === 'cycling' ? 15.0 : 35.0);
+
+        return (int) max(1, round(($distanceKm / max(0.1, $speedKmh)) * 60));
     }
 
     private function findUserTrip(string $tripId): Voyage
@@ -474,13 +653,14 @@ class TripService implements TripServiceInterface
                     $extra['layerId'] = $layerId;
                 }
 
+                $cityName = $this->asNullableString($activity['city'] ?? null) ?? $voyage->destination;
                 $journee->etapes()->create([
                     'temps_estime' => $this->formatDurationHours($duration),
                     'titre' => $title,
                     'description' => $extra !== [] ? json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
                     'prix_estime' => 0,
-                    'ville' => $voyage->destination,
-                    'pays' => null,
+                    'ville' => $cityName,
+                    'pays' => $this->cityCountryResolver->resolve($cityName),
                     'source_lien' => null,
                     'ordre' => $idx + 1,
                 ]);

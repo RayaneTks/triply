@@ -36,6 +36,21 @@ class TripServiceStub implements TripServiceInterface
         return ['id' => $tripId, 'type' => 'trip_validation', 'attributes' => ['validated' => true], 'todo' => 'Lock planning and publish trip'];
     }
 
+    public function deleteTrip(string $tripId): void
+    {
+        // TODO: Persist trip deletion when stub is replaced by a real implementation.
+    }
+
+    public function deleteTripCity(string $tripId, string $city): array
+    {
+        return ['trip_id' => $tripId, 'city' => $city, 'deleted_count' => 0, 'todo' => 'Delete city activities'];
+    }
+
+    public function listRoutes(string $tripId): array
+    {
+        return [];
+    }
+
     public function listDays(string $tripId): array
     {
         return ['trip_id' => $tripId, 'items' => [['id' => 'day_stub_001', 'index' => 1]], 'todo' => 'Load trip days'];

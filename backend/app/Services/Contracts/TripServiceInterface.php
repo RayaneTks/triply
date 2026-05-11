@@ -10,6 +10,9 @@ interface TripServiceInterface
     public function updateTrip(string $tripId, array $payload): array;
     public function duplicateTrip(string $tripId): array;
     public function validateTrip(string $tripId): array;
+    public function deleteTrip(string $tripId): void;
+    public function deleteTripCity(string $tripId, string $city): array;
+    public function listRoutes(string $tripId): array;
     public function listDays(string $tripId): array;
     public function updateDay(string $tripId, string $dayId, array $payload): array;
     public function recap(string $tripId): array;
