@@ -10,7 +10,10 @@ class PasswordResetRequested
     use Dispatchable;
     use SerializesModels;
 
-    public function __construct(public readonly string $email)
-    {
+    public function __construct(
+        public readonly string $email,
+        public readonly ?string $name = null,
+        public readonly ?string $resetUrl = null,
+    ) {
     }
 }

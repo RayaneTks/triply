@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Events\EmailVerificationRequested;
 use App\Events\PasswordResetRequested;
 use App\Models\User;
 use App\Services\Contracts\AuthServiceInterface;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +26,13 @@ class AuthService implements AuthServiceInterface
         ]);
 
         $token = $user->createToken('swagger')->plainTextToken;
+
+        event(new EmailVerificationRequested(
+            userId: (string) $user->id,
+            email: $user->email,
+            name: $user->name,
+            verificationUrl: $this->buildVerificationUrl($user),
+        ));
 
         return [
             'user' => $this->serializeUser($user),
@@ -85,12 +95,20 @@ class AuthService implements AuthServiceInterface
     public function forgotPassword(array $payload): array
     {
         $user = User::query()->where('email', $payload['email'])->first();
+        $resetUrl = null;
+        $name = null;
 
         if ($user) {
-            Password::broker()->createToken($user);
+            $token = Password::broker()->createToken($user);
+            $resetUrl = $this->buildPasswordResetUrl($token, $user->email);
+            $name = $user->name;
         }
 
-        event(new PasswordResetRequested($payload['email']));
+        event(new PasswordResetRequested(
+            email: $payload['email'],
+            name: $name,
+            resetUrl: $resetUrl,
+        ));
 
         return [
             'requested' => true,
@@ -165,5 +183,30 @@ class AuthService implements AuthServiceInterface
             'created_at' => $user->created_at?->toISOString(),
             'updated_at' => $user->updated_at?->toISOString(),
         ];
+    }
+
+    private function buildVerificationUrl(User $user): string
+    {
+        $frontendBase = rtrim((string) config('app.frontend_url', env('APP_FRONTEND_URL', 'http://localhost:5173')), '/');
+        $params = [
+            'id' => $user->id,
+            'hash' => sha1($user->getEmailForVerification()),
+            'expires' => Carbon::now()->addMinutes(60)->getTimestamp(),
+        ];
+        // Signature simple (HMAC sur APP_KEY) pour permettre la revérification ultérieure.
+        $params['signature'] = hash_hmac('sha256', http_build_query($params), (string) config('app.key'));
+
+        return $frontendBase.'/auth/verify-email?'.http_build_query($params);
+    }
+
+    private function buildPasswordResetUrl(string $token, string $email): string
+    {
+        $frontendBase = rtrim((string) config('app.frontend_url', env('APP_FRONTEND_URL', 'http://localhost:5173')), '/');
+        $params = [
+            'token' => $token,
+            'email' => $email,
+        ];
+
+        return $frontendBase.'/reinitialisation?'.http_build_query($params);
     }
 }
