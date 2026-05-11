@@ -27,7 +27,7 @@ help:
 	@echo Docker workflow:
 	@echo   make init                  - full setup (build + db/bootstrap + env + migrate + swagger)
 	@echo   make install               - alias of make init
-	@echo   make ensure-dev-env        - cree .env racine + backend + frontend/triplydev si absents
+	@echo   make ensure-dev-env        - cree .env racine + backend + frontend si absents
 	@echo   make migrate               - run safe DB migrations in backend container
 	@echo   make up                    - daily startup (utilise le cache de build, ne reconstruit que si necessaire)
 	@echo   make rebuild               - force le rebuild des images (cache actif) sans toucher aux volumes
@@ -40,7 +40,7 @@ help:
 	@echo   make docker-clean-cache    - purge build cache (peut liberer plusieurs GB ; equivalent buildx prune)
 	@echo   make docker-image-sizes    - affiche taille des images du projet
 	@echo.
-	@echo Frontend dev : http://localhost:5173 = Next.js (frontend/triplydev, service tri-app Docker)
+	@echo Frontend dev : http://localhost:5173 = Next.js (frontend/, service tri-app Docker)
 	@echo.
 	@echo Tools:
 	@echo   make status                - docker service status

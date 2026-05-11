@@ -6,8 +6,7 @@ Planification de voyage centralisée : vols, hébergements, carte et parcours da
 
 | Zone | Rôle |
 |------|------|
-| **`frontend/triplydev/`** (`app/`, `src/`, `next.config.ts`) | **App principale** — Next.js 16 (App Router) + React 19 + Tailwind 4. Tous les appels `/api/v1/*` sont réécrits (`next.config.ts`) vers le backend Laravel. |
-| **`frontend/triply-docs-lib/`** | Bibliothèque Storybook documentant le **design system** Triply (tokens, composants, charte). Non containerisée. |
+| **`frontend/`** (`app/`, `src/`, `next.config.ts`) | **App principale** — Next.js 16 (App Router) + React 19 + Tailwind 4. Tous les appels `/api/v1/*` sont réécrits (`next.config.ts`) vers le backend Laravel. |
 | **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
 | **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, app Next.js). |
 
@@ -21,14 +20,14 @@ Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CO
 
 ### Option B : local
 
-- PHP 8.2+, Composer 2+, Node.js 20+, PostgreSQL 16+
+- PHP 8.2+, Composer 2+, Node.js 22+, PostgreSQL 16+
 - Extensions PHP Laravel habituelles (`pdo_pgsql`, `mbstring`, etc.)
 
 ## Installation (clone neuf)
 
 ### 1) Docker + Makefile
 
-À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (`.env` racine + `backend/.env` + `frontend/triplydev/.env`) si les fichiers manquent.
+À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (`.env` racine + `backend/.env` + `frontend/.env`) si les fichiers manquent.
 
 ```bash
 make install
@@ -46,12 +45,12 @@ Réinstallation complète (volumes, rebuild images SPA/PHP/workspace, migrations
 make docker-reinstall
 ```
 
-### 2) App Next.js dans `frontend/triplydev`, sans Docker (front seul)
+### 2) App Next.js dans `frontend/`, sans Docker (front seul)
 
 Prérequis : API Laravel déjà joignable (ex. `http://127.0.0.1:8000`).
 
 ```bash
-cd frontend/triplydev
+cd frontend
 cp .env.example .env
 # Ajuster BACKEND_PROXY_TARGET=http://127.0.0.1:8000 (la valeur Docker http://tri-api ne marche pas hors Docker)
 npm ci
@@ -62,14 +61,13 @@ Application : [http://localhost:3000](http://localhost:3000) (port Next.js par d
 
 ### Design system
 
-- Tokens, fontes et charte graphique : [frontend/triplydev/design-system.md](frontend/triplydev/design-system.md).
-- Storybook des composants : `cd frontend/triply-docs-lib && npm install && npm run storybook` → http://localhost:6006.
+- Tokens, fontes et charte graphique : [frontend/design-system.md](frontend/design-system.md).
 
 ## Organisation des `.env` (important)
 
 - `.env` (racine) : variables **Docker Compose** uniquement (`DB_*`, `PGADMIN_*`, ports).
 - `backend/.env` : variables **Laravel** + **secrets** (ex. `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, `OPENAI_API_KEY`).
-- `frontend/triplydev/.env` : variables **Next.js publiques** (`NEXT_PUBLIC_*`) + cible interne du rewrite (`BACKEND_PROXY_TARGET`). **Aucun secret backend.**
+- `frontend/.env` : variables **Next.js publiques** (`NEXT_PUBLIC_*`) + cible interne du rewrite (`BACKEND_PROXY_TARGET`). **Aucun secret backend.**
 
 ### 3) Backend Laravel seul
 
@@ -120,7 +118,6 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 | Health | [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health) |
 | Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |
 | PgAdmin | [http://127.0.0.1:8080](http://127.0.0.1:8080) |
-| Storybook (lancement manuel) | [http://localhost:6006](http://localhost:6006) |
 
 ## Dépannage
 
@@ -139,4 +136,3 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 - `make reload` — sync après changements backend
 - `make down` — arrêt
 - `make docker-reinstall` — reset stack dev (destructif pour les données Postgres du volume)
-

@@ -1,6 +1,6 @@
 services:
   # ====================================
-  # Frontend service (SPA in frontend/triplydev).
+  # Frontend service (Next.js in frontend/).
   # ====================================
   tri-app:
     build:
@@ -11,7 +11,7 @@ services:
     # Le serveur standalone Next.js écoute sur PORT=3000 ; pas de bind-mount, code figé dans l'image.
     restart: unless-stopped
     env_file:
-      - ./frontend/triplydev/.env
+      - ./frontend/.env
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0

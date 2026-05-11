@@ -117,6 +117,5 @@ When extending Triply, prefer ideas and features that:
 This section complements product vision with how the codebase is organized today:
 
 - **`backend/`** — Laravel REST API: authentication (Sanctum), trips, and server-side integrations (e.g. Amadeus, place reviews, copilot chat). All third-party secrets live here.
-- **`frontend/triplydev/` (`app/`, `src/`, `next.config.ts`)** — Primary **Next.js 16 App Router** front-end. Client-side calls to `/api/v1/*` are forwarded by Next.js rewrites (`next.config.ts`) to the Laravel API (`BACKEND_PROXY_TARGET`).
-- **`frontend/triply-docs-lib/`** — Storybook design-system library (tokens, components, charte graphique). Run with `npm run storybook` (port 6006). Not containerized.
+- **`frontend/` (`app/`, `src/`, `next.config.ts`)** — Primary **Next.js 16 App Router** front-end. Client-side calls to `/api/v1/*` are forwarded by Next.js rewrites (`next.config.ts`) to the Laravel API (`BACKEND_PROXY_TARGET`). Design system tokens, fonts and components are documented in [`frontend/design-system.md`](frontend/design-system.md).
 - **`compose.dev.yaml`** + **`Makefile`** — Local development stack (PostgreSQL, PHP-FPM, Nginx, Redis, PgAdmin, Next.js service `tri-app`).

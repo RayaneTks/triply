@@ -6,9 +6,9 @@
 # ============================================================
 FROM node:22-alpine AS deps
 
-WORKDIR /app/frontend/triplydev
+WORKDIR /app/frontend
 
-COPY frontend/triplydev/package.json frontend/triplydev/package-lock.json* ./
+COPY frontend/package.json frontend/package-lock.json* ./
 
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund
@@ -18,13 +18,13 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 # ============================================================
 FROM node:22-alpine AS build
 
-WORKDIR /app/frontend/triplydev
+WORKDIR /app/frontend
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=deps /app/frontend/triplydev/node_modules ./node_modules
-COPY frontend/triplydev/ ./
+COPY --from=deps /app/frontend/node_modules ./node_modules
+COPY frontend/ ./
 
 RUN npm run build
 
@@ -33,7 +33,7 @@ RUN npm run build
 # ============================================================
 FROM node:22-alpine AS production
 
-WORKDIR /app/frontend/triplydev
+WORKDIR /app/frontend
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -44,9 +44,9 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 -G nodejs
 
 # Standalone output : server.js + node_modules minimal + public/ + .next/static
-COPY --from=build --chown=nextjs:nodejs /app/frontend/triplydev/.next/standalone ./
-COPY --from=build --chown=nextjs:nodejs /app/frontend/triplydev/.next/static ./.next/static
-COPY --from=build --chown=nextjs:nodejs /app/frontend/triplydev/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/frontend/public ./public
 
 USER nextjs
 

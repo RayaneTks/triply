@@ -49,11 +49,8 @@ node_modules
 *.log
 **/*.log
 
-# Storybook lib : non utilisée par le service tri-app
-frontend/triply-docs-lib
-
 # Polices brutes redondantes : seules celles dans public/fonts (utilisées par Next) sont nécessaires
-frontend/triplydev/src/assets/font
+frontend/src/assets/font
 
 # ====================================================================
 # Backend Laravel

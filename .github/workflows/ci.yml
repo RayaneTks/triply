@@ -9,11 +9,11 @@ on:
 
 jobs:
   frontend:
-    name: Frontend - Next.js (triplydev)
+    name: Frontend - Next.js
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend/triplydev
+        working-directory: ./frontend
 
     steps:
       - name: Checkout
@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: ./frontend/triplydev/package-lock.json
+          cache-dependency-path: ./frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci

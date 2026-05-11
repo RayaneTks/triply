@@ -7,11 +7,11 @@ services:
       context: .
       dockerfile: docker/spa-dev/Dockerfile
     container_name: tri-app
-    # App Next.js (App Router) dans frontend/triplydev. http://localhost:5173 -> conteneur 3000.
+    # App Next.js (App Router) dans frontend/. http://localhost:5173 -> conteneur 3000.
     ports:
       - "5173:3000"
     env_file:
-      - ./frontend/triplydev/.env
+      - ./frontend/.env
     environment:
       # NODE_ENV : on laisse Next.js le définir lui-même selon la commande
       # (dev → development, build/start → production). Forcer NODE_ENV=development
@@ -23,12 +23,12 @@ services:
       BACKEND_PROXY_TARGET: http://tri-api:80
       BACKEND_API_BASE_URL: http://tri-api:80/api/v1
     command: ["npm", "run", "dev"]
-    working_dir: /app/frontend/triplydev
+    working_dir: /app/frontend
     networks:
       - triply-development
     volumes:
-      - ./frontend/triplydev:/app/frontend/triplydev
-      - tri-spa-node_modules:/app/frontend/triplydev/node_modules
+      - ./frontend:/app/frontend
+      - tri-spa-node_modules:/app/frontend/node_modules
     depends_on:
       - tri-api
     restart: unless-stopped
