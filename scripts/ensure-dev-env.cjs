@@ -15,6 +15,8 @@ const ROOT_ENV = path.join(root, ".env");
 const ROOT_TEMPLATE = path.join(root, ".env.example");
 const BACKEND_ENV = path.join(root, "backend", ".env");
 const BACKEND_TEMPLATE = path.join(root, "backend", ".env.example");
+const FRONTEND_ENV = path.join(root, "frontend", "triplydev", ".env");
+const FRONTEND_TEMPLATE = path.join(root, "frontend", "triplydev", ".env.example");
 
 const SYNCED_DB_KEYS = ["DB_DATABASE", "DB_USERNAME", "DB_PASSWORD"];
 
@@ -88,4 +90,5 @@ function syncDbKeys() {
 
 ensure(ROOT_ENV, ROOT_TEMPLATE);
 ensure(BACKEND_ENV, BACKEND_TEMPLATE);
+ensure(FRONTEND_ENV, FRONTEND_TEMPLATE);
 syncDbKeys();

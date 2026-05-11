@@ -1,6 +1,6 @@
 services:
   # ====================================
-  # Frontend service (SPA rework at repository root).
+  # Frontend service (SPA in frontend/triplydev).
   # ====================================
   tri-app:
     build:
@@ -10,7 +10,7 @@ services:
     container_name: tri-app
     restart: unless-stopped
     env_file:
-      - ./.env
+      - ./frontend/triplydev/.env
     environment:
       NODE_ENV: production
       # Le proxy Express (server.ts) tourne dans tri-app : il doit viser le service API Docker.

@@ -1,7 +1,7 @@
-# SPA Vite + Express (racine du dépôt) — service Docker tri-app (dev).
+# SPA Vite + Express (frontend/triplydev) — service Docker tri-app (dev).
 FROM node:22-alpine AS base
 
-WORKDIR /app
+WORKDIR /app/frontend/triplydev
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs && \
@@ -9,7 +9,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 FROM base AS build-deps
 
-COPY package.json package-lock.json* ./
+COPY frontend/triplydev/package.json frontend/triplydev/package-lock.json* ./
 
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund && \
@@ -35,7 +35,7 @@ RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-dev.sh && chmod +x /usr/lo
 
 COPY . .
 
-RUN mkdir -p /app/node_modules/.vite && \
+RUN mkdir -p /app/frontend/triplydev/node_modules/.vite && \
     chown -R nodejs:nodejs /app
 
 USER root

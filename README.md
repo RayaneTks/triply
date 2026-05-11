@@ -6,7 +6,7 @@ Planification de voyage centralisée : vols, hébergements, carte et parcours da
 
 | Zone | Rôle |
 |------|------|
-| **Racine** (`src/`, `server.ts`, `vite.config.ts`) | **SPA principale** — React 19, Vite 6, Express sert le build et proxifie `/api/v1` vers Laravel. |
+| **`frontend/triplydev/`** (`src/`, `server.ts`, `vite.config.ts`) | **SPA principale** — React 19, Vite 6, Express sert le build et proxifie `/api/v1` vers Laravel. |
 | **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
 | **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, SPA). |
 
@@ -27,7 +27,7 @@ Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CO
 
 ### 1) Docker + Makefile
 
-À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (racine + `backend/`) si les fichiers manquent.
+À la racine du dépôt. `make install` / `make init` exécutent **`ensure-dev-env`** : copie des `.env.example` vers `.env` (`.env` racine + `backend/.env` + `frontend/triplydev/.env`) si les fichiers manquent.
 
 ```bash
 make install
@@ -45,11 +45,12 @@ Réinstallation complète (volumes, rebuild images SPA/PHP/workspace, migrations
 make docker-reinstall
 ```
 
-### 2) SPA à la racine, sans Docker (front seul)
+### 2) SPA dans `frontend/triplydev`, sans Docker (front seul)
 
 Prérequis : API Laravel déjà joignable (ex. `http://127.0.0.1:8000`).
 
 ```bash
+cd frontend/triplydev
 cp .env.example .env
 # Ajuster LARAVEL_API_URL=http://127.0.0.1:8000 (la valeur Docker http://tri-api:80 ne marche pas hors Docker)
 npm ci
@@ -57,6 +58,12 @@ npm run dev
 ```
 
 Application : [http://localhost:3000](http://localhost:3000) par défaut (`server.ts` écoute `PORT || 3000`). Pour aligner sur Docker : `PORT=5173 npm run dev` → [http://localhost:5173](http://localhost:5173). En Docker, le service **tri-app** mappe automatiquement `5173:3000`.
+
+## Organisation des `.env` (important)
+
+- `.env` (racine) : variables **Docker Compose** uniquement.
+- `backend/.env` : variables **Laravel** + **secrets** (ex. `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, `OPENAI_API_KEY`).
+- `frontend/triplydev/.env` : variables **SPA Vite/Express** (ex. `LARAVEL_API_URL`, `VITE_API_BASE_URL`, `VITE_MAPBOX_TOKEN`).
 
 ### 3) Backend Laravel seul
 

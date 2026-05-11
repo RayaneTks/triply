@@ -8,21 +8,22 @@ services:
       dockerfile: docker/spa-dev/Dockerfile
       target: development
     container_name: tri-app
-    # SPA Vite + Express à la racine du dépôt (même code que triply-rework intégré ici). http://localhost:5173
+    # SPA Vite + Express dans frontend/triplydev. http://localhost:5173
     ports:
       - "5173:3000"
     env_file:
-      - ./.env
+      - ./frontend/triplydev/.env
     environment:
       NODE_ENV: development
       # Proxy Express → Laravel (réseau Docker interne, pas l'hôte).
       LARAVEL_API_URL: http://tri-api:80
     command: ["npm", "run", "dev"]
+    working_dir: /app/frontend/triplydev
     networks:
       - triply-development
     volumes:
       - ./:/app
-      - tri-spa-node_modules:/app/node_modules
+      - tri-spa-node_modules:/app/frontend/triplydev/node_modules
     depends_on:
       - tri-api
     restart: unless-stopped

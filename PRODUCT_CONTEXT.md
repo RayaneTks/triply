@@ -117,5 +117,5 @@ When extending Triply, prefer ideas and features that:
 This section complements product vision with how the codebase is organized today:
 
 - **`backend/`** — Laravel REST API: authentication (Sanctum), trips, and server-side integrations (e.g. Amadeus, place reviews, copilot chat). Prefer keeping third-party secrets here.
-- **Repository root (`src/`, `server.ts`, Vite config)** — Primary **SPA** (React, client routing). Express dev server proxies `/api/v1` to the Laravel container or to `LARAVEL_API_URL` when run locally.
+- **`frontend/triplydev/` (`src/`, `server.ts`, Vite config)** — Primary **SPA** (React, client routing). Express dev server proxies `/api/v1` to the Laravel container or to `LARAVEL_API_URL` when run locally.
 - **`compose.dev.yaml`** + **`Makefile`** — Local development stack (PostgreSQL, PHP-FPM, Nginx, Redis, PgAdmin, SPA service `tri-app`).
