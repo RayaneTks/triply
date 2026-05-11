@@ -10,9 +10,16 @@ class CheckoutBookingRequest extends BaseApiRequest
     {
         return [
             'provider' => ['required', 'string', 'max:100'],
-            'currency' => ['required', 'string', 'size:3'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'kind' => ['nullable', 'string', 'in:flight,hotel,activity,bundle'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
             'items' => ['nullable', 'array'],
+            'destination' => ['nullable', 'string', 'max:191'],
+            'check_in' => ['nullable', 'date'],
+            'check_out' => ['nullable', 'date'],
+            'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'origin' => ['nullable', 'string', 'max:10'],
+            'destination_code' => ['nullable', 'string', 'max:10'],
         ];
     }
 }
