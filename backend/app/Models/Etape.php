@@ -20,6 +20,7 @@ class Etape extends Model
         'source_lien',
         'journee_id',
         'ordre',
+        'liked_state',
     ];
 
     public function journee(): BelongsTo
