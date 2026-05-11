@@ -7,7 +7,13 @@
 # ============================================================
 # Stage 1 — base : PHP + extensions communes (partagé prod & dev)
 # ============================================================
-FROM php:8.4-fpm AS base
+# Image pinnée sur Debian bookworm (12) : les packages runtime apt
+# (libicu72, libzip4, libpq5…) sont versionnés selon Debian. Sans pin,
+# l'image `php:8.4-fpm` peut basculer sur trixie (libicu76, libzip5…)
+# et casser le build avec un `apt-get install` qui ne trouve plus les
+# anciens noms. Pour passer à trixie : mettre à jour ICI + libicu/libzip
+# numbers ci-dessous (production stage), build + smoke-test.
+FROM php:8.4-fpm-bookworm AS base
 
 ENV COMPOSER_HOME=/tmp/composer-cache \
     COMPOSER_ALLOW_SUPERUSER=1 \
@@ -66,7 +72,8 @@ RUN --mount=type=cache,target=/tmp/composer-cache \
 # ============================================================
 # Stage 3 — production : runtime minimal
 # ============================================================
-FROM php:8.4-fpm AS production
+# Même pin que le stage `base` (cf. commentaire ligne ~10).
+FROM php:8.4-fpm-bookworm AS production
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
