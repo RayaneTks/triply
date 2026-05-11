@@ -48,12 +48,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TripServiceInterface::class, TripService::class);
         $this->app->bind(ActivityServiceInterface::class, ActivityService::class);
         $this->app->bind(PlacesServiceInterface::class, PlacesService::class);
+        // WIP — async AI job queue pas encore implémenté (retourne 202 stub)
         $this->app->bind(AiServiceInterface::class, AiServiceStub::class);
         $this->app->bind(TravelServiceInterface::class, TravelService::class);
         $this->app->bind(SharingServiceInterface::class, SharingService::class);
+        // WIP — export PDF/ICS pas encore implémenté
         $this->app->bind(ExportServiceInterface::class, ExportServiceStub::class);
+        // WIP — consentement cookie pas encore persisté
         $this->app->bind(ConsentServiceInterface::class, ConsentServiceStub::class);
         $this->app->bind(BookingServiceInterface::class, BookingService::class);
+        // WIP — observabilité non implémentée
         $this->app->bind(ObservabilityServiceInterface::class, ObservabilityServiceStub::class);
     }
 
