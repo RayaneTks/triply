@@ -13,7 +13,10 @@ services:
     env_file:
       - ./frontend/triplydev/.env
     environment:
-      NODE_ENV: development
+      # NODE_ENV : on laisse Next.js le définir lui-même selon la commande
+      # (dev → development, build/start → production). Forcer NODE_ENV=development
+      # ici provoque un bug "Cannot read properties of null (reading 'useContext')"
+      # lors de `next build` (Next 16.x) car le _global-error prerender plante.
       HOSTNAME: 0.0.0.0
       PORT: "3000"
       # Cible utilisée par next.config.ts (rewrites /api/v1/* → Laravel) via le réseau Docker interne.
