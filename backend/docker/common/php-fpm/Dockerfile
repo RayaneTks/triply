@@ -17,6 +17,8 @@ FROM php:8.4-fpm-bookworm AS base
 
 ENV COMPOSER_HOME=/tmp/composer-cache \
     COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_MEMORY_LIMIT=-1 \
+    COMPOSER_PROCESS_TIMEOUT=600 \
     PHP_OPCACHE_VALIDATE_TIMESTAMPS=0
 
 # Désactive le nettoyage apt automatique (sinon le cache mount ne survit pas)
@@ -59,9 +61,33 @@ FROM base AS builder
 # composer.json/lock d'abord → layer de dépendances stable
 COPY composer.json composer.lock ./
 
+# `composer install` avec retry x3 + backoff exponentiel.
+# - COMPOSER_MAX_PARALLEL_HTTP=1 : sérialise les downloads (les VPS avec
+#   connexion fragile corrompent parfois des zips en téléchargement parallèle,
+#   ex. `tmp-*.zip` de 0 octet → "corrupted zip archive, try again").
+# - Retry transparent : on supprime vendor/ entre tentatives pour repartir
+#   d'un état propre (sinon composer croit que des libs sont déjà installées).
+# - Si les 3 tentatives échouent, on sort 1 → build échoue franchement.
 RUN --mount=type=cache,target=/tmp/composer-cache \
-    composer install --no-dev --no-scripts --no-autoloader \
-        --optimize-autoloader --no-interaction --no-progress --prefer-dist
+    set -eu; \
+    for attempt in 1 2 3; do \
+        echo "=== composer install attempt $attempt/3 ==="; \
+        if COMPOSER_MAX_PARALLEL_HTTP=1 composer install \
+                --no-dev --no-scripts --no-autoloader \
+                --optimize-autoloader --no-interaction \
+                --no-progress --prefer-dist; then \
+            exit 0; \
+        fi; \
+        echo "composer install attempt $attempt failed"; \
+        rm -rf vendor; \
+        if [ "$attempt" -lt 3 ]; then \
+            sleep_for=$((attempt * 10)); \
+            echo "retrying in ${sleep_for}s..."; \
+            sleep "$sleep_for"; \
+        fi; \
+    done; \
+    echo "composer install failed after 3 attempts"; \
+    exit 1
 
 # Code après → ne casse pas le cache des dépendances
 COPY . /var/www
