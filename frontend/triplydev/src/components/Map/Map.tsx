@@ -1,5 +1,6 @@
+'use client';
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-// AJOUT : Import de Source et Layer
 import { Map, Source, Layer } from 'react-map-gl/mapbox';
 import type { ViewState, MapRef } from 'react-map-gl/mapbox';
 import type { Map as MapboxMap, MapMouseEvent } from 'mapbox-gl';

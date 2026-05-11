@@ -134,8 +134,26 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 subType: 'CITY,AIRPORT',
             }).toString()}`;
             fetch(url, { signal: controller.signal })
-                .then((res) => {
-                    if (!res.ok) throw new Error('Erreur API');
+                .then(async (res) => {
+                    if (!res.ok) {
+                        let detail = '';
+                        try {
+                            const payload = await res.json();
+                            detail = payload?.error?.message
+                                ?? payload?.message
+                                ?? payload?.error
+                                ?? '';
+                        } catch {
+                            try {
+                                detail = await res.text();
+                            } catch {
+                                /* noop */
+                            }
+                        }
+                        throw new Error(
+                            `Autocomplétion ville indisponible (${res.status})${detail ? ` : ${detail}` : ''}`,
+                        );
+                    }
                     return res.json();
                 })
                 .then((data) => {
@@ -147,7 +165,8 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 })
                 .catch((e) => {
                     if (controller.signal.aborted) return;
-                    console.error(e);
+                    if (e?.name === 'AbortError') return;
+                    console.warn('[CityAutocomplete]', e instanceof Error ? e.message : e);
                     setSuggestions([]);
                     setActiveIndex(-1);
                 })

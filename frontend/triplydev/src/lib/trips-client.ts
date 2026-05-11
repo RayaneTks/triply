@@ -194,6 +194,42 @@ export async function updateTrip(
     return data.data;
 }
 
+/** Alias historique pour compatibilité avec l'ancienne SPA Vite. */
+export type TripApi = TripSummary;
+
+/**
+ * Wrapper objet « tripsClient » pour préserver l'API historique de la SPA Vite.
+ * Sous le capot, réutilise les fonctions exportées en injectant automatiquement le token.
+ */
+import { authClient } from './auth-client';
+
+function requireToken(): string {
+    const token = authClient.getToken();
+    if (!token) throw new Error('Session expirée. Reconnectez-vous.');
+    return token;
+}
+
+export const tripsClient = {
+    list(): Promise<TripSummary[]> {
+        return listTrips(requireToken());
+    },
+    get(tripId: string): Promise<TripSummary> {
+        return getTrip(requireToken(), tripId);
+    },
+    create(body: CreateTripPayload): Promise<TripSummary> {
+        return createTrip(requireToken(), body);
+    },
+    update(
+        tripId: string,
+        body: Partial<CreateTripPayload> & { plan_snapshot?: PlanSnapshot | null },
+    ): Promise<TripSummary> {
+        return updateTrip(requireToken(), tripId, body);
+    },
+    validate(tripId: string): Promise<void> {
+        return validateTripApi(requireToken(), tripId);
+    },
+};
+
 export async function validateTripApi(token: string, tripId: string): Promise<void> {
     const response = await fetch(getApiUrl(`/trips/${tripId}/validate`), {
         method: 'POST',

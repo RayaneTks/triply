@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { Button } from '@/src/components/Button/Button';
 import { login, register, saveSession, type AuthUser } from '@/src/lib/auth-client';
+import { useTheme } from '@/src/hooks/useTheme';
+import { TriplyLogo } from '@/src/components/layout/TriplyLogo';
 
 export interface LoginProps {
     onLoginSuccess: (user: AuthUser, isNewUser?: boolean) => void;
@@ -11,6 +12,8 @@ export interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
+    const { theme } = useTheme();
+    const isLight = theme === 'light';
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -61,7 +64,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
         <div className="w-full h-full flex items-center justify-center relative p-6">
             <div className="absolute top-6 left-6">
                 <Button
-                    label="<- Retour"
+                    label="← Retour"
                     onClick={onBack}
                     variant="dark"
                     tone="tone1"
@@ -71,34 +74,34 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
             <div
                 className="w-full max-w-md rounded-2xl overflow-hidden"
                 style={{
-                    background: 'linear-gradient(180deg, #1a1a1a 0%, var(--background, #222222) 100%)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03)',
+                    background: isLight
+                        ? 'linear-gradient(180deg, #ffffff 0%, var(--background) 100%)'
+                        : 'linear-gradient(180deg, #1a1a1a 0%, var(--background) 100%)',
+                    border: '1px solid var(--border)',
+                    boxShadow: isLight
+                        ? '0 24px 48px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(15, 23, 42, 0.04)'
+                        : '0 24px 48px rgba(0, 0, 0, 0.50), 0 0 0 1px rgba(255, 255, 255, 0.03)',
                 }}
             >
-                <div className="pt-10 pb-6 px-8 text-center border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-                    <Image
-                        src="/Logo-triply.svg"
-                        alt="Triply"
-                        width={80}
-                        height={45}
-                        className="mx-auto object-contain mb-4"
-                    />
+                <div className="pt-10 pb-6 px-8 text-center border-b" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex justify-center mb-4">
+                        <TriplyLogo size={48} />
+                    </div>
                     <h1
                         className="text-2xl font-semibold"
-                        style={{ color: 'var(--foreground, #ededed)', fontFamily: 'var(--font-title)' }}
+                        style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}
                     >
                         {mode === 'login' ? 'Connexion' : 'Inscription'}
                     </h1>
-                    <p className="text-sm mt-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {mode === 'login' ? 'Accedez a votre espace voyage' : 'Creez votre compte Triply'}
+                    <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
+                        {mode === 'login' ? 'Accédez à votre espace voyage' : 'Créez votre compte Triply'}
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-5">
                     {mode === 'register' && (
                         <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground)' }}>
                                 Nom
                             </label>
                             <div className="input-assistant">
@@ -115,7 +118,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground)' }}>
                             Email
                         </label>
                         <div className="input-assistant">
@@ -131,14 +134,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground)' }}>
                             Mot de passe
                         </label>
                         <div className="input-assistant">
                             <input
                                 type="password"
                                 required
-                                placeholder="........"
+                                placeholder="••••••••"
                                 className="w-full flex-grow"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -148,14 +151,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
 
                     {mode === 'register' && (
                         <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground, #ededed)' }}>
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground)' }}>
                                 Confirmation du mot de passe
                             </label>
                             <div className="input-assistant">
                                 <input
                                     type="password"
                                     required
-                                    placeholder="........"
+                                    placeholder="••••••••"
                                     className="w-full flex-grow"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -165,7 +168,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                     )}
 
                     {error && (
-                        <p className="text-sm" style={{ color: '#ff7d7d' }}>
+                        <p className="text-sm font-medium" style={{ color: 'var(--error-fg)' }}>
                             {error}
                         </p>
                     )}
@@ -184,14 +187,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
 
                     <button
                         type="button"
-                        className="text-xs mt-2 hover:underline"
-                        style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                        className="text-xs mt-2 hover:underline transition-colors hover:text-primary"
+                        style={{ color: 'var(--text-muted)' }}
                         onClick={() => {
                             setError('');
                             setMode(mode === 'login' ? 'register' : 'login');
                         }}
                     >
-                        {mode === 'login' ? "Pas de compte ? S'inscrire" : 'Deja inscrit ? Se connecter'}
+                        {mode === 'login' ? "Pas de compte ? S'inscrire" : 'Déjà inscrit ? Se connecter'}
                     </button>
                 </form>
             </div>

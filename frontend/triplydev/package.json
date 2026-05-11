@@ -12,6 +12,8 @@
     "@emotion/is-prop-valid": "^1.4.0",
     "@gitgraph/react": "^1.6.0",
     "@heroicons/react": "^2.2.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.33.0",
     "lucide-react": "^0.577.0",
     "mapbox-gl": "^3.18.1",
@@ -23,6 +25,7 @@
     "react-markdown": "^10.1.0",
     "react-organizational-chart": "^2.2.1",
     "recharts": "^3.7.0",
+    "tailwind-merge": "^3.6.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

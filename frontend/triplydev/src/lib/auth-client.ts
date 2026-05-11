@@ -229,3 +229,104 @@ export async function updatePreferences(token: string, payload: UserPreferences)
         throw new Error(getErrorMessage(errorPayload, 'Mise a jour des preferences impossible.'));
     }
 }
+
+async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+    const response = await fetch(getApiUrl(path), {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+    return parseJsonResponse<T>(response, fallback);
+}
+
+function notifyAuthChanged(): void {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('triply-auth-changed'));
+}
+
+/**
+ * Wrapper objet « authClient » pour préserver l'API historique de la SPA Vite.
+ * Sous le capot, réutilise les fonctions exportées ci-dessus et le storage de session.
+ */
+export const authClient = {
+    getToken(): string | null {
+        return getStoredSession()?.token ?? null;
+    },
+    setToken(token: string): void {
+        const current = getStoredSession();
+        saveSession({ token, user: current?.user ?? null });
+        notifyAuthChanged();
+    },
+    clear(): void {
+        clearSession();
+        notifyAuthChanged();
+    },
+    async login(payload: { email: string; password: string; device_name?: string }): Promise<AuthUser> {
+        const session = await login({
+            email: payload.email,
+            password: payload.password,
+            deviceName: payload.device_name,
+        });
+        saveSession(session);
+        notifyAuthChanged();
+        return session.user as AuthUser;
+    },
+    async register(payload: {
+        name: string;
+        email: string;
+        password: string;
+        password_confirmation?: string;
+        device_name?: string;
+    }): Promise<AuthUser> {
+        const session = await register({
+            name: payload.name,
+            email: payload.email,
+            password: payload.password,
+        });
+        saveSession(session);
+        notifyAuthChanged();
+        return session.user as AuthUser;
+    },
+    async me(): Promise<AuthUser> {
+        const token = this.getToken();
+        if (!token) throw new Error('Session invalide.');
+        const user = await me(token);
+        const current = getStoredSession();
+        if (current) {
+            saveSession({ token: current.token, user });
+        }
+        return user;
+    },
+    async logout(): Promise<void> {
+        const token = this.getToken();
+        try {
+            if (token) {
+                await logout(token);
+            }
+        } finally {
+            this.clear();
+        }
+    },
+    forgotPassword(payload: { email: string }) {
+        return postJson<{ requested: boolean; email: string }>(
+            '/auth/forgot-password',
+            payload,
+            'Demande de réinitialisation impossible.',
+        );
+    },
+    resetPassword(payload: {
+        email: string;
+        token: string;
+        password: string;
+        password_confirmation: string;
+    }) {
+        return postJson<{ reset: boolean; email: string }>(
+            '/auth/reset-password',
+            payload,
+            'Réinitialisation du mot de passe impossible.',
+        );
+    },
+};
