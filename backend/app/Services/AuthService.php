@@ -179,6 +179,7 @@ class AuthService implements AuthServiceInterface
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'est_admin' => (bool) $user->est_admin,
             'email_verified_at' => $user->email_verified_at?->toISOString(),
             'created_at' => $user->created_at?->toISOString(),
             'updated_at' => $user->updated_at?->toISOString(),
