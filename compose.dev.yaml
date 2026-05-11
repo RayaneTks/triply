@@ -177,6 +177,23 @@ services:
       tri-postgres:
         condition: service_healthy
 
+  # Backend - Mailpit (SMTP catcher dev) ====
+  # SMTP: tri-mailpit:1025 (utilisé par Laravel)
+  # Web UI: http://localhost:8025 (consultation des mails)
+  tri-mailpit:
+    image: axllent/mailpit:latest
+    container_name: tri-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    networks:
+      - triply-development
+
 
 networks:
   # Attach the service to the 'laravel' network.

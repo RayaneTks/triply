@@ -22,13 +22,3 @@ namespace App\OpenApi;
 final class V1Endpoints
 {
 }
-
-
-
-
-
-
-
-
-
-
