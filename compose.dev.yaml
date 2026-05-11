@@ -8,21 +8,24 @@ services:
       dockerfile: docker/spa-dev/Dockerfile
       target: development
     container_name: tri-app
-    # SPA Vite + Express dans frontend/triplydev. http://localhost:5173
+    # App Next.js (App Router) dans frontend/triplydev. http://localhost:5173 -> conteneur 3000.
     ports:
       - "5173:3000"
     env_file:
       - ./frontend/triplydev/.env
     environment:
       NODE_ENV: development
-      # Proxy Express → Laravel (réseau Docker interne, pas l'hôte).
-      LARAVEL_API_URL: http://tri-api:80
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      # Cible utilisée par next.config.ts (rewrites /api/v1/* → Laravel) via le réseau Docker interne.
+      BACKEND_PROXY_TARGET: http://tri-api:80
+      BACKEND_API_BASE_URL: http://tri-api:80/api/v1
     command: ["npm", "run", "dev"]
     working_dir: /app/frontend/triplydev
     networks:
       - triply-development
     volumes:
-      - ./:/app
+      - ./frontend/triplydev:/app/frontend/triplydev
       - tri-spa-node_modules:/app/frontend/triplydev/node_modules
     depends_on:
       - tri-api

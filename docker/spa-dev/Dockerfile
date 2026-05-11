@@ -1,4 +1,4 @@
-# SPA Vite + Express (frontend/triplydev) — service Docker tri-app (dev).
+# Next.js (App Router) dev image — service Docker tri-app.
 FROM node:22-alpine AS base
 
 WORKDIR /app/frontend/triplydev
@@ -15,27 +15,24 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund && \
     npm cache clean --force
 
-RUN mkdir -p /app/node_modules/.vite && \
-    chown -R nodejs:nodejs /app
-
-FROM build-deps AS build
-
-COPY . .
-RUN npm run build && chown -R nodejs:nodejs /app
+RUN chown -R nodejs:nodejs /app
 
 FROM build-deps AS development
 
 ENV NODE_ENV=development \
-    NPM_CONFIG_LOGLEVEL=warn
+    NEXT_TELEMETRY_DISABLED=1 \
+    NPM_CONFIG_LOGLEVEL=warn \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
 
 RUN apk add --no-cache su-exec
 
 COPY docker/spa-dev/docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
 RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-dev.sh && chmod +x /usr/local/bin/docker-entrypoint-dev.sh
 
-COPY . .
+COPY frontend/triplydev/ ./
 
-RUN mkdir -p /app/frontend/triplydev/node_modules/.vite && \
+RUN mkdir -p /app/frontend/triplydev/.next && \
     chown -R nodejs:nodejs /app
 
 USER root

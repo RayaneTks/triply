@@ -6,9 +6,10 @@ Planification de voyage centralisée : vols, hébergements, carte et parcours da
 
 | Zone | Rôle |
 |------|------|
-| **`frontend/triplydev/`** (`src/`, `server.ts`, `vite.config.ts`) | **SPA principale** — React 19, Vite 6, Express sert le build et proxifie `/api/v1` vers Laravel. |
+| **`frontend/triplydev/`** (`app/`, `src/`, `next.config.ts`) | **App principale** — Next.js 16 (App Router) + React 19 + Tailwind 4. Tous les appels `/api/v1/*` sont réécrits (`next.config.ts`) vers le backend Laravel. |
+| **`frontend/triply-docs-lib/`** | Bibliothèque Storybook documentant le **design system** Triply (tokens, composants, charte). Non containerisée. |
 | **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
-| **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, SPA). |
+| **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, app Next.js). |
 
 Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md).
 
@@ -45,25 +46,30 @@ Réinstallation complète (volumes, rebuild images SPA/PHP/workspace, migrations
 make docker-reinstall
 ```
 
-### 2) SPA dans `frontend/triplydev`, sans Docker (front seul)
+### 2) App Next.js dans `frontend/triplydev`, sans Docker (front seul)
 
 Prérequis : API Laravel déjà joignable (ex. `http://127.0.0.1:8000`).
 
 ```bash
 cd frontend/triplydev
 cp .env.example .env
-# Ajuster LARAVEL_API_URL=http://127.0.0.1:8000 (la valeur Docker http://tri-api:80 ne marche pas hors Docker)
+# Ajuster BACKEND_PROXY_TARGET=http://127.0.0.1:8000 (la valeur Docker http://tri-api ne marche pas hors Docker)
 npm ci
 npm run dev
 ```
 
-Application : [http://localhost:3000](http://localhost:3000) par défaut (`server.ts` écoute `PORT || 3000`). Pour aligner sur Docker : `PORT=5173 npm run dev` → [http://localhost:5173](http://localhost:5173). En Docker, le service **tri-app** mappe automatiquement `5173:3000`.
+Application : [http://localhost:3000](http://localhost:3000) (port Next.js par défaut). En Docker, le service **tri-app** mappe automatiquement `5173:3000`, donc l'app reste accessible sur [http://localhost:5173](http://localhost:5173).
+
+### Design system
+
+- Tokens, fontes et charte graphique : [frontend/triplydev/design-system.md](frontend/triplydev/design-system.md).
+- Storybook des composants : `cd frontend/triply-docs-lib && npm install && npm run storybook` → http://localhost:6006.
 
 ## Organisation des `.env` (important)
 
-- `.env` (racine) : variables **Docker Compose** uniquement.
+- `.env` (racine) : variables **Docker Compose** uniquement (`DB_*`, `PGADMIN_*`, ports).
 - `backend/.env` : variables **Laravel** + **secrets** (ex. `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, `OPENAI_API_KEY`).
-- `frontend/triplydev/.env` : variables **SPA Vite/Express** (ex. `LARAVEL_API_URL`, `VITE_API_BASE_URL`, `VITE_MAPBOX_TOKEN`).
+- `frontend/triplydev/.env` : variables **Next.js publiques** (`NEXT_PUBLIC_*`) + cible interne du rewrite (`BACKEND_PROXY_TARGET`). **Aucun secret backend.**
 
 ### 3) Backend Laravel seul
 
@@ -108,12 +114,13 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 
 | Service | URL |
 |---------|-----|
-| SPA (tri-app, Docker) | [http://localhost:5173](http://localhost:5173) |
-| SPA (hors Docker, défaut) | [http://localhost:3000](http://localhost:3000) — `PORT=5173 npm run dev` pour s'aligner |
+| App Next.js (tri-app, Docker) | [http://localhost:5173](http://localhost:5173) |
+| App Next.js (hors Docker, défaut) | [http://localhost:3000](http://localhost:3000) |
 | API | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
 | Health | [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health) |
 | Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |
 | PgAdmin | [http://127.0.0.1:8080](http://127.0.0.1:8080) |
+| Storybook (lancement manuel) | [http://localhost:6006](http://localhost:6006) |
 
 ## Dépannage
 

@@ -13,8 +13,11 @@ services:
       - ./frontend/triplydev/.env
     environment:
       NODE_ENV: production
-      # Le proxy Express (server.ts) tourne dans tri-app : il doit viser le service API Docker.
-      LARAVEL_API_URL: http://tri-api:80
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      # Cible des rewrites Next.js (/api/v1/* → Laravel) sur le réseau Docker interne.
+      BACKEND_PROXY_TARGET: http://tri-api:80
+      BACKEND_API_BASE_URL: http://tri-api:80/api/v1
     networks:
       - triply-production
       - web
