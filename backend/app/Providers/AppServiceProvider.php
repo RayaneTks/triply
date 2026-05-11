@@ -35,7 +35,7 @@ use App\Services\TripService;
 use App\Services\Stubs\AiServiceStub;
 use App\Services\Stubs\ConsentServiceStub;
 use App\Services\Stubs\ExportServiceStub;
-use App\Services\Stubs\ObservabilityServiceStub;
+use App\Services\ObservabilityService;
 use App\Services\Stubs\ProfileServiceStub;
 use App\Services\SharingService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -66,8 +66,7 @@ class AppServiceProvider extends ServiceProvider
         // WIP — consentement cookie pas encore persisté
         $this->app->bind(ConsentServiceInterface::class, ConsentServiceStub::class);
         $this->app->bind(BookingServiceInterface::class, BookingService::class);
-        // WIP — observabilité non implémentée
-        $this->app->bind(ObservabilityServiceInterface::class, ObservabilityServiceStub::class);
+        $this->app->bind(ObservabilityServiceInterface::class, ObservabilityService::class);
     }
 
     public function boot(): void
