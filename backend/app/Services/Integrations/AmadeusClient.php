@@ -394,4 +394,68 @@ class AmadeusClient
             return null;
         }
     }
+
+    /**
+     * Recupere des points d'interet (categorie RESTAURANT par defaut) autour d'un point.
+     *
+     * @param  list<string>  $categories  Categories Amadeus (ex: RESTAURANT, SIGHTS, NIGHTLIFE)
+     * @return array<int, array<string, mixed>>
+     */
+    public function pointsOfInterest(float $lat, float $lng, int $radiusMeters = 1000, array $categories = ['RESTAURANT']): array
+    {
+        if (! is_finite($lat) || ! is_finite($lng)) {
+            return [];
+        }
+        $radiusKm = max(1, min(20, (int) ceil($radiusMeters / 1000)));
+        $cacheKey = sprintf('integrations:amadeus:poi:%.4f:%.4f:%d:%s', $lat, $lng, $radiusKm, implode(',', $categories));
+
+        return Cache::remember($cacheKey, 60 * 60, function () use ($lat, $lng, $radiusKm, $categories) {
+            try {
+                $token = $this->getAccessToken();
+                $url = $this->baseUrl().'/v1/reference-data/locations/pois?'.http_build_query([
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'radius' => $radiusKm,
+                    'categories' => implode(',', $categories),
+                    'page[limit]' => 20,
+                ]);
+                $res = Http::withToken($token)->acceptJson()->timeout(25)->get($url);
+                if (! $res->successful()) {
+                    Log::warning('Amadeus POIs failed', ['status' => $res->status(), 'body' => $res->body()]);
+
+                    return [];
+                }
+                $data = $res->json('data');
+                if (! is_array($data)) {
+                    return [];
+                }
+
+                return array_values(array_filter(array_map(function ($poi) {
+                    if (! is_array($poi)) {
+                        return null;
+                    }
+                    $geo = $poi['geoCode'] ?? [];
+                    $plat = isset($geo['latitude']) && is_numeric($geo['latitude']) ? (float) $geo['latitude'] : null;
+                    $plng = isset($geo['longitude']) && is_numeric($geo['longitude']) ? (float) $geo['longitude'] : null;
+                    if ($plat === null || $plng === null) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => isset($poi['id']) ? (string) $poi['id'] : null,
+                        'name' => isset($poi['name']) ? (string) $poi['name'] : 'Restaurant',
+                        'category' => isset($poi['category']) ? (string) $poi['category'] : 'RESTAURANT',
+                        'rank' => isset($poi['rank']) && is_numeric($poi['rank']) ? (int) $poi['rank'] : null,
+                        'tags' => isset($poi['tags']) && is_array($poi['tags']) ? array_values($poi['tags']) : [],
+                        'lat' => $plat,
+                        'lng' => $plng,
+                    ];
+                }, $data)));
+            } catch (\Throwable $e) {
+                Log::warning('Amadeus POIs exception', ['error' => $e->getMessage()]);
+
+                return [];
+            }
+        });
+    }
 }
