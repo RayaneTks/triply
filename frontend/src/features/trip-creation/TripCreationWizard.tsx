@@ -350,7 +350,7 @@ function ActivityCard({
 }) {
     const name = activityPoiDisplayName(poi);
     const [address, setAddress] = useState<string | null>(null);
-    const [addressLoading, setAddressLoading] = useState(true);
+    const [addressLoading, setAddressLoading] = useState(Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN));
     const durationLabel =
         poi.durationHours != null && Number.isFinite(poi.durationHours) && poi.durationHours > 0
             ? `~${poi.durationHours} h`
@@ -365,8 +365,6 @@ function ActivityCard({
         let cancelled = false;
         const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
         if (!mapboxToken) {
-            setAddress(null);
-            setAddressLoading(false);
             return () => { cancelled = true; };
         }
         const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${poi.lngLat.lng},${poi.lngLat.lat}.json?access_token=${mapboxToken}&language=fr&limit=1`;

@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // French text with apostrophes is idiomatic — escaping to &apos; is unreadable
+      "react/no-unescaped-entities": "off",
     },
   },
   // Override default ignores of eslint-config-next.
