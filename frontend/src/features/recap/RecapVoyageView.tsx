@@ -228,7 +228,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
     if (error || !recap) {
         return (
             <div className="px-6 py-10">
-                <ErrorState title="Récap indisponible" message={error ?? 'Voyage introuvable.'} />
+                <ErrorState title="Récap indisponible" description={error ?? 'Voyage introuvable.'} />
             </div>
         );
     }

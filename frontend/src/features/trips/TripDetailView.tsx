@@ -24,7 +24,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { PageHeader } from '../../components/ui/PageHeader';
-import { WorldMap as Map } from '../../components/Map/Map';
+import { WorldMap } from '../../components/Map/Map';
 import { LikeButtons } from '../../components/activities/LikeButtons';
 import { NearbyRestaurants } from '../../components/activities/NearbyRestaurants';
 import { LocalTransportsSection } from '../../components/trips/LocalTransportsSection';
@@ -480,7 +480,7 @@ export function TripDetailView() {
 
                         {activeTab === 'map' && (
                             <div className="aspect-video lg:aspect-auto lg:h-[600px] w-full bg-light-bg rounded-[40px] overflow-hidden border border-light-border">
-                                <Map accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''} />
+                                <WorldMap accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''} />
                             </div>
                         )}
 

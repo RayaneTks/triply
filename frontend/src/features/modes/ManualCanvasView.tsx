@@ -23,7 +23,14 @@ export function ManualCanvasView() {
   const router = useRouter();
   const [brief, setBrief] = useState("");
   const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [summary, setSummary] = useState<Record<string, string> | null>(null);
+  type Summary = {
+    destination: string;
+    period: string;
+    budget: string;
+    constraintsCount: number;
+    highlights: string[];
+  };
+  const [summary, setSummary] = useState<Summary | null>(null);
 
   const handleSynthesize = () => {
     if (!brief.trim()) return;

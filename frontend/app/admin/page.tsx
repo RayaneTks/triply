@@ -142,7 +142,7 @@ export default function AdminDashboard() {
                       className="w-full bg-brand/70 rounded-t-md transition-all"
                       style={{ height: `${Math.max(pct, 4)}%` }}
                     />
-                    <span className="text-[10px] text-light-muted">{g.month}</span>
+                    <span className="text-xs text-light-muted">{g.month}</span>
                   </div>
                 );
               })}
