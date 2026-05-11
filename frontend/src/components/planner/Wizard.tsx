@@ -20,8 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Assistant } from "./Assistant";
-import { CopilotMobileSheet } from "../layout/CopilotMobileSheet";
+import { AssistantBubble } from "./AssistantBubble";
 import { CityAutocomplete } from "../CityAutocomplete/CityAutocomplete";
 import { DateRangePicker } from "../DataRangePicker/DataRangePicker";
 import { TravelerCounter } from "../TravelerCounter/TravelerCounter";
@@ -78,8 +77,6 @@ interface WizardFormActions {
 export function Wizard() {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>('destination');
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
-
   const [destination, setDestination] = useState("");
   const [travelers, setTravelers] = useState(2);
   const [budget, setBudget] = useState(2500);
@@ -267,12 +264,7 @@ export function Wizard() {
              <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Étape {currentIndex + 1} / {stepsOrder.length}</span>
              </div>
-             <button 
-                onClick={() => setIsCopilotOpen(true)}
-                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
-              >
-                <Bot size={14} /> Aide
-              </button>
+             <div className="w-8" />
           </div>
 
           {/* Stepper Desktop */}
@@ -337,15 +329,7 @@ export function Wizard() {
         </div>
       </div>
 
-      {/* Side Assistant Desktop */}
-      <aside className="hidden lg:block w-[350px] bg-card border-l border-light-border">
-         <Assistant plannerContext={plannerContext} onApplyStep1Patch={applyStep1Patch} />
-      </aside>
-
-      {/* Mobile Copilot Sheet */}
-      <CopilotMobileSheet isOpen={isCopilotOpen} onClose={() => setIsCopilotOpen(false)}>
-         <Assistant isMobile plannerContext={plannerContext} onApplyStep1Patch={applyStep1Patch} />
-      </CopilotMobileSheet>
+      <AssistantBubble plannerContext={plannerContext} onApplyStep1Patch={applyStep1Patch} />
     </div>
   );
 }
