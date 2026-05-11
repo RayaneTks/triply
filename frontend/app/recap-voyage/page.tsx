@@ -1,12 +1,18 @@
-'use client';
+import { Suspense } from 'react';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { AppShell } from '@/src/components/layout/AppShell';
+import { RecapVoyageView } from '@/src/features/recap/RecapVoyageView';
 
-export default function RecapVoyageRedirect() {
-    const router = useRouter();
-    useEffect(() => {
-        router.replace('/voyages');
-    }, [router]);
-    return null;
+export const metadata = {
+    title: 'Récap voyage | Triply',
+};
+
+export default function RecapVoyagePage() {
+    return (
+        <AppShell>
+            <Suspense fallback={null}>
+                <RecapVoyageView />
+            </Suspense>
+        </AppShell>
+    );
 }
