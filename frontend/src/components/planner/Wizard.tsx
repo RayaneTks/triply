@@ -562,11 +562,11 @@ function StepRenderer({
                       {Object.entries(state.needs)
                         .filter(([, v]) => v)
                         .map(([k]) => (
-                          <div key={k} className="p-2 bg-light-bg rounded-lg" title={k}>
-                            {k === "flights" && <Plane size={14} />}
-                            {k === "hotels" && <Hotel size={14} />}
-                            {k === "activities" && <Check size={14} />}
-                            {k === "restaurants" && <Users size={14} />}
+                          <div key={k} className="p-2 bg-light-bg rounded-lg" aria-label={k}>
+                            {k === "flights" && <Plane size={14} aria-hidden />}
+                            {k === "hotels" && <Hotel size={14} aria-hidden />}
+                            {k === "activities" && <Check size={14} aria-hidden />}
+                            {k === "restaurants" && <Users size={14} aria-hidden />}
                           </div>
                         ))}
                    </div>

@@ -53,6 +53,7 @@ export function LocalTransportsSection({ tripId }: LocalTransportsSectionProps) 
     };
 
     const handleDelete = async (id: string) => {
+        if (!window.confirm('Supprimer ce transport local ?')) return;
         try {
             await localTransportsClient.delete(tripId, id);
             setItems((cur) => cur.filter((t) => t.id !== id));
