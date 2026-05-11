@@ -262,7 +262,7 @@ export function Wizard() {
           {/* Header Mobile / Tablet */}
           <div className="lg:hidden py-4 flex items-center justify-between sticky top-0 bg-light-bg z-10 border-b border-light-border mb-4">
              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Étape {currentIndex + 1} / {stepsOrder.length}</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-light-muted">Étape {currentIndex + 1} / {stepsOrder.length}</span>
              </div>
              <div className="w-8" />
           </div>
@@ -355,7 +355,7 @@ function StepRenderer({
         <div className="space-y-8">
           <h1 className="text-4xl font-display font-bold">Où avez-vous envie d'aller ?</h1>
           <div className="space-y-4">
-             <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Destination</label>
+             <label className="text-xs font-bold uppercase tracking-widest text-light-muted">Destination</label>
              <CityAutocomplete value={state.destination} onChange={actions.setDestination} />
              <div className="flex flex-wrap gap-2 mt-4">
                 {["Rome", "Lisbonne", "Tokyo", "Berlin", ...visitedCities].map(city => {
@@ -371,7 +371,7 @@ function StepRenderer({
                     >
                       {city}
                       {alreadyVisited && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold uppercase text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
                           Déjà visitée
                         </span>
                       )}
@@ -415,7 +415,7 @@ function StepRenderer({
           <div className="py-12">
             <TravelerCounter count={state.travelers} onChange={actions.setTravelers} />
           </div>
-          <p className="text-light-muted font-bold uppercase text-[10px] tracking-widest max-w-xs leading-relaxed">
+          <p className="text-light-muted font-bold uppercase text-xs tracking-widest max-w-xs leading-relaxed">
             Configurez le groupe pour que le copilote ajuste le rythme et les types de logements recommandés.
           </p>
         </div>
@@ -530,18 +530,18 @@ function StepRenderer({
           <div className="triply-card p-8 lg:p-12 space-y-10">
              <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Destination</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Destination</p>
                    <p className="text-2xl font-bold flex items-center gap-2">
                      {state.destination || "Non précisé"}{" "}
                      <MapPin size={20} className="text-brand shrink-0" aria-hidden />
                    </p>
                 </div>
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Enveloppe</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Enveloppe</p>
                    <p className="text-2xl font-bold text-brand">{state.budget.toLocaleString()}€</p>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Dates</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Dates</p>
                    <p className="text-xl font-bold">
                      {formatTripDateRange(
                        state.startDate || undefined,
@@ -553,11 +553,11 @@ function StepRenderer({
                    </p>
                 </div>
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Voyageurs</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Voyageurs</p>
                    <p className="text-2xl font-bold">{state.travelers} personnes</p>
                 </div>
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Besoins</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Besoins</p>
                    <div className="flex flex-wrap gap-2">
                       {Object.entries(state.needs)
                         .filter(([, v]) => v)
@@ -573,7 +573,7 @@ function StepRenderer({
                 </div>
                 {state.selectedStyles.length > 0 ? (
                   <div className="space-y-2 md:col-span-2">
-                    <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Rythme</p>
+                    <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Rythme</p>
                     <p className="text-sm font-bold text-light-foreground">
                       {state.selectedStyles.join(" · ")}
                     </p>
@@ -594,7 +594,7 @@ function StepRenderer({
           
           <div className="flex items-center gap-3 px-2">
              <Sparkles size={16} className="text-brand" />
-             <span className="text-[10px] uppercase font-bold tracking-widest text-light-muted leading-relaxed">
+             <span className="text-xs uppercase font-bold tracking-widest text-light-muted leading-relaxed">
                L'itinéraire sera sauvegardé automatiquement dans vos voyages.
              </span>
           </div>

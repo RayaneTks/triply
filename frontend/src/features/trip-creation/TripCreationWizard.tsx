@@ -415,7 +415,7 @@ function ActivityCard({
         >
             {legFromPrevious && (
                 <div
-                    className="-mx-1 -mt-1 mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-[11px] text-cyan-200"
+                    className="-mx-1 -mt-1 mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200"
                     role="group"
                     aria-label="Trajet depuis l’activité précédente"
                 >
@@ -493,7 +493,7 @@ function ActivityCard({
                             </h4>
                             {isTimeAlert && (
                                 <span
-                                    className="inline-flex items-center gap-1 rounded-md border border-red-500/50 bg-red-950/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-300"
+                                    className="inline-flex items-center gap-1 rounded-md border border-red-500/50 bg-red-950/60 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-red-300"
                                     role="alert"
                                 >
                                     <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -502,7 +502,7 @@ function ActivityCard({
                             )}
                         </div>
                     {!hideActivityMeta && (
-                    <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+                    <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
                         <span
                             className={`flex items-center gap-1.5 ${isTimeAlert ? 'font-medium text-red-300' : 'text-cyan-400'}`}
                         >
@@ -536,7 +536,7 @@ function ActivityCard({
                         </a>
                         {onDurationHoursChange && !hideActivityMeta && (
                             <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <label className="text-[11px] font-medium text-slate-400" htmlFor={`act-dur-${poi._dragId ?? activityIndex}`}>
+                                <label className="text-xs font-medium text-slate-400" htmlFor={`act-dur-${poi._dragId ?? activityIndex}`}>
                                     Durée (h)
                                 </label>
                                 <input
@@ -562,7 +562,7 @@ function ActivityCard({
                                     <button
                                         type="button"
                                         onClick={() => onDurationHoursChange(null)}
-                                        className="text-[11px] font-medium text-slate-500 underline decoration-slate-600 underline-offset-2 hover:text-cyan-400"
+                                        className="text-xs font-medium text-slate-500 underline decoration-slate-600 underline-offset-2 hover:text-cyan-400"
                                     >
                                         Auto
                                     </button>
@@ -1129,16 +1129,16 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                 ))}
                             </div>
                         )}
-                        <p className="mb-1 text-[11px] text-slate-400">
+                        <p className="mb-1 text-xs text-slate-400">
                             Champs essentiels complétés: {requiredCompleted}/{requiredChecklist.length}
                         </p>
                         {planStep < PLAN_FORM_STEP_LAST ? (
-                            <p className="mb-2 text-[11px] text-slate-500">
+                            <p className="mb-2 text-xs text-slate-500">
                                 Parcourez les étapes jusqu&apos;au récapitulatif pour valider sur la carte et générer l&apos;itinéraire. Vol,
                                 hébergement et préférences restent facultatifs.
                             </p>
                         ) : (
-                            <p className="mb-2 text-[11px] text-slate-500">
+                            <p className="mb-2 text-xs text-slate-500">
                                 Récapitulatif : vous pouvez corriger une section via « Modifier » ou lancer la génération ci-dessous.
                             </p>
                         )}
@@ -1227,7 +1227,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                         </div>
                         {dayActivities.length >= 2 && onSelectRouteType && (
                             <div className="mb-4">
-                                <p className="mb-2 text-[11px] font-medium text-slate-500">
+                                <p className="mb-2 text-xs font-medium text-slate-500">
                                     Itinéraire sur la carte selon le mode choisi ici — chaque bandeau « Trajet » permet un autre mode pour la durée affichée.
                                 </p>
                                 <div className="flex w-full gap-2">
@@ -1262,7 +1262,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                                                 {type === 'cycling' && (
                                                     <Bike className={`h-6 w-6 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
                                                 )}
-                                                <span className={`text-[11px] font-semibold ${isActive ? 'text-cyan-400' : 'text-slate-400'}`}>
+                                                <span className={`text-xs font-semibold ${isActive ? 'text-cyan-400' : 'text-slate-400'}`}>
                                                     {labels[type]}
                                                 </span>
                                                 <span className={`text-[13px] font-bold tabular-nums ${isActive ? 'text-white' : 'text-slate-200'}`}>
@@ -1353,7 +1353,7 @@ export const TripCreationWizard: React.FC<TripCreationWizardProps> = ({
                             >
                                 Valider mon voyage
                             </button>
-                            <p className="mt-1.5 text-center text-[10px] text-slate-500">
+                            <p className="mt-1.5 text-center text-xs text-slate-500">
                                 Enregistre votre itinéraire dans Mes voyages après confirmation.
                             </p>
                         </div>

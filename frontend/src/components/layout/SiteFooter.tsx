@@ -46,7 +46,7 @@ export function SiteFooter() {
       </div>
       
       <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-light-border flex flex-col md:flex-row justify-between items-center gap-4">
-        <p className="text-light-muted text-[10px] font-bold uppercase tracking-widest">
+        <p className="text-light-muted text-xs font-bold uppercase tracking-widest">
           © {currentYear} Triply. Fait avec passion pour les voyageurs curieux.
         </p>
       </div>

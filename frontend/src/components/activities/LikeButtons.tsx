@@ -91,7 +91,7 @@ export function LikeButtons({
                 <ThumbsDown size={iconSize} />
             </button>
             {error && (
-                <span className="text-[10px] text-error ml-1" role="alert">
+                <span className="text-xs text-error ml-1" role="alert">
                     {error}
                 </span>
             )}

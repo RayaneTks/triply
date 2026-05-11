@@ -27,7 +27,7 @@ export function MobileBottomNav() {
           )}
         >
           <Icon size={20} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+          <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
         </Link>
       ))}
     </nav>

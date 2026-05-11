@@ -97,13 +97,13 @@ export function NearbyRestaurants({ activityId, activityTitle }: NearbyRestauran
                     >
                         <div className="mt-2 space-y-2">
                             {loading && (
-                                <p className="text-[11px] text-light-muted">Recherche autour de {activityTitle ?? 'l\'activité'}…</p>
+                                <p className="text-xs text-light-muted">Recherche autour de {activityTitle ?? 'l\'activité'}…</p>
                             )}
                             {error && (
-                                <p className="text-[11px] text-error">{error}</p>
+                                <p className="text-xs text-error">{error}</p>
                             )}
                             {!loading && !error && items && items.length === 0 && (
-                                <p className="text-[11px] text-light-muted">
+                                <p className="text-xs text-light-muted">
                                     Aucun restaurant trouvé à proximité.
                                 </p>
                             )}
@@ -117,13 +117,13 @@ export function NearbyRestaurants({ activityId, activityTitle }: NearbyRestauran
                                             <div className="min-w-0">
                                                 <p className="text-xs font-bold truncate">{r.name}</p>
                                                 {r.tags && r.tags.length > 0 && (
-                                                    <p className="text-[10px] text-light-muted truncate">
+                                                    <p className="text-xs text-light-muted truncate">
                                                         {r.tags.slice(0, 3).join(' · ')}
                                                     </p>
                                                 )}
                                             </div>
                                             {typeof r.distance_meters === 'number' && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-light-muted whitespace-nowrap">
+                                                <span className="inline-flex items-center gap-1 text-xs font-bold text-light-muted whitespace-nowrap">
                                                     <MapPin size={10} />
                                                     {r.distance_meters < 1000
                                                         ? `${r.distance_meters} m`

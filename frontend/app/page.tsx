@@ -177,7 +177,7 @@ export default function HomePage() {
                                     <h3 className="font-title text-2xl font-bold text-foreground">{card.title}</h3>
                                     <p className="mt-3 text-sm leading-relaxed text-foreground/75">{card.text}</p>
                                     <div className="mt-5 rounded-lg border border-micro-design/45 bg-micro-design/15 p-3">
-                                        <p className="text-[11px] font-semibold tracking-[0.12em] text-micro-design">{card.tag}</p>
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-micro-design">{card.tag}</p>
                                         <p className="mt-1 text-xs italic text-foreground/80">{card.note}</p>
                                     </div>
                                 </article>

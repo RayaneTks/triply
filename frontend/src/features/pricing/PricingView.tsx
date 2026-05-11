@@ -70,7 +70,7 @@ export function PricingView() {
             )} />
           </button>
           <span className={cn("text-sm font-bold", isAnnual ? "text-brand" : "text-light-muted")}>
-            Annuel <span className="text-emerald-600 text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full ml-1">-20%</span>
+            Annuel <span className="text-emerald-600 text-xs bg-emerald-50 px-2 py-0.5 rounded-full ml-1">-20%</span>
           </span>
         </div>
       </div>
@@ -85,7 +85,7 @@ export function PricingView() {
             )}
           >
             {tier.highlight && (
-              <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-full">
+              <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand text-white text-xs font-bold uppercase tracking-wider px-4 py-1 rounded-full">
                 Le plus populaire
               </span>
             )}

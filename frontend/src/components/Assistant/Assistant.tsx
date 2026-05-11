@@ -461,7 +461,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     <button
                         type="button"
                         onClick={() => setChatMode('itinerary')}
-                        className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                        className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                             chatMode === 'itinerary' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
                         }`}
                     >
@@ -470,7 +470,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     <button
                         type="button"
                         onClick={() => setChatMode('qa')}
-                        className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                        className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                             chatMode === 'qa' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
                         }`}
                     >
@@ -482,7 +482,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         <button
                             type="button"
                             onClick={stopRequest}
-                            className="rounded-md border border-red-500/40 bg-red-500/15 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/25"
+                            className="rounded-md border border-red-500/40 bg-red-500/15 px-2 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/25"
                         >
                             Arrêter
                         </button>
@@ -491,14 +491,14 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                         type="button"
                         onClick={undoLastExchange}
                         disabled={!canUndo}
-                        className="rounded-md border border-white/15 bg-white/4 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-md border border-white/15 bg-white/4 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Annuler le dernier échange ou arrêter la génération"
                     >
                         Annuler le dernier échange
                     </button>
                 </div>
                 {chatMode === 'qa' && (
-                    <p className="text-[10px] leading-snug text-slate-500">
+                    <p className="text-xs leading-snug text-slate-500">
                         Questions uniquement : pas de mise à jour de la carte ni du formulaire.
                     </p>
                 )}

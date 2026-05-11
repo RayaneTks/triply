@@ -102,7 +102,7 @@ export function LocalTransportsSection({ tripId }: LocalTransportsSectionProps) 
                                     <p className="text-sm font-bold truncate">
                                         {t.attributes.from} → {t.attributes.to}
                                     </p>
-                                    <p className="text-[11px] text-light-muted">
+                                    <p className="text-xs text-light-muted">
                                         {t.attributes.mode.toUpperCase()}
                                         {t.attributes.departure_at &&
                                             ` · ${new Date(t.attributes.departure_at).toLocaleString('fr-FR', {

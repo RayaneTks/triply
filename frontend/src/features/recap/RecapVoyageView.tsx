@@ -553,7 +553,7 @@ function DayTimeline({ day }: { day: Extract<RecapSection, { type: 'day' }> }) {
                     {day.activities.map((act, idx) => (
                         <li key={act.id} className="relative">
                             <span
-                                className="absolute -left-[22px] top-3 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black"
+                                className="absolute -left-[22px] top-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
                                 style={{
                                     background: 'var(--primary)',
                                     color: '#fff',
@@ -609,7 +609,7 @@ function LikedBadge({ state }: { state: 'liked' | 'disliked' | 'neutral' }) {
     if (state === 'liked') {
         return (
             <span
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold uppercase"
                 style={{ background: 'rgba(34,197,94,0.12)', color: 'rgb(22,163,74)' }}
             >
                 <ThumbsUp size={12} /> Aimé
@@ -619,7 +619,7 @@ function LikedBadge({ state }: { state: 'liked' | 'disliked' | 'neutral' }) {
     if (state === 'disliked') {
         return (
             <span
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold uppercase"
                 style={{ background: 'rgba(244,63,94,0.12)', color: 'rgb(190,18,60)' }}
             >
                 <ThumbsDown size={12} /> Pas aimé

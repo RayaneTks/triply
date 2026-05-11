@@ -299,7 +299,7 @@ export function ProfileView() {
 
                                             <form onSubmit={handleAccountSubmit} className="grid md:grid-cols-2 gap-8">
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                    <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                         Nom complet
                                                     </label>
                                                     <input
@@ -311,7 +311,7 @@ export function ProfileView() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                    <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                         Email (non modifiable)
                                                     </label>
                                                     <input
@@ -321,7 +321,7 @@ export function ProfileView() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                    <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                         Fuseau horaire
                                                     </label>
                                                     <input
@@ -334,7 +334,7 @@ export function ProfileView() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                    <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                         Photo de profil (URL)
                                                     </label>
                                                     <input
@@ -384,7 +384,7 @@ export function ProfileView() {
                                                 </h3>
                                                 <div className="grid md:grid-cols-2 gap-4">
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                             Rythme
                                                         </label>
                                                         <select
@@ -403,7 +403,7 @@ export function ProfileView() {
                                                         </select>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                             Mode de planification
                                                         </label>
                                                         <select
@@ -422,7 +422,7 @@ export function ProfileView() {
                                                         </select>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                             Budget max / jour (€)
                                                         </label>
                                                         <input
@@ -440,7 +440,7 @@ export function ProfileView() {
                                                         />
                                                     </div>
                                                     <div className="space-y-2 flex flex-col">
-                                                        <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">
+                                                        <label className="text-xs font-bold uppercase tracking-widest text-light-muted">
                                                             Petit-déjeuner inclus
                                                         </label>
                                                         <button

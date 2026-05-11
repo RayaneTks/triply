@@ -284,7 +284,7 @@ export function TripDetailView() {
                     { label: 'Destination', val: trip.destination, icon: MapPin, color: 'text-brand' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-card border border-light-border p-6 rounded-3xl space-y-1">
-                        <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest flex items-center gap-2">
+                        <p className="text-xs font-bold text-light-muted uppercase tracking-widest flex items-center gap-2">
                             <stat.icon size={12} className={stat.color} /> {stat.label}
                         </p>
                         <p className={cn('text-xl font-display font-bold', stat.color)}>{stat.val}</p>
@@ -365,7 +365,7 @@ export function TripDetailView() {
                                             <div key={day.day_id} className="triply-card p-6 space-y-4">
                                                 <header className="flex items-center justify-between border-b border-light-border pb-4">
                                                     <div>
-                                                        <span className="text-[10px] font-bold text-brand bg-brand/10 px-2 py-1 rounded">
+                                                        <span className="text-xs font-bold text-brand bg-brand/10 px-2 py-1 rounded">
                                                             JOUR {String(day.index).padStart(2, '0')}
                                                         </span>
                                                         {day.date && (
@@ -392,7 +392,7 @@ export function TripDetailView() {
                                                                 <p className="font-bold text-light-foreground">
                                                                     {activity.attributes.title}
                                                                 </p>
-                                                                <div className="flex flex-wrap items-center gap-3 text-[11px] text-light-muted font-medium">
+                                                                <div className="flex flex-wrap items-center gap-3 text-xs text-light-muted font-medium">
                                                                     {activity.attributes.city && (
                                                                         <span className="inline-flex items-center gap-1">
                                                                             <MapPin size={10} />
@@ -444,7 +444,7 @@ export function TripDetailView() {
                                                     <div className="absolute top-0 left-0 w-2 h-full bg-brand/10 transition-colors group-hover:bg-brand" />
                                                     <div className="flex justify-between items-start gap-4">
                                                         <div className="space-y-4">
-                                                            <span className="text-[10px] font-bold text-brand bg-brand/5 px-2 py-1 rounded">
+                                                            <span className="text-xs font-bold text-brand bg-brand/5 px-2 py-1 rounded">
                                                                 JOUR 0{day.id}
                                                             </span>
                                                             <h3 className="text-2xl font-bold">{day.title}</h3>
@@ -454,7 +454,7 @@ export function TripDetailView() {
                                                                 </span>
                                                                 <span
                                                                     className={cn(
-                                                                        'px-3 py-0.5 rounded-full text-[10px] font-bold uppercase',
+                                                                        'px-3 py-0.5 rounded-full text-xs font-bold uppercase',
                                                                         day.status === 'Cadré'
                                                                             ? 'bg-emerald-50 text-emerald-600'
                                                                             : 'bg-amber-50 text-amber-600',
@@ -533,7 +533,7 @@ export function TripDetailView() {
                                 >
                                     <div>
                                         <p className="text-sm font-bold">{res.t}</p>
-                                        <p className="text-[10px] text-light-muted">{res.d}</p>
+                                        <p className="text-xs text-light-muted">{res.d}</p>
                                     </div>
                                     <res.icon size={14} className="text-light-muted group-hover:text-brand" />
                                 </li>

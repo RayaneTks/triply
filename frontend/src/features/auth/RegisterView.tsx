@@ -80,7 +80,7 @@ export function RegisterView() {
         <div className="flex-1 flex flex-col justify-center">
            <div className="mb-10">
              <h1 className="text-3xl font-display font-bold mb-2">Rejoignez Triply</h1>
-             <p className="text-light-muted font-bold uppercase text-[10px] tracking-widest leading-loose">Inscription gratuite en moins de 30 secondes.</p>
+             <p className="text-light-muted font-bold uppercase text-xs tracking-widest leading-loose">Inscription gratuite en moins de 30 secondes.</p>
            </div>
 
            <form className="space-y-5" onSubmit={handleSubmit}>
@@ -164,7 +164,7 @@ export function RegisterView() {
 
            <div className="my-8 flex items-center gap-4">
               <div className="flex-1 h-px bg-light-border" />
-              <span className="text-[10px] font-bold text-light-muted uppercase">Ou avec vos comptes</span>
+              <span className="text-xs font-bold text-light-muted uppercase">Ou avec vos comptes</span>
               <div className="flex-1 h-px bg-light-border" />
            </div>
 

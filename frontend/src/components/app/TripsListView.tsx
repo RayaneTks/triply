@@ -96,7 +96,7 @@ export function TripsListView() {
             window.clearTimeout(t);
             window.removeEventListener('triply-auth-changed', onAuth);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [pathname]);
 
     useEffect(() => {
@@ -203,8 +203,8 @@ export function TripsListView() {
                                         <span
                                             className={
                                                 trip.status === 'planned'
-                                                    ? 'px-3 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] uppercase border border-emerald-100'
-                                                    : 'px-3 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[10px] uppercase border border-amber-100'
+                                                    ? 'px-3 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-xs uppercase border border-emerald-100'
+                                                    : 'px-3 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs uppercase border border-amber-100'
                                             }
                                         >
                                             {trip.status === 'planned' ? 'Enregistré' : 'Brouillon'}
