@@ -19,6 +19,9 @@ class UserPreferences implements Castable
         public ?bool $breakfast_included = null,
         public ?float $max_budget = null,
         public array $visited_cities = [],
+        public array $done_activities = [],
+        public ?bool $reminders_day_before = null,
+        public ?bool $reminders_morning = null,
     ) {}
 
     public function toArray(): array
@@ -34,6 +37,9 @@ class UserPreferences implements Castable
             'breakfast_included' => $this->breakfast_included,
             'max_budget' => $this->max_budget,
             'visited_cities' => $this->visited_cities,
+            'done_activities' => $this->done_activities,
+            'reminders_day_before' => $this->reminders_day_before,
+            'reminders_morning' => $this->reminders_morning,
         ], fn ($value) => $value !== null && $value !== []);
     }
 
@@ -50,6 +56,9 @@ class UserPreferences implements Castable
             breakfast_included: $data['breakfast_included'] ?? $this->breakfast_included,
             max_budget: $data['max_budget'] ?? $this->max_budget,
             visited_cities: $data['visited_cities'] ?? $this->visited_cities,
+            done_activities: array_key_exists('done_activities', $data) ? $data['done_activities'] : $this->done_activities,
+            reminders_day_before: array_key_exists('reminders_day_before', $data) ? $data['reminders_day_before'] : $this->reminders_day_before,
+            reminders_morning: array_key_exists('reminders_morning', $data) ? $data['reminders_morning'] : $this->reminders_morning,
         );
     }
 
@@ -101,6 +110,9 @@ class UserPreferences implements Castable
                     breakfast_included: $data['breakfast_included'] ?? null,
                     max_budget: $data['max_budget'] ?? null,
                     visited_cities: $data['visited_cities'] ?? [],
+                    done_activities: $data['done_activities'] ?? [],
+                    reminders_day_before: $data['reminders_day_before'] ?? null,
+                    reminders_morning: $data['reminders_morning'] ?? null,
                 );
             }
 

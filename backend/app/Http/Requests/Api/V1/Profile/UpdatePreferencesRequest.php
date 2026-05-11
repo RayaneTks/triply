@@ -23,6 +23,11 @@ class UpdatePreferencesRequest extends BaseApiRequest
             'max_budget' => ['sometimes', 'numeric', 'min:0'],
             'visited_cities' => ['sometimes', 'array'],
             'visited_cities.*' => ['string'],
+            'done_activities' => ['sometimes', 'array'],
+            'done_activities.*' => ['array'],
+            'done_activities.*.*' => ['string'],
+            'reminders_day_before' => ['sometimes', 'boolean'],
+            'reminders_morning' => ['sometimes', 'boolean'],
         ];
     }
 
