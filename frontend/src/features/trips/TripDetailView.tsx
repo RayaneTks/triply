@@ -28,6 +28,8 @@ import { WorldMap } from '../../components/Map/Map';
 import { LikeButtons } from '../../components/activities/LikeButtons';
 import { NearbyRestaurants } from '../../components/activities/NearbyRestaurants';
 import { LocalTransportsSection } from '../../components/trips/LocalTransportsSection';
+import { FlightsSection } from '../../components/trips/FlightsSection';
+import { HotelsSection } from '../../components/trips/HotelsSection';
 import { cn } from '../../lib/utils';
 import { getStoredTrip } from '../../lib/local-trips-store';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -50,7 +52,7 @@ interface UndoneActivity {
 
 export function TripDetailView() {
     const { tripId } = useParams<{ tripId: string }>();
-    const [activeTab, setActiveTab] = useState<'itinerary' | 'map' | 'docs'>('itinerary');
+    const [activeTab, setActiveTab] = useState<'itinerary' | 'flights' | 'hotels' | 'map' | 'docs'>('itinerary');
     const [isLoading, setIsLoading] = useState(true);
     const [apiTrip, setApiTrip] = useState<TripApi | null | undefined>(undefined);
     const [storedOnly, setStoredOnly] = useState<ReturnType<typeof getStoredTrip>>(undefined);
@@ -297,6 +299,8 @@ export function TripDetailView() {
                     <nav className="flex flex-wrap gap-2 p-1.5 bg-light-bg rounded-2xl w-fit border border-light-border">
                         {[
                             { id: 'itinerary' as const, label: 'Jour par jour' },
+                            { id: 'flights' as const, label: 'Vols' },
+                            { id: 'hotels' as const, label: 'Hôtels' },
                             { id: 'map' as const, label: 'Carte interactive' },
                             { id: 'docs' as const, label: 'Notes & docs' },
                         ].map((tab) => (
@@ -476,6 +480,28 @@ export function TripDetailView() {
                                     )
                                 )}
                             </div>
+                        )}
+
+                        {activeTab === 'flights' && tripId && (
+                            <FlightsSection
+                                tripId={tripId}
+                                destination={trip.destination}
+                                startDate={apiTrip?.start_date}
+                                endDate={apiTrip?.end_date}
+                                travelers={apiTrip?.travelers_count}
+                                budgetTotal={apiTrip?.budget_total}
+                            />
+                        )}
+
+                        {activeTab === 'hotels' && tripId && (
+                            <HotelsSection
+                                tripId={tripId}
+                                destination={trip.destination}
+                                startDate={apiTrip?.start_date}
+                                endDate={apiTrip?.end_date}
+                                travelers={apiTrip?.travelers_count}
+                                budgetTotal={apiTrip?.budget_total}
+                            />
                         )}
 
                         {activeTab === 'map' && (
