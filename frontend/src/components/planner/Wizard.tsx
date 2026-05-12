@@ -371,7 +371,7 @@ function StepRenderer({
                     >
                       {city}
                       {alreadyVisited && (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold uppercase text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold uppercase text-emerald-900 bg-emerald-100 border border-emerald-300 rounded-full px-2 py-0.5">
                           Déjà visitée
                         </span>
                       )}
