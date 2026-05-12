@@ -9,10 +9,14 @@ class StoreFlightRequest extends BaseApiRequest
     public function rules(): array
     {
         return [
-            'airline' => ['required', 'string', 'max:120'],
-            'flight_number' => ['required', 'string', 'max:50'],
-            'departure_at' => ['required', 'date'],
-            'arrival_at' => ['required', 'date'],
+            'type' => ['required', 'string', 'max:128'],
+            'depart_lieu' => ['required', 'string', 'max:255'],
+            'arrivee_lieu' => ['required', 'string', 'max:255'],
+            'depart_le' => ['required', 'date'],
+            'arrivee_le' => ['required', 'date', 'after_or_equal:depart_le'],
+            'prix' => ['required', 'integer', 'min:0'],
+            'devise' => ['nullable', 'string', 'size:3'],
+            'information_supplementaire' => ['nullable', 'string', 'max:5000'],
         ];
     }
 }
