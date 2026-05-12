@@ -5,7 +5,7 @@ import { Plane, Trash2, ExternalLink, Search } from 'lucide-react';
 import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
-import { searchFlights, searchPlaces, type AmadeusLocation } from '@/src/lib/integrations/amadeus';
+import { searchFlights, searchPlaces, lookupIata, type AmadeusLocation } from '@/src/lib/integrations/amadeus';
 import { tripTravelClient, bookingCheckout, type FlightRecord } from '@/src/lib/trip-travel-client';
 
 interface FlightsSectionProps {
@@ -18,9 +18,28 @@ interface FlightsSectionProps {
 }
 
 async function resolveIata(keyword: string): Promise<string | null> {
-    if (!keyword.trim()) return null;
+    const term = keyword.trim();
+    if (!term) return null;
+
+    // Fast path: typed 3-letter IATA code (CDG, BCN, JFK).
+    if (/^[A-Za-z]{3}$/.test(term)) {
+        return term.toUpperCase();
+    }
+
+    // Try Amadeus IATA-only lookup first — guarantees a 3-letter code.
     try {
-        const results: AmadeusLocation[] = await searchPlaces(keyword.trim());
+        const results: AmadeusLocation[] = await lookupIata(term, 'AIRPORT,CITY');
+        const airport = results.find((r) => r.subType === 'AIRPORT' && r.iataCode);
+        const city = results.find((r) => r.iataCode);
+        const hit = airport?.iataCode || city?.iataCode;
+        if (hit) return hit;
+    } catch {
+        // fall through to legacy /places below
+    }
+
+    // Legacy fallback (mixed Amadeus + Mapbox; Mapbox has no IATA).
+    try {
+        const results: AmadeusLocation[] = await searchPlaces(term);
         const airport = results.find((r) => r.subType === 'AIRPORT' && r.iataCode);
         const city = results.find((r) => r.iataCode);
         return airport?.iataCode || city?.iataCode || null;
@@ -123,13 +142,14 @@ export function FlightsSection({
     const handleSearch = useCallback(async () => {
         setIsSearching(true);
         setApiResponse(null);
+        const emptyEnv = { data: [] as never[], dictionaries: { carriers: {}, locations: {} } };
         try {
             const [originCode, destCode] = await Promise.all([
                 resolveIata(departureCity),
                 resolveIata(arrivalCity),
             ]);
             if (!originCode || !destCode) {
-                setApiResponse({ error: 'Impossible de trouver les codes IATA pour ces villes.' });
+                setApiResponse({ ...emptyEnv, error: `Aucun aéroport IATA trouvé pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCN…).` } as unknown as AmadeusResponse);
                 return;
             }
             const body = {
@@ -142,9 +162,15 @@ export function FlightsSection({
                 maxPrice: budget ? Number(budget) : undefined,
             };
             const res = await searchFlights(body);
+            if (res && typeof res === 'object' && 'errors' in res) {
+                const errArr = (res as { errors?: Array<{ title?: string; detail?: string }> }).errors ?? [];
+                const msg = errArr[0]?.detail || errArr[0]?.title || 'Erreur Amadeus.';
+                setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusResponse);
+                return;
+            }
             setApiResponse(res as AmadeusResponse);
         } catch (err) {
-            setApiResponse({ error: err instanceof Error ? err.message : 'Recherche impossible.' });
+            setApiResponse({ ...emptyEnv, error: err instanceof Error ? err.message : 'Recherche impossible.' } as unknown as AmadeusResponse);
         } finally {
             setIsSearching(false);
         }

@@ -37,6 +37,24 @@ export async function searchPlaces(keyword: string, signal?: AbortSignal): Promi
   return unwrapPlacesBody(body);
 }
 
+/**
+ * Amadeus-only IATA lookup. Always returns entries with a non-empty iataCode.
+ * Use this when you need a 3-letter code (flight/hotel search).
+ * subType: AIRPORT, CITY, or AIRPORT,CITY.
+ */
+export async function lookupIata(
+  keyword: string,
+  subType: "AIRPORT" | "CITY" | "AIRPORT,CITY" = "AIRPORT,CITY",
+  signal?: AbortSignal,
+): Promise<AmadeusLocation[]> {
+  const body = await apiFetch<unknown>("/integrations/amadeus/iata-lookup", {
+    method: "GET",
+    query: { keyword, subType },
+    signal,
+  });
+  return unwrapPlacesBody(body);
+}
+
 export interface FlightSearchBody {
   originLocationCode?: string;
   destinationLocationCode?: string;

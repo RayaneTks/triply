@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ConsentController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Integrations\AmadeusFlightsProxyController;
 use App\Http\Controllers\Api\V1\Integrations\AmadeusHotelsProxyController;
+use App\Http\Controllers\Api\V1\Integrations\AmadeusIataLookupController;
 use App\Http\Controllers\Api\V1\Integrations\AmadeusPlacesSearchController;
 use App\Http\Controllers\Api\V1\Integrations\AssistantChatController;
 use App\Http\Controllers\Api\V1\Integrations\GooglePlaceReviewsController;
@@ -40,6 +41,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/amadeus/flights/search', [AmadeusFlightsProxyController::class, 'store'])->middleware('throttle:ai');
         Route::get('/amadeus/hotels/by-geocode', [AmadeusHotelsProxyController::class, 'index'])->middleware('throttle:ai');
         Route::post('/amadeus/hotels/search', [AmadeusHotelsProxyController::class, 'store'])->middleware('throttle:ai');
+        Route::get('/amadeus/iata-lookup', [AmadeusIataLookupController::class, 'index'])->middleware('throttle:places');
     });
 
     Route::prefix('auth')->group(function (): void {

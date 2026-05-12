@@ -245,7 +245,39 @@ export function Wizard() {
     router.push('/voyages');
   };
 
+  const stepValidation: Record<WizardStep, { ok: boolean; hint: string }> = {
+    destination: {
+      ok: destinationSelected && destination.trim().length > 0,
+      hint: "Sélectionnez une destination dans la liste avant de continuer.",
+    },
+    dates: {
+      ok: Boolean(startDate) && Boolean(endDate) && endDate >= startDate,
+      hint: "Choisissez une date de départ puis une date de retour (retour ≥ départ).",
+    },
+    travelers: {
+      ok: travelers >= 1,
+      hint: "Indiquez au moins un voyageur.",
+    },
+    budget: {
+      ok: budget >= 500,
+      hint: "Le budget minimum est de 500€.",
+    },
+    styles: {
+      ok: selectedStyles.length >= 1,
+      hint: "Sélectionnez au moins un style de voyage.",
+    },
+    needs: {
+      ok: Object.values(needs).some(Boolean),
+      hint: "Choisissez au moins un besoin (vols, hôtels, activités ou restaurants).",
+    },
+    review: { ok: true, hint: "" },
+  };
+
+  const currentValidation = stepValidation[step];
+  const canAdvance = currentValidation.ok && !submitting;
+
   const next = () => {
+    if (!canAdvance) return;
     if (currentIndex === stepsOrder.length - 1) {
       void finalize();
     } else {
@@ -410,6 +442,11 @@ export function Wizard() {
                {submitError}
              </p>
            )}
+           {!canAdvance && !submitError && currentValidation.hint && (
+             <p className="text-xs font-medium text-amber-700" role="status">
+               {currentValidation.hint}
+             </p>
+           )}
            <div className="flex items-center justify-between">
              <button
               onClick={prev}
@@ -422,7 +459,8 @@ export function Wizard() {
 
              <button
               onClick={next}
-              disabled={submitting || (step === 'destination' && !destinationSelected)}
+              disabled={!canAdvance}
+              aria-disabled={!canAdvance}
               className="btn-primary flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
              >
                {submitting

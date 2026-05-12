@@ -47,6 +47,53 @@ class AmadeusClient
     /**
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * Amadeus-only IATA lookup. No Mapbox/Nominatim fallback (those don't carry IATA codes).
+     * Returns only entries with a non-empty iataCode.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function iataLookup(string $keyword, string $subType = 'AIRPORT,CITY'): array
+    {
+        $keyword = trim($keyword);
+        if (strlen($keyword) < 2) {
+            return [];
+        }
+        $allowed = ['AIRPORT', 'CITY', 'AIRPORT,CITY'];
+        if (! in_array($subType, $allowed, true)) {
+            $subType = 'AIRPORT,CITY';
+        }
+
+        try {
+            $token = $this->getAccessToken();
+            $url = $this->baseUrl().'/v1/reference-data/locations?subType='.rawurlencode($subType)
+                .'&keyword='.rawurlencode($keyword).'&page[limit]=10&view=FULL';
+            $res = Http::withToken($token)->acceptJson()->timeout(5)->get($url);
+            if (! $res->successful()) {
+                Log::warning('Amadeus iata lookup', ['status' => $res->status(), 'body' => $res->body()]);
+                return [];
+            }
+            $data = $res->json('data');
+            if (! is_array($data)) {
+                return [];
+            }
+            $out = [];
+            foreach ($data as $loc) {
+                if (! is_array($loc)) {
+                    continue;
+                }
+                $normalized = $this->normalizeLocation($loc);
+                if (($normalized['iataCode'] ?? '') !== '') {
+                    $out[] = $normalized;
+                }
+            }
+            return $out;
+        } catch (\Throwable $e) {
+            Log::warning('Amadeus iata lookup exception', ['message' => $e->getMessage()]);
+            return [];
+        }
+    }
+
     public function locationsByKeyword(string $keyword): array
     {
         $keyword = trim($keyword);

@@ -5,7 +5,7 @@ import { Bed, Trash2, ExternalLink, Search } from 'lucide-react';
 import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
-import { searchHotels, searchPlaces, type AmadeusLocation, type HotelSearchBody } from '@/src/lib/integrations/amadeus';
+import { searchHotels, searchPlaces, lookupIata, type AmadeusLocation, type HotelSearchBody } from '@/src/lib/integrations/amadeus';
 import { tripTravelClient, bookingCheckout, type HotelRecord } from '@/src/lib/trip-travel-client';
 
 interface HotelsSectionProps {
@@ -18,9 +18,25 @@ interface HotelsSectionProps {
 }
 
 async function resolveCityCode(keyword: string): Promise<string | null> {
-    if (!keyword.trim()) return null;
+    const term = keyword.trim();
+    if (!term) return null;
+
+    if (/^[A-Za-z]{3}$/.test(term)) {
+        return term.toUpperCase();
+    }
+
     try {
-        const results: AmadeusLocation[] = await searchPlaces(keyword.trim());
+        const results: AmadeusLocation[] = await lookupIata(term, 'CITY');
+        const city = results.find((r) => r.subType === 'CITY' && r.iataCode);
+        const anyResult = results.find((r) => r.iataCode);
+        const hit = city?.iataCode || anyResult?.iataCode;
+        if (hit) return hit;
+    } catch {
+        // fall through
+    }
+
+    try {
+        const results: AmadeusLocation[] = await searchPlaces(term);
         const city = results.find((r) => r.subType === 'CITY' && r.iataCode);
         const anyResult = results.find((r) => r.iataCode);
         return city?.iataCode || anyResult?.iataCode || null;
@@ -114,10 +130,11 @@ export function HotelsSection({
     const handleSearch = useCallback(async () => {
         setIsSearching(true);
         setApiResponse(null);
+        const emptyEnv = { data: [] as never[] };
         try {
             const resolvedCode = await resolveCityCode(cityCode);
             if (!resolvedCode) {
-                setApiResponse({ error: 'Impossible de trouver le code Amadeus pour cette ville.' });
+                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN…).` } as unknown as AmadeusHotelResponse);
                 return;
             }
             const body: HotelSearchBody = {
@@ -132,9 +149,15 @@ export function HotelsSection({
                 body.boardType = mealRegime;
             }
             const res = await searchHotels(body);
+            if (res && typeof res === 'object' && 'errors' in res) {
+                const errArr = (res as { errors?: Array<{ title?: string; detail?: string }> }).errors ?? [];
+                const msg = errArr[0]?.detail || errArr[0]?.title || 'Erreur Amadeus.';
+                setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusHotelResponse);
+                return;
+            }
             setApiResponse(res as AmadeusHotelResponse);
         } catch (err) {
-            setApiResponse({ error: err instanceof Error ? err.message : 'Recherche impossible.' });
+            setApiResponse({ ...emptyEnv, error: err instanceof Error ? err.message : 'Recherche impossible.' } as unknown as AmadeusHotelResponse);
         } finally {
             setIsSearching(false);
         }
