@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type PlanKey = 'voyageur' | 'pilote';
 type BillingKey = 'monthly' | 'annual';
@@ -18,6 +19,12 @@ const PLANS: Record<PlanKey, Record<BillingKey, { amount: number; interval: 'mon
 };
 
 export async function POST(req: NextRequest) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return NextResponse.json({ error: 'Stripe non configuré côté serveur.' }, { status: 503 });
+  }
+  const stripe = new Stripe(secretKey);
+
   const { plan, billing } = await req.json() as { plan: PlanKey; billing: BillingKey };
 
   const planData = PLANS[plan]?.[billing];
