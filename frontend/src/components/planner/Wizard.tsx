@@ -694,14 +694,27 @@ function StepRenderer({
                    <div className="flex flex-wrap gap-2">
                       {Object.entries(state.needs)
                         .filter(([, v]) => v)
-                        .map(([k]) => (
-                          <div key={k} className="p-2 bg-light-bg rounded-lg" aria-label={k}>
-                            {k === "flights" && <Plane size={14} aria-hidden />}
-                            {k === "hotels" && <Hotel size={14} aria-hidden />}
-                            {k === "activities" && <Check size={14} aria-hidden />}
-                            {k === "restaurants" && <Users size={14} aria-hidden />}
-                          </div>
-                        ))}
+                        .map(([k]) => {
+                          const labels: Record<string, string> = {
+                            flights: "Vols",
+                            hotels: "Hôtels",
+                            activities: "Activités",
+                            restaurants: "Restaurants",
+                          };
+                          const Icon =
+                            k === "flights" ? Plane
+                              : k === "hotels" ? Hotel
+                              : k === "activities" ? Check
+                              : Users;
+                          return (
+                            <span
+                              key={k}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold"
+                            >
+                              <Icon size={12} aria-hidden /> {labels[k] ?? k}
+                            </span>
+                          );
+                        })}
                    </div>
                 </div>
                 {state.selectedStyles.length > 0 ? (
