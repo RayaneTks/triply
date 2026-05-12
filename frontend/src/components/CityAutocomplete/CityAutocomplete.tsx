@@ -178,15 +178,17 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
 
     // GESTION DE LA SÉLECTION
     const handleSelect = (feature: AmadeusLocation) => {
-        // 1. On construit le joli nom : "Rome (ROM)"
+        // 1. On construit le joli nom : "Rome (ROM)" si IATA présent, sinon "Rome"
         const cityName = feature.address?.cityName || feature.name;
-        const displayName = `${cityName} (${feature.iataCode})`;
+        const iata = feature.iataCode?.trim() ?? '';
+        const displayName = iata !== '' ? `${cityName} (${iata})` : cityName;
 
         // 2. On met à jour l'affichage local
         setDisplayValue(displayName);
 
-        // 3. On envoie le CODE IATA au formulaire (pour les vols)
-        onChange(feature.iataCode);
+        // 3. On envoie le CODE IATA au formulaire si présent (vols), sinon le nom de ville
+        //    (fallback Nominatim) — évite d'envoyer une chaîne vide au parent.
+        onChange(iata !== '' ? iata : cityName);
 
         // 4. On envoie le NOM VILLE à l'Assistant (pour le chat)
         if (onSelectName) {

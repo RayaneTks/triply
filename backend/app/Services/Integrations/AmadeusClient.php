@@ -101,13 +101,13 @@ class AmadeusClient
             }
 
             $out = [];
+            $seen = [];
             foreach ($rows as $row) {
                 if (! is_array($row)) {
                     continue;
                 }
                 $cls = (string) ($row['class'] ?? '');
                 $type = (string) ($row['type'] ?? '');
-                // Keep cities, towns, airports, administrative regions.
                 $isCity = $cls === 'place' && in_array($type, ['city', 'town', 'village'], true);
                 $isAirport = $cls === 'aeroway' && $type === 'aerodrome';
                 $isAdmin = $cls === 'boundary' && $type === 'administrative';
@@ -128,6 +128,14 @@ class AmadeusClient
                     continue;
                 }
 
+                // Dedup by (cityName, countryName) — Nominatim often returns the same
+                // place as several OSM entities (node, boundary, admin region).
+                $key = mb_strtolower($cityName).'|'.mb_strtolower($countryName);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+
                 $out[] = [
                     'id' => 'osm-'.($row['osm_id'] ?? uniqid()),
                     'name' => $cityName,
@@ -136,7 +144,7 @@ class AmadeusClient
                     'address' => ['cityName' => $cityName, 'countryName' => $countryName],
                     'geoCode' => ['latitude' => $lat, 'longitude' => $lng],
                 ];
-                if (count($out) >= 10) {
+                if (count($out) >= 5) {
                     break;
                 }
             }
