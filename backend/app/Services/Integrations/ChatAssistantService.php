@@ -147,6 +147,7 @@ class ChatAssistantService
             ->post($baseUrl.'/chat/completions', [
                 'model' => $model,
                 'response_format' => ['type' => 'json_object'],
+                'max_tokens' => 4000,
                 'messages' => $openaiMessages,
             ]);
 
@@ -169,6 +170,25 @@ class ChatAssistantService
 
         $finalLocations = [];
         $suggestedActivities = $this->normalizeSuggestedActivities($parsedAI['suggestedActivities'] ?? null);
+
+        // Post-validation : if multi-day itinerary was requested but the model
+        // skipped days, retry once asking only for the missing days and merge.
+        if ($chatMode !== 'qa' && $travelDays > 1 && $requestFullItinerary) {
+            $missingDays = $this->findMissingDays($suggestedActivities, $travelDays);
+            if ($missingDays !== []) {
+                $retryActivities = $this->fillMissingDays(
+                    $apiKey,
+                    $baseUrl,
+                    $model,
+                    $systemContent,
+                    $openaiMessages,
+                    $missingDays,
+                );
+                if ($retryActivities !== []) {
+                    $suggestedActivities = array_merge($suggestedActivities, $retryActivities);
+                }
+            }
+        }
         $step1FormPatch = Step1FormPatchNormalizer::normalize(
             $parsedAI['step1FormPatch'] ?? null,
             $step1HotelOptionLabels,
@@ -255,6 +275,7 @@ class ChatAssistantService
             ->post($baseUrl.'/chat/completions', [
                 'model' => $model,
                 'response_format' => ['type' => 'json_object'],
+                'max_tokens' => 1000,
                 'messages' => [
                     ['role' => 'system', 'content' => $regenSystem],
                     ['role' => 'user', 'content' => 'Propose une alternative concrète pour remplacer cette activité. Réponds uniquement en JSON.'],
@@ -376,5 +397,94 @@ class ChatAssistantService
         }
 
         return ['allow' => true, 'response' => ''];
+    }
+
+    /**
+     * Returns the list of days (1..travelDays) absent from the suggested activities.
+     *
+     * @param  list<array{day?: int}>  $activities
+     * @return list<int>
+     */
+    private function findMissingDays(array $activities, int $travelDays): array
+    {
+        $present = [];
+        foreach ($activities as $a) {
+            if (isset($a['day']) && is_int($a['day']) && $a['day'] >= 1 && $a['day'] <= $travelDays) {
+                $present[$a['day']] = true;
+            }
+        }
+        $missing = [];
+        for ($i = 1; $i <= $travelDays; $i++) {
+            if (! isset($present[$i])) {
+                $missing[] = $i;
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Retry once to fill in missing days. Returns normalized activities or [] on failure.
+     *
+     * @param  array<int, array{role: string, content: string}>  $originalMessages
+     * @param  list<int>  $missingDays
+     * @return list<array{title: string, lat: float, lng: float, durationHours?: float, day?: int}>
+     */
+    private function fillMissingDays(
+        string $apiKey,
+        string $baseUrl,
+        string $model,
+        string $systemContent,
+        array $originalMessages,
+        array $missingDays,
+    ): array {
+        $daysList = implode(', ', $missingDays);
+        $retryUserMessage = "Tu as omis les jours suivants : {$daysList}. "
+            ."Complète maintenant UNIQUEMENT ces jours en respectant le format JSON attendu. "
+            ."Pour chacun de ces jours, fournis 3 activités distinctes (titre, lat, lng, durationHours, day). "
+            ."suggestedActivities doit contenir EXACTEMENT les activités pour ces jours, rien d'autre.";
+
+        $retryMessages = array_merge($originalMessages, [
+            ['role' => 'user', 'content' => $retryUserMessage],
+        ]);
+
+        try {
+            $res = Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(90)
+                ->post($baseUrl.'/chat/completions', [
+                    'model' => $model,
+                    'response_format' => ['type' => 'json_object'],
+                    'max_tokens' => 3000,
+                    'messages' => $retryMessages,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('OpenAI assistant retry failed', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        if (! $res->successful()) {
+            Log::warning('OpenAI assistant retry non-200', ['status' => $res->status()]);
+
+            return [];
+        }
+
+        $rawContent = $res->json('choices.0.message.content');
+        try {
+            $parsed = is_string($rawContent) ? json_decode($rawContent, true, 512, JSON_THROW_ON_ERROR) : [];
+        } catch (\Throwable) {
+            return [];
+        }
+        if (! is_array($parsed)) {
+            return [];
+        }
+
+        $activities = $this->normalizeSuggestedActivities($parsed['suggestedActivities'] ?? null);
+
+        // Keep only activities for missing days (defensive — model might re-add covered days).
+        $missingSet = array_flip($missingDays);
+
+        return array_values(array_filter($activities, fn ($a) => isset($a['day']) && isset($missingSet[$a['day']])));
     }
 }
