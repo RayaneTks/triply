@@ -363,6 +363,7 @@ function StepRenderer({
              <label className="text-xs font-bold uppercase tracking-widest text-light-muted">Destination</label>
              <CityAutocomplete
                value={state.destination}
+               selected={state.destinationSelected}
                onChange={(v) => {
                  actions.setDestination(v);
                  actions.setDestinationSelected(true);
@@ -373,9 +374,17 @@ function StepRenderer({
                  actions.setDestinationSelected(true);
                }}
              />
-             {!state.destinationSelected && (
-               <p className="text-xs font-bold text-amber-700 mt-2">
-                 Sélectionnez une ville ou un aéroport dans la liste pour continuer.
+             {state.destinationSelected ? (
+               <div
+                 role="status"
+                 className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold"
+               >
+                 <CheckCircle2 size={14} strokeWidth={2.5} className="text-emerald-600" />
+                 <span>Sélection validée&nbsp;: {state.destination}</span>
+               </div>
+             ) : (
+               <p className="mt-2 text-xs font-bold text-amber-700">
+                 Sélectionnez une ville ou un aéroport dans la liste — même si le nom est correct, le clic est obligatoire pour continuer.
                </p>
              )}
              <div className="flex flex-wrap gap-2 mt-4">
