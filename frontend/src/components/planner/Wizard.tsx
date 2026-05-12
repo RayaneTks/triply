@@ -55,6 +55,7 @@ type WizardStep = 'destination' | 'dates' | 'travelers' | 'budget' | 'styles' | 
 
 interface WizardFormState {
   destination: string;
+  destinationSelected: boolean;
   travelers: number;
   budget: number;
   selectedStyles: string[];
@@ -66,6 +67,7 @@ interface WizardFormState {
 
 interface WizardFormActions {
   setDestination: (v: string) => void;
+  setDestinationSelected: (v: boolean) => void;
   setTravelers: (v: number) => void;
   setBudget: (v: number) => void;
   setDateRange: (next: { startDate: string; endDate: string }) => void;
@@ -78,6 +80,7 @@ export function Wizard() {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>('destination');
   const [destination, setDestination] = useState("");
+  const [destinationSelected, setDestinationSelected] = useState(false);
   const [travelers, setTravelers] = useState(2);
   const [budget, setBudget] = useState(2500);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
@@ -234,6 +237,7 @@ export function Wizard() {
 
   const formState: WizardFormState = {
     destination,
+    destinationSelected,
     travelers,
     budget,
     selectedStyles,
@@ -245,6 +249,7 @@ export function Wizard() {
 
   const formActions: WizardFormActions = {
     setDestination,
+    setDestinationSelected,
     setTravelers,
     setBudget,
     setDateRange,
@@ -313,8 +318,8 @@ export function Wizard() {
 
              <button
               onClick={next}
-              disabled={submitting}
-              className="btn-primary flex items-center gap-2 disabled:opacity-60"
+              disabled={submitting || (step === 'destination' && !destinationSelected)}
+              className="btn-primary flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
              >
                {submitting
                  ? 'Enregistrement…'
@@ -356,14 +361,33 @@ function StepRenderer({
           <h1 className="text-4xl font-display font-bold">Où avez-vous envie d'aller ?</h1>
           <div className="space-y-4">
              <label className="text-xs font-bold uppercase tracking-widest text-light-muted">Destination</label>
-             <CityAutocomplete value={state.destination} onChange={actions.setDestination} />
+             <CityAutocomplete
+               value={state.destination}
+               onChange={(v) => {
+                 actions.setDestination(v);
+                 actions.setDestinationSelected(true);
+               }}
+               onInputChange={() => actions.setDestinationSelected(false)}
+               onSelectName={(name) => {
+                 actions.setDestination(name);
+                 actions.setDestinationSelected(true);
+               }}
+             />
+             {!state.destinationSelected && (
+               <p className="text-xs font-bold text-amber-700 mt-2">
+                 Sélectionnez une ville ou un aéroport dans la liste pour continuer.
+               </p>
+             )}
              <div className="flex flex-wrap gap-2 mt-4">
                 {["Rome", "Lisbonne", "Tokyo", "Berlin", ...visitedCities].map(city => {
                   const alreadyVisited = normalizedVisited.has(city.toLowerCase());
                   return (
                     <button
                       key={city}
-                      onClick={() => actions.setDestination(city)}
+                      onClick={() => {
+                        actions.setDestination(city);
+                        actions.setDestinationSelected(true);
+                      }}
                       className={cn(
                         "px-4 py-2 bg-card border rounded-full text-xs font-bold transition-all flex items-center gap-2",
                         state.destination === city ? "border-brand text-brand opacity-100" : "border-light-border text-light-muted opacity-70 hover:opacity-100"

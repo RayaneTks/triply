@@ -20,6 +20,10 @@ export interface CityAutocompleteProps {
     value: string; // Code IATA (ex: "PAR")
     onChange: (iataCode: string) => void;
 
+    /** Fired on every keystroke (not only on select). Use it to invalidate any
+     * "validated selection" flag in the parent. */
+    onInputChange?: (text: string) => void;
+
     // La prop magique pour remonter le nom à l'Assistant
     onSelectName?: (cityName: string) => void;
 
@@ -35,6 +39,7 @@ export interface CityAutocompleteProps {
 export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                                                 value,
                                                                 onChange,
+                                                                onInputChange,
                                                                 onSelectName,
                                                                 onSelectGeo,
                                                                 placeholder = 'Rechercher une ville...',
@@ -111,6 +116,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     // GESTION DE LA SAISIE (AUTOCOMPLETION)
     const handleInputChange = (text: string) => {
         setDisplayValue(text);
+        if (onInputChange) onInputChange(text);
 
         if (!text.trim() || text.length < 2) {
             setSuggestions([]);

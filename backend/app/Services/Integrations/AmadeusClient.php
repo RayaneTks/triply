@@ -54,21 +54,29 @@ class AmadeusClient
             return [];
         }
 
-        // Primary: Amadeus reference-data/locations.
-        try {
-            $token = $this->getAccessToken();
-            $url = $this->baseUrl().'/v1/reference-data/locations?subType=CITY,AIRPORT&keyword='.rawurlencode($keyword).'&page[limit]=10&view=FULL';
-            $res = Http::withToken($token)->acceptJson()->timeout(25)->get($url);
-            if ($res->successful()) {
-                $data = $res->json('data');
-                if (is_array($data) && $data !== []) {
-                    return array_map(fn ($loc) => $this->normalizeLocation(is_array($loc) ? $loc : []), $data);
+        $circuitKey = 'integrations:amadeus:locations:circuit_open';
+
+        // Circuit breaker: if Amadeus failed recently, skip it for 5 min and
+        // go straight to Nominatim. Keeps autocomplete fast when the account
+        // is degraded.
+        if (! Cache::store('file')->has($circuitKey)) {
+            try {
+                $token = $this->getAccessToken();
+                $url = $this->baseUrl().'/v1/reference-data/locations?subType=CITY,AIRPORT&keyword='.rawurlencode($keyword).'&page[limit]=10&view=FULL';
+                $res = Http::withToken($token)->acceptJson()->timeout(3)->get($url);
+                if ($res->successful()) {
+                    $data = $res->json('data');
+                    if (is_array($data) && $data !== []) {
+                        return array_map(fn ($loc) => $this->normalizeLocation(is_array($loc) ? $loc : []), $data);
+                    }
+                } else {
+                    Log::warning('Amadeus locations', ['status' => $res->status(), 'body' => $res->body()]);
+                    Cache::store('file')->put($circuitKey, true, 300);
                 }
-            } else {
-                Log::warning('Amadeus locations', ['status' => $res->status(), 'body' => $res->body()]);
+            } catch (\Throwable $e) {
+                Log::warning('Amadeus locations exception', ['message' => $e->getMessage()]);
+                Cache::store('file')->put($circuitKey, true, 300);
             }
-        } catch (\Throwable $e) {
-            Log::warning('Amadeus locations exception', ['message' => $e->getMessage()]);
         }
 
         // Fallback: Nominatim (OpenStreetMap) — keeps autocompletion alive when
@@ -81,10 +89,24 @@ class AmadeusClient
      */
     private function locationsFromNominatim(string $keyword): array
     {
+        $cacheKey = 'integrations:nominatim:loc:'.mb_strtolower(trim($keyword));
+
+        // Use the file store explicitly so the cache survives across PHP-FPM
+        // requests even when the default cache driver is "array".
+        return Cache::store('file')->remember($cacheKey, 600, function () use ($keyword) {
+            return $this->fetchNominatimLocations($keyword);
+        });
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchNominatimLocations(string $keyword): array
+    {
         try {
             $res = Http::withHeaders(['User-Agent' => 'Triply/1.0 (contact@triply.ovh)'])
                 ->acceptJson()
-                ->timeout(15)
+                ->timeout(6)
                 ->get('https://nominatim.openstreetmap.org/search', [
                     'q' => $keyword,
                     'format' => 'json',
@@ -457,7 +479,7 @@ class AmadeusClient
         try {
             $token = $this->getAccessToken();
             $url = $this->baseUrl().'/v1/reference-data/locations?subType=CITY&keyword='.rawurlencode($keyword).'&page[limit]=1';
-            $res = Http::withToken($token)->acceptJson()->timeout(20)->get($url);
+            $res = Http::withToken($token)->acceptJson()->timeout(4)->get($url);
             if ($res->successful()) {
                 $first = $res->json('data.0');
                 if (is_array($first)) {
