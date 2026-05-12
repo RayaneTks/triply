@@ -374,7 +374,7 @@ function StepRenderer({
                  actions.setDestinationSelected(true);
                }}
              />
-             {state.destinationSelected ? (
+             {state.destinationSelected && (
                <div
                  role="status"
                  className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold"
@@ -382,10 +382,6 @@ function StepRenderer({
                  <CheckCircle2 size={14} strokeWidth={2.5} className="text-emerald-600" />
                  <span>Sélection validée&nbsp;: {state.destination}</span>
                </div>
-             ) : (
-               <p className="mt-2 text-xs font-bold text-amber-700">
-                 Sélectionnez une ville ou un aéroport dans la liste — même si le nom est correct, le clic est obligatoire pour continuer.
-               </p>
              )}
              <div className="flex flex-wrap gap-2 mt-4">
                 {["Rome", "Lisbonne", "Tokyo", "Berlin", ...visitedCities].map(city => {

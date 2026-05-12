@@ -11,6 +11,11 @@ return [
         'client_id' => env('AMADEUS_CLIENT_ID'),
         'client_secret' => env('AMADEUS_CLIENT_SECRET'),
     ],
+    'mapbox' => [
+        // Used by server-side geocoding fallback for the autocomplete endpoint.
+        // Falls back to NEXT_PUBLIC_MAPBOX_TOKEN if MAPBOX_TOKEN is unset.
+        'token' => env('MAPBOX_TOKEN', env('NEXT_PUBLIC_MAPBOX_TOKEN')),
+    ],
     'google_places' => [
         'api_key' => env('GOOGLE_PLACES_API_KEY'),
     ],

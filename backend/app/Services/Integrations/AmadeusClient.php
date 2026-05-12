@@ -79,9 +79,93 @@ class AmadeusClient
             }
         }
 
-        // Fallback: Nominatim (OpenStreetMap) — keeps autocompletion alive when
-        // Amadeus test account lacks reference-data access. Free, no auth.
+        // Fallback 1: Mapbox geocoding — handles prefix queries (e.g. "Marseill"),
+        // free up to 100k req/month, same token as the frontend.
+        $mapbox = $this->locationsFromMapbox($keyword);
+        if ($mapbox !== []) {
+            return $mapbox;
+        }
+
+        // Fallback 2: Nominatim (OpenStreetMap) — last resort if Mapbox is down.
         return $this->locationsFromNominatim($keyword);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function locationsFromMapbox(string $keyword): array
+    {
+        $token = (string) (config('integrations.mapbox.token') ?: env('NEXT_PUBLIC_MAPBOX_TOKEN', ''));
+        if ($token === '') {
+            return [];
+        }
+
+        $cacheKey = 'integrations:mapbox:loc:'.mb_strtolower(trim($keyword));
+
+        return Cache::store('file')->remember($cacheKey, 600, function () use ($keyword, $token) {
+            try {
+                $url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'.rawurlencode(trim($keyword)).'.json';
+                $res = Http::timeout(4)->get($url, [
+                    'access_token' => $token,
+                    'autocomplete' => 'true',
+                    'limit' => 5,
+                    'language' => 'fr',
+                    'types' => 'place,locality,district',
+                ]);
+                if (! $res->successful()) {
+                    Log::warning('Mapbox geocoding failed', ['status' => $res->status()]);
+
+                    return [];
+                }
+
+                $features = $res->json('features');
+                if (! is_array($features)) {
+                    return [];
+                }
+
+                $out = [];
+                foreach ($features as $f) {
+                    if (! is_array($f)) {
+                        continue;
+                    }
+                    $cityName = (string) ($f['text_fr'] ?? $f['text'] ?? '');
+                    if ($cityName === '') {
+                        continue;
+                    }
+                    $center = is_array($f['center'] ?? null) ? $f['center'] : null;
+                    if (! is_array($center) || count($center) < 2) {
+                        continue;
+                    }
+                    $lng = (float) $center[0];
+                    $lat = (float) $center[1];
+
+                    $countryName = '';
+                    if (is_array($f['context'] ?? null)) {
+                        foreach ($f['context'] as $ctx) {
+                            if (is_array($ctx) && str_starts_with((string) ($ctx['id'] ?? ''), 'country.')) {
+                                $countryName = (string) ($ctx['text_fr'] ?? $ctx['text'] ?? '');
+                                break;
+                            }
+                        }
+                    }
+
+                    $out[] = [
+                        'id' => 'mb-'.($f['id'] ?? uniqid()),
+                        'name' => $cityName,
+                        'iataCode' => '',
+                        'subType' => 'CITY',
+                        'address' => ['cityName' => $cityName, 'countryName' => $countryName],
+                        'geoCode' => ['latitude' => $lat, 'longitude' => $lng],
+                    ];
+                }
+
+                return $out;
+            } catch (\Throwable $e) {
+                Log::warning('Mapbox geocoding exception', ['message' => $e->getMessage()]);
+
+                return [];
+            }
+        });
     }
 
     /**
@@ -499,9 +583,8 @@ class AmadeusClient
             // Falls through to Nominatim.
         }
 
-        // Fallback: Nominatim.
-        $locations = $this->locationsFromNominatim($keyword);
-        foreach ($locations as $loc) {
+        // Fallback: Mapbox then Nominatim.
+        foreach ([...$this->locationsFromMapbox($keyword), ...$this->locationsFromNominatim($keyword)] as $loc) {
             $geo = $loc['geoCode'] ?? null;
             if (is_array($geo) && isset($geo['latitude'], $geo['longitude'])) {
                 return [
