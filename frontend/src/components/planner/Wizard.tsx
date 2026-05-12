@@ -27,10 +27,11 @@ import { TravelerCounter } from "../TravelerCounter/TravelerCounter";
 import type { PlanningNeeds } from "../../types/planning-needs";
 import { appendTripFromWizard } from "../../lib/local-trips-store";
 import { formatTripDateRange } from "../../lib/format-trip-dates";
-import type { AssistantPlannerContext, Step1FormPatch } from "../../lib/integrations/assistant";
+import type { AssistantPlannerContext, Step1FormPatch, SuggestedActivity } from "../../lib/integrations/assistant";
+import { sendChat } from "../../lib/integrations/assistant";
 import { authClient, fetchPreferences } from "../../lib/auth-client";
 import { tripsClient } from "../../lib/trips-client";
-import type { PlanSnapshot } from "../../lib/plan-snapshot";
+import type { PlanSnapshot, PlanSnapshotActivity, PlanSnapshotDay } from "../../lib/plan-snapshot";
 
 function travelDaysBetween(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 1;
@@ -49,6 +50,38 @@ function stylesToPreferences(ids: string[]): string[] {
     adventure: "aventure",
   };
   return ids.map((id) => map[id] ?? id);
+}
+
+function needsToPreferences(needs: PlanningNeeds): string[] {
+  const labels: string[] = [];
+  if (needs.flights) labels.push("vols inclus");
+  if (needs.hotels) labels.push("hôtels inclus");
+  if (needs.activities) labels.push("activités culturelles");
+  if (needs.restaurants) labels.push("gastronomie locale");
+  return labels;
+}
+
+function groupSuggestedActivitiesByDay(
+  activities: SuggestedActivity[],
+  travelDays: number,
+): PlanSnapshotDay[] {
+  const buckets: Record<number, PlanSnapshotActivity[]> = {};
+  for (const a of activities) {
+    if (!a.title || !Number.isFinite(a.lat) || !Number.isFinite(a.lng)) continue;
+    const dayIndex = typeof a.day === "number" && a.day >= 1 && a.day <= travelDays ? a.day : 1;
+    if (!buckets[dayIndex]) buckets[dayIndex] = [];
+    buckets[dayIndex].push({
+      title: a.title,
+      lat: a.lat,
+      lng: a.lng,
+      durationHours: typeof a.durationHours === "number" ? a.durationHours : undefined,
+    });
+  }
+  const days: PlanSnapshotDay[] = [];
+  for (let i = 1; i <= travelDays; i++) {
+    days.push({ dayIndex: i, activities: buckets[i] ?? [] });
+  }
+  return days;
 }
 
 type WizardStep = 'destination' | 'dates' | 'travelers' | 'budget' | 'styles' | 'needs' | 'review';
@@ -96,6 +129,7 @@ export function Wizard() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [visitedCities, setVisitedCities] = useState<string[]>([]);
+  const [aiStage, setAiStage] = useState<"idle" | "generating" | "saving">("idle");
 
   useEffect(() => {
     const token = authClient.getToken();
@@ -118,13 +152,45 @@ export function Wizard() {
   const stepsOrder: WizardStep[] = ['destination', 'dates', 'travelers', 'budget', 'styles', 'needs', 'review'];
   const currentIndex = stepsOrder.indexOf(step);
 
-  const buildPlanSnapshot = (): PlanSnapshot => ({
-    days: [],
+  const buildPlanSnapshot = (days: PlanSnapshotDay[] = []): PlanSnapshot => ({
+    days,
     planningMode: needs.activities ? 'semi_ai' : 'full_ai',
     destinationSummary: destination.trim()
       ? { cityName: destination.trim() }
       : undefined,
   });
+
+  const generateAiItinerary = async (): Promise<PlanSnapshotDay[]> => {
+    const aiPreferences = [...userPreferences, ...needsToPreferences(needs)];
+    const response = await sendChat({
+      messages: [
+        {
+          role: "user",
+          content: `Construis un itinéraire jour par jour à ${destination.trim()} sur ${travelDays} jour${travelDays > 1 ? 's' : ''} pour ${travelers} voyageur${travelers > 1 ? 's' : ''}, budget total ${budget}€. Trois activités par jour minimum.`,
+        },
+      ],
+      destinationContext: destination.trim(),
+      userPreferences: aiPreferences,
+      chatMode: "itinerary",
+      selectedDay: 1,
+      travelDays,
+      maxActivityHoursPerDay: 8,
+      planningMode: "semi_ai",
+      currentDayActivityTitles: [],
+      requestFullItinerary: true,
+      step1FormSnapshot: {
+        arrivalCityName: destination.trim() || undefined,
+        travelerCount: travelers,
+        budget: String(budget),
+        outboundDate: startDate || undefined,
+        returnDate: endDate || undefined,
+        travelDays,
+      },
+      step1HotelOptionLabels: [],
+      step1DietaryLabels: [],
+    });
+    return groupSuggestedActivitiesByDay(response.suggestedActivities ?? [], travelDays);
+  };
 
   const finalize = async () => {
     if (submitting) return;
@@ -132,13 +198,21 @@ export function Wizard() {
     const titleBase = destination.trim() || 'Mon prochain voyage';
     const formattedDates = formatTripDateRange(startDate || undefined, endDate || undefined);
     const title = formattedDates ? `${titleBase} · ${formattedDates}` : titleBase;
-    const planSnapshot = buildPlanSnapshot();
 
     setSubmitError(null);
 
     const token = authClient.getToken();
     if (token) {
       setSubmitting(true);
+      let aiDays: PlanSnapshotDay[] = [];
+      try {
+        setAiStage("generating");
+        aiDays = await generateAiItinerary();
+      } catch {
+        aiDays = [];
+      }
+
+      setAiStage("saving");
       try {
         const trip = await tripsClient.create({
           title,
@@ -146,14 +220,14 @@ export function Wizard() {
           start_date: startDate || undefined,
           end_date: endDate || undefined,
           travelers_count: travelers,
-          plan_snapshot: planSnapshot,
+          plan_snapshot: buildPlanSnapshot(aiDays),
         });
         router.push(`/voyages/${trip.id}`);
         return;
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : 'Sauvegarde impossible.');
+        setAiStage("idle");
         setSubmitting(false);
-        // En cas d'échec API, on tombe dans le fallback localStorage pour ne pas perdre la saisie.
       }
     }
 
@@ -195,8 +269,8 @@ export function Wizard() {
     setNeeds((prev) => ({ ...prev, [need]: !prev[need] }));
   };
 
-  const travelDays = useMemo(() => travelDaysBetween(startDate, endDate), [startDate, endDate]);
-  const userPreferences = useMemo(() => stylesToPreferences(selectedStyles), [selectedStyles]);
+  const travelDays = travelDaysBetween(startDate, endDate);
+  const userPreferences = stylesToPreferences(selectedStyles);
 
   const plannerContext: AssistantPlannerContext = useMemo(
     () => ({
@@ -260,6 +334,36 @@ export function Wizard() {
 
   return (
     <div className="flex h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] bg-light-bg overflow-hidden relative">
+      <AnimatePresence>
+        {aiStage !== "idle" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex flex-col items-center justify-center gap-6 bg-light-bg/95 backdrop-blur-md px-6 text-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 rounded-full border-4 border-brand/20 border-t-brand"
+            />
+            <div className="space-y-2 max-w-md">
+              <div className="flex items-center justify-center gap-2 text-brand">
+                <Sparkles size={18} />
+                <span className="text-xs font-bold uppercase tracking-widest">Triply IA</span>
+              </div>
+              <h2 className="text-2xl font-display font-bold text-light-foreground">
+                {aiStage === "generating"
+                  ? `L'IA construit votre voyage à ${destination.trim() || 'votre destination'}…`
+                  : "Enregistrement de votre itinéraire…"}
+              </h2>
+              <p className="text-sm text-light-muted font-bold leading-relaxed">
+                Sélection d'activités sur {travelDays} jour{travelDays > 1 ? 's' : ''} adaptées à votre budget de {budget}€ et à vos préférences.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Container Principal Wizard */}
       <div className="flex-1 flex flex-col overflow-y-auto lg:p-8 scroll-smooth">
         <div className="max-w-2xl w-full mx-auto flex flex-col gap-8 pb-32 px-6 lg:px-0">
