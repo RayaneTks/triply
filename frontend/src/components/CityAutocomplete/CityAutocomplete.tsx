@@ -159,7 +159,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 .then((data) => {
                     if (requestId !== requestRef.current) return;
                     const results = Array.isArray(data) ? data : (data.data || data || []);
-                    const filtered = results.filter((r: AmadeusLocation) => r && r.iataCode);
+                    const filtered = results.filter((r: AmadeusLocation) => r && (r.name || r.address?.cityName));
                     setSuggestions(filtered);
                     setActiveIndex(filtered.length > 0 ? 0 : -1);
                 })
