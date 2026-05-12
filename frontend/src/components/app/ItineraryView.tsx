@@ -1,7 +1,7 @@
 'use client';
 
 import React from "react";
-import { Calendar, Users, Wallet, CheckCircle, Clock, MapPin, ExternalLink, Bot } from "lucide-react";
+import { Calendar, Users, Wallet, CheckCircle, Clock, ExternalLink, Bot } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export function ItineraryView() {

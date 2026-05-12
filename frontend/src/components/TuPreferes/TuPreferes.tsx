@@ -364,7 +364,7 @@ function buildInitialSelections(values?: Partial<PreferencesPayload>): Record<st
     return result;
 }
 
-export function TuPreferes({ visible, onComplete, onSkip, initialValues }: TuPreferesProps) {
+export function TuPreferes({ visible, onComplete, onSkip: _onSkip, initialValues }: TuPreferesProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [direction, setDirection] = useState(1);
     const [selections, setSelections] = useState<Record<string, string[]>>(buildInitialSelections(initialValues));

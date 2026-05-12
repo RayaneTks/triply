@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  Send, 
-  MapPin, 
-  Sparkles, 
-  ChevronRight, 
-  Wallet, 
+import {
+  Send,
+  MapPin,
+  Sparkles,
+  ChevronRight,
+  Wallet,
   Calendar,
   FileText,
   Upload,
@@ -17,7 +16,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { cn } from "../../lib/utils";
 
 export function ManualCanvasView() {
   const router = useRouter();

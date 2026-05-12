@@ -42,6 +42,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "pics.avs.io", pathname: "/**" },
+      { protocol: "https", hostname: "api.mapbox.com", pathname: "/**" },
     ],
   },
 };

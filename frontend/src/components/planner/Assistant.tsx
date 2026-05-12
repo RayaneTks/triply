@@ -65,9 +65,6 @@ export function Assistant({
     }
   }, [messages, lastSuggestions]);
 
-  const buildRequestMessages = (): AssistantMessage[] =>
-    messages.map((m) => ({ role: m.role, content: m.content }));
-
   const handleSend = async () => {
     if (!input.trim() || sending) return;
     if (!authClient.getToken()) {

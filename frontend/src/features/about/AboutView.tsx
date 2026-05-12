@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles, Map, Target, TrendingUp, Users, ChevronRight } from "lucide-react";
+import { Sparkles, Map, Target, TrendingUp, ChevronRight } from "lucide-react";
 
 export function AboutView() {
   const roadmap = [
