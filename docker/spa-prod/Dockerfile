@@ -20,8 +20,19 @@ FROM node:22-alpine AS build
 
 WORKDIR /app/frontend
 
+# NEXT_PUBLIC_* env vars are baked into the JS bundle at build time —
+# they must be present here, not at runtime.
+ARG NEXT_PUBLIC_MAPBOX_TOKEN
+ARG NEXT_PUBLIC_BACKEND_API_URL=/api/v1
+ARG NEXT_PUBLIC_AUTH_STORAGE_MODE=session
+ARG NEXT_PUBLIC_APP_URL=https://triply.ovh
+
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_MAPBOX_TOKEN=${NEXT_PUBLIC_MAPBOX_TOKEN} \
+    NEXT_PUBLIC_BACKEND_API_URL=${NEXT_PUBLIC_BACKEND_API_URL} \
+    NEXT_PUBLIC_AUTH_STORAGE_MODE=${NEXT_PUBLIC_AUTH_STORAGE_MODE} \
+    NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 
 COPY --from=deps /app/frontend/node_modules ./node_modules
 COPY frontend/ ./
