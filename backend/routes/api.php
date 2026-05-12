@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Integrations\GooglePlaceReviewsController;
 use App\Http\Controllers\Api\V1\PlacesController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RestaurantController;
+use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TripActivityController;
 use App\Http\Controllers\Api\V1\TripBookingController;
 use App\Http\Controllers\Api\V1\TripController;
@@ -127,6 +128,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/trips/{trip}/export/ics', [TripExportController::class, 'exportIcs']);
 
         Route::post('/trips/{trip}/booking/checkout', [TripBookingController::class, 'checkout']);
+
+        Route::post('/subscriptions/confirm', [SubscriptionController::class, 'confirm']);
 
         Route::get('/admin/metrics', [AdminMetricsController::class, 'index'])->middleware('admin');
     });
