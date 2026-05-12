@@ -134,7 +134,7 @@ export function TripDetailView() {
     }, [apiTrip, storedOnly]);
 
     const cityGroups = useMemo(() => {
-        const groups = new Map<string, ActivityResource[]>();
+        const groups = new globalThis.Map<string, ActivityResource[]>();
         for (const bucket of activitiesByDay) {
             for (const activity of bucket.activities) {
                 const city = activity.attributes.city?.trim() || 'Sans ville';
