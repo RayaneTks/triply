@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles, Map, Target, TrendingUp, Users, ChevronRight } from "lucide-react";
+import { Sparkles, Map, Target, TrendingUp, ChevronRight } from "lucide-react";
 
 export function AboutView() {
   const roadmap = [
@@ -17,7 +17,7 @@ export function AboutView() {
       <section className="px-6 py-20 bg-card border-b border-light-border">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <span className="bg-brand/10 text-brand text-[10px] font-bold uppercase tracking-widest px-4 py-1 rounded-full">Notre Mission</span>
+            <span className="bg-brand/10 text-brand text-xs font-bold uppercase tracking-widest px-4 py-1 rounded-full">Notre Mission</span>
           </motion.div>
           <h1 className="text-5xl lg:text-7xl font-display font-bold">Réduire la charge mentale, <br/><span className="text-brand">décupler le plaisir.</span></h1>
           <p className="text-xl text-light-muted leading-relaxed">
@@ -60,7 +60,7 @@ export function AboutView() {
         <div className="max-w-7xl mx-auto space-y-16">
           <header className="text-center">
              <h2 className="text-3xl font-display font-bold mb-4 italic text-cyan-accent">Notre feuille de route</h2>
-             <p className="text-dark-muted max-w-lg mx-auto uppercase text-[10px] font-bold tracking-widest">Le futur du voyage, itération par itération</p>
+             <p className="text-dark-muted max-w-lg mx-auto uppercase text-xs font-bold tracking-widest">Le futur du voyage, itération par itération</p>
           </header>
           
           <div className="grid md:grid-cols-3 gap-8">

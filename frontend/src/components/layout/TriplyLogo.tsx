@@ -35,7 +35,8 @@ export function TriplyLogo({ className, size = 52, priority = false }: TriplyLog
         width={width}
         height={size}
         priority={priority}
-        className="triply-logo-dark h-full w-auto object-contain"
+        style={{ height: '100%', width: 'auto' }}
+        className="triply-logo-dark object-contain"
       />
       <Image
         src="/Logo-triply-light.png"
@@ -43,7 +44,8 @@ export function TriplyLogo({ className, size = 52, priority = false }: TriplyLog
         width={width}
         height={size}
         priority={priority}
-        className="triply-logo-light h-full w-auto object-contain"
+        style={{ height: '100%', width: 'auto' }}
+        className="triply-logo-light object-contain"
       />
     </span>
   );

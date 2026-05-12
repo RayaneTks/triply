@@ -53,21 +53,100 @@ class AmadeusClient
         if (strlen($keyword) < 2) {
             return [];
         }
-        $token = $this->getAccessToken();
-        $url = $this->baseUrl().'/v1/reference-data/locations?subType=CITY,AIRPORT&keyword='.rawurlencode($keyword).'&page[limit]=10&view=FULL';
-        $res = Http::withToken($token)->acceptJson()->timeout(25)->get($url);
-        if (! $res->successful()) {
-            Log::warning('Amadeus locations', ['status' => $res->status(), 'body' => $res->body()]);
 
-            throw new \RuntimeException('Amadeus locations HTTP '.$res->status());
+        // Primary: Amadeus reference-data/locations.
+        try {
+            $token = $this->getAccessToken();
+            $url = $this->baseUrl().'/v1/reference-data/locations?subType=CITY,AIRPORT&keyword='.rawurlencode($keyword).'&page[limit]=10&view=FULL';
+            $res = Http::withToken($token)->acceptJson()->timeout(25)->get($url);
+            if ($res->successful()) {
+                $data = $res->json('data');
+                if (is_array($data) && $data !== []) {
+                    return array_map(fn ($loc) => $this->normalizeLocation(is_array($loc) ? $loc : []), $data);
+                }
+            } else {
+                Log::warning('Amadeus locations', ['status' => $res->status(), 'body' => $res->body()]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Amadeus locations exception', ['message' => $e->getMessage()]);
         }
 
-        $data = $res->json('data');
-        if (! is_array($data)) {
+        // Fallback: Nominatim (OpenStreetMap) — keeps autocompletion alive when
+        // Amadeus test account lacks reference-data access. Free, no auth.
+        return $this->locationsFromNominatim($keyword);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function locationsFromNominatim(string $keyword): array
+    {
+        try {
+            $res = Http::withHeaders(['User-Agent' => 'Triply/1.0 (contact@triply.ovh)'])
+                ->acceptJson()
+                ->timeout(15)
+                ->get('https://nominatim.openstreetmap.org/search', [
+                    'q' => $keyword,
+                    'format' => 'json',
+                    'addressdetails' => 1,
+                    'limit' => 10,
+                    'accept-language' => 'fr',
+                ]);
+            if (! $res->successful()) {
+                return [];
+            }
+            $rows = $res->json();
+            if (! is_array($rows)) {
+                return [];
+            }
+
+            $out = [];
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $cls = (string) ($row['class'] ?? '');
+                $type = (string) ($row['type'] ?? '');
+                // Keep cities, towns, airports, administrative regions.
+                $isCity = $cls === 'place' && in_array($type, ['city', 'town', 'village'], true);
+                $isAirport = $cls === 'aeroway' && $type === 'aerodrome';
+                $isAdmin = $cls === 'boundary' && $type === 'administrative';
+                if (! $isCity && ! $isAirport && ! $isAdmin) {
+                    continue;
+                }
+
+                $address = is_array($row['address'] ?? null) ? $row['address'] : [];
+                $cityName = (string) ($address['city'] ?? $address['town'] ?? $address['village'] ?? $row['name'] ?? '');
+                if ($cityName === '') {
+                    $displayName = (string) ($row['display_name'] ?? '');
+                    $cityName = $displayName !== '' ? trim(explode(',', $displayName)[0]) : '';
+                }
+                $countryName = (string) ($address['country'] ?? '');
+                $lat = isset($row['lat']) ? (float) $row['lat'] : NAN;
+                $lng = isset($row['lon']) ? (float) $row['lon'] : NAN;
+                if (! is_finite($lat) || ! is_finite($lng) || $cityName === '') {
+                    continue;
+                }
+
+                $out[] = [
+                    'id' => 'osm-'.($row['osm_id'] ?? uniqid()),
+                    'name' => $cityName,
+                    'iataCode' => '',
+                    'subType' => $isAirport ? 'AIRPORT' : 'CITY',
+                    'address' => ['cityName' => $cityName, 'countryName' => $countryName],
+                    'geoCode' => ['latitude' => $lat, 'longitude' => $lng],
+                ];
+                if (count($out) >= 10) {
+                    break;
+                }
+            }
+
+            return $out;
+        } catch (\Throwable $e) {
+            Log::warning('Nominatim fallback failed', ['message' => $e->getMessage()]);
+
             return [];
         }
-
-        return array_map(fn ($loc) => $this->normalizeLocation(is_array($loc) ? $loc : []), $data);
     }
 
     /**
@@ -371,27 +450,102 @@ class AmadeusClient
             $token = $this->getAccessToken();
             $url = $this->baseUrl().'/v1/reference-data/locations?subType=CITY&keyword='.rawurlencode($keyword).'&page[limit]=1';
             $res = Http::withToken($token)->acceptJson()->timeout(20)->get($url);
-            if (! $res->successful()) {
-                return null;
-            }
-            $first = $res->json('data.0');
-            if (! is_array($first)) {
-                return null;
-            }
-            $geo = $first['geoCode'] ?? null;
-            if (! is_array($geo)) {
-                return null;
-            }
-            $lat = isset($geo['latitude']) ? (float) $geo['latitude'] : null;
-            $lng = isset($geo['longitude']) ? (float) $geo['longitude'] : null;
-            if ($lat === null || $lng === null || ! is_finite($lat) || ! is_finite($lng)) {
-                return null;
-            }
-            $name = is_string($first['name'] ?? null) ? $first['name'] : $keyword;
+            if ($res->successful()) {
+                $first = $res->json('data.0');
+                if (is_array($first)) {
+                    $geo = $first['geoCode'] ?? null;
+                    if (is_array($geo)) {
+                        $lat = isset($geo['latitude']) ? (float) $geo['latitude'] : null;
+                        $lng = isset($geo['longitude']) ? (float) $geo['longitude'] : null;
+                        if ($lat !== null && $lng !== null && is_finite($lat) && is_finite($lng)) {
+                            $name = is_string($first['name'] ?? null) ? $first['name'] : $keyword;
 
-            return ['lat' => $lat, 'lng' => $lng, 'name' => $name];
+                            return ['lat' => $lat, 'lng' => $lng, 'name' => $name];
+                        }
+                    }
+                }
+            }
         } catch (\Throwable) {
-            return null;
+            // Falls through to Nominatim.
         }
+
+        // Fallback: Nominatim.
+        $locations = $this->locationsFromNominatim($keyword);
+        foreach ($locations as $loc) {
+            $geo = $loc['geoCode'] ?? null;
+            if (is_array($geo) && isset($geo['latitude'], $geo['longitude'])) {
+                return [
+                    'lat' => (float) $geo['latitude'],
+                    'lng' => (float) $geo['longitude'],
+                    'name' => (string) ($loc['name'] ?? $keyword),
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Recupere des points d'interet (categorie RESTAURANT par defaut) autour d'un point.
+     *
+     * @param  list<string>  $categories  Categories Amadeus (ex: RESTAURANT, SIGHTS, NIGHTLIFE)
+     * @return array<int, array<string, mixed>>
+     */
+    public function pointsOfInterest(float $lat, float $lng, int $radiusMeters = 1000, array $categories = ['RESTAURANT']): array
+    {
+        if (! is_finite($lat) || ! is_finite($lng)) {
+            return [];
+        }
+        $radiusKm = max(1, min(20, (int) ceil($radiusMeters / 1000)));
+        $cacheKey = sprintf('integrations:amadeus:poi:%.4f:%.4f:%d:%s', $lat, $lng, $radiusKm, implode(',', $categories));
+
+        return Cache::remember($cacheKey, 60 * 60, function () use ($lat, $lng, $radiusKm, $categories) {
+            try {
+                $token = $this->getAccessToken();
+                $url = $this->baseUrl().'/v1/reference-data/locations/pois?'.http_build_query([
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'radius' => $radiusKm,
+                    'categories' => implode(',', $categories),
+                    'page[limit]' => 20,
+                ]);
+                $res = Http::withToken($token)->acceptJson()->timeout(25)->get($url);
+                if (! $res->successful()) {
+                    Log::warning('Amadeus POIs failed', ['status' => $res->status(), 'body' => $res->body()]);
+
+                    return [];
+                }
+                $data = $res->json('data');
+                if (! is_array($data)) {
+                    return [];
+                }
+
+                return array_values(array_filter(array_map(function ($poi) {
+                    if (! is_array($poi)) {
+                        return null;
+                    }
+                    $geo = $poi['geoCode'] ?? [];
+                    $plat = isset($geo['latitude']) && is_numeric($geo['latitude']) ? (float) $geo['latitude'] : null;
+                    $plng = isset($geo['longitude']) && is_numeric($geo['longitude']) ? (float) $geo['longitude'] : null;
+                    if ($plat === null || $plng === null) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => isset($poi['id']) ? (string) $poi['id'] : null,
+                        'name' => isset($poi['name']) ? (string) $poi['name'] : 'Restaurant',
+                        'category' => isset($poi['category']) ? (string) $poi['category'] : 'RESTAURANT',
+                        'rank' => isset($poi['rank']) && is_numeric($poi['rank']) ? (int) $poi['rank'] : null,
+                        'tags' => isset($poi['tags']) && is_array($poi['tags']) ? array_values($poi['tags']) : [],
+                        'lat' => $plat,
+                        'lng' => $plng,
+                    ];
+                }, $data)));
+            } catch (\Throwable $e) {
+                Log::warning('Amadeus POIs exception', ['error' => $e->getMessage()]);
+
+                return [];
+            }
+        });
     }
 }

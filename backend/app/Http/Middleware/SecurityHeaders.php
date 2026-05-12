@@ -18,8 +18,12 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
         $response->headers->set('X-XSS-Protection', '1; mode=block');
 
-        // TODO: Tune CSP based on frontend hostnames and third-party providers.
-        $response->headers->set('Content-Security-Policy', "default-src 'self'");
+        if (app()->environment('production')) {
+            $response->headers->set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+        }
+
+        // TODO: Tune CSP — actuellement trop restrictif (bloque Mapbox, Amadeus, Stripe)
+        // $response->headers->set('Content-Security-Policy', "default-src 'self'");
 
         return $response;
     }

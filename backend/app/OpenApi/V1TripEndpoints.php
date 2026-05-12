@@ -332,5 +332,72 @@ final class V1TripEndpoints
         ]
     )]
     public function tripValidate(): void {}
+
+    /**
+     * DELETE /api/v1/trips/{trip}
+     *
+     * Supprime definitivement un voyage de l'utilisateur connecte
+     * (cascade : journees, etapes en soft delete, hebergements, transports).
+     */
+    #[OA\Delete(
+        path: '/trips/{trip}',
+        tags: ['Voyages'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'trip', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
+            new OA\Response(
+                response: 204,
+                description: 'Voyage supprime (aucun contenu retourne)',
+            ),
+        ]
+    )]
+    public function tripDestroy(): void {}
+
+    /**
+     * DELETE /api/v1/trips/{trip}/cities/{city}
+     *
+     * Supprime toutes les etapes du voyage rattachees a la ville donnee (soft delete)
+     * et nettoie le plan_snapshot. Le nom de ville est case-insensitive.
+     */
+    #[OA\Delete(
+        path: '/trips/{trip}/cities/{city}',
+        tags: ['Voyages'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'trip', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'city', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 401, ref: '#/components/responses/ErrorUnauthorized'),
+            new OA\Response(response: 403, ref: '#/components/responses/ErrorForbidden'),
+            new OA\Response(response: 404, ref: '#/components/responses/ErrorNotFound'),
+            new OA\Response(response: 500, ref: '#/components/responses/ErrorInternal'),
+
+            new OA\Response(
+                response: 200,
+                description: 'Suppression d\'une ville d\'un voyage',
+                content: new OA\JsonContent(
+                    ref: '#/components/schemas/ApiSuccess',
+                    example: [
+                        'success' => true,
+                        'data' => [
+                            'trip_id' => '1',
+                            'city' => 'Florence',
+                            'deleted_count' => 4,
+                        ],
+                        'meta' => [],
+                    ]
+                )
+            ),
+        ]
+    )]
+    public function tripDestroyCity(): void {}
 }
 

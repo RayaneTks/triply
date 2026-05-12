@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  Send, 
-  MapPin, 
-  Sparkles, 
-  ChevronRight, 
-  Wallet, 
+import {
+  Send,
+  MapPin,
+  Sparkles,
+  ChevronRight,
+  Wallet,
   Calendar,
   FileText,
   Upload,
@@ -17,13 +16,19 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { cn } from "../../lib/utils";
 
 export function ManualCanvasView() {
   const router = useRouter();
   const [brief, setBrief] = useState("");
   const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [summary, setSummary] = useState<any>(null);
+  type Summary = {
+    destination: string;
+    period: string;
+    budget: string;
+    constraintsCount: number;
+    highlights: string[];
+  };
+  const [summary, setSummary] = useState<Summary | null>(null);
 
   const handleSynthesize = () => {
     if (!brief.trim()) return;
@@ -81,7 +86,7 @@ export function ManualCanvasView() {
            </div>
 
            <div className="flex flex-wrap gap-3">
-              <span className="text-[10px] font-bold text-light-muted uppercase tracking-widest block w-full mb-2">Inspirations rapides</span>
+              <span className="text-xs font-bold text-light-muted uppercase tracking-widest block w-full mb-2">Inspirations rapides</span>
               {["Roadtrip Toscane", "City Break Berlin", "Laponie en famille"].map(tag => (
                 <button 
                   key={tag}
@@ -112,21 +117,21 @@ export function ManualCanvasView() {
                      <div className="flex items-start gap-4">
                         <MapPin size={18} className="text-light-muted mt-1" />
                         <div>
-                           <p className="text-[10px] uppercase font-bold text-light-muted">Destination</p>
+                           <p className="text-xs uppercase font-bold text-light-muted">Destination</p>
                            <p className="font-bold">{summary.destination}</p>
                         </div>
                      </div>
                      <div className="flex items-start gap-4">
                         <Calendar size={18} className="text-light-muted mt-1" />
                         <div>
-                           <p className="text-[10px] uppercase font-bold text-light-muted">Période détectée</p>
+                           <p className="text-xs uppercase font-bold text-light-muted">Période détectée</p>
                            <p className="font-bold">{summary.period}</p>
                         </div>
                      </div>
                      <div className="flex items-start gap-4">
                         <Wallet size={18} className="text-light-muted mt-1" />
                         <div>
-                           <p className="text-[10px] uppercase font-bold text-light-muted">Contrainte Budget</p>
+                           <p className="text-xs uppercase font-bold text-light-muted">Contrainte Budget</p>
                            <p className="font-bold text-brand">{summary.budget}</p>
                         </div>
                      </div>
@@ -162,7 +167,7 @@ export function ManualCanvasView() {
                   </div>
                   <div className="p-4 bg-emerald-50 rounded-2xl flex gap-3 text-left">
                      <Sparkles size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                     <p className="text-[10px] font-bold text-emerald-700 leading-relaxed uppercase">Le budget détecté sera verrouillé comme contrainte dure.</p>
+                     <p className="text-xs font-bold text-emerald-700 leading-relaxed uppercase">Le budget détecté sera verrouillé comme contrainte dure.</p>
                   </div>
                </div>
              )}

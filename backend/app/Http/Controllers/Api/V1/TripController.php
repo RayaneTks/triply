@@ -14,27 +14,7 @@ class TripController extends ApiController
 
     public function store(StoreTripRequest $request)
     {
-        // #region agent log
-        $v = $request->validated();
-        $logPath = storage_path('logs/debug-cc5fd8.log');
-        file_put_contents(
-            $logPath,
-            json_encode([
-                'sessionId' => 'cc5fd8',
-                'hypothesisId' => 'F',
-                'location' => 'TripController.php:store',
-                'message' => 'store reached',
-                'data' => [
-                    'validated_keys' => array_keys($v),
-                    'has_plan_snapshot' => \array_key_exists('plan_snapshot', $v) && $v['plan_snapshot'] !== null,
-                ],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ], JSON_UNESCAPED_UNICODE)."\n",
-            FILE_APPEND | LOCK_EX
-        );
-        // #endregion
-
-        return $this->successResponse($this->tripService->createTrip($v), status: 201);
+        return $this->successResponse($this->tripService->createTrip($request->validated()), status: 201);
     }
 
     public function index()
@@ -60,5 +40,17 @@ class TripController extends ApiController
     public function validateTrip(string $trip)
     {
         return $this->successResponse($this->tripService->validateTrip($trip));
+    }
+
+    public function destroy(string $trip)
+    {
+        $this->tripService->deleteTrip($trip);
+
+        return response()->noContent();
+    }
+
+    public function destroyCity(string $trip, string $city)
+    {
+        return $this->successResponse($this->tripService->deleteTripCity($trip, urldecode($city)));
     }
 }

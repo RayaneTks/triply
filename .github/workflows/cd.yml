@@ -33,4 +33,15 @@ jobs:
             docker compose -f compose.prod.yaml config >/dev/null
             docker compose -f compose.prod.yaml up -d --build --remove-orphans
 
+            # Wait for php-fpm to be ready before migrating
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if docker compose -f compose.prod.yaml exec -T tri-php-fpm php -v >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+
+            docker compose -f compose.prod.yaml exec -T tri-php-fpm php artisan migrate --force
+            docker compose -f compose.prod.yaml exec -T tri-php-fpm php artisan optimize:clear
+
             docker image prune -f

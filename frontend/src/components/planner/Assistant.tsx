@@ -65,9 +65,6 @@ export function Assistant({
     }
   }, [messages, lastSuggestions]);
 
-  const buildRequestMessages = (): AssistantMessage[] =>
-    messages.map((m) => ({ role: m.role, content: m.content }));
-
   const handleSend = async () => {
     if (!input.trim() || sending) return;
     if (!authClient.getToken()) {
@@ -167,7 +164,7 @@ export function Assistant({
 
         {lastSuggestions.length > 0 && (
           <div className="pl-11 space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Suggestions</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-light-muted">Suggestions</p>
             <div className="flex flex-wrap gap-2">
               {lastSuggestions.map((a, idx) => (
                 <button
@@ -224,14 +221,14 @@ export function Assistant({
           </button>
         </div>
         {!hasSession ? (
-          <p className="mt-2 px-1 text-[10px] font-bold text-amber-800 uppercase tracking-widest">
+          <p className="mt-2 px-1 text-xs font-bold text-amber-800 uppercase tracking-widest">
             <Link href="/connexion" className="underline underline-offset-2 hover:text-brand">
               Connexion
             </Link>{" "}
             requise pour l’assistant Triply.
           </p>
         ) : (
-          <p className="mt-2 px-1 text-[10px] font-bold text-light-muted uppercase tracking-widest">
+          <p className="mt-2 px-1 text-xs font-bold text-light-muted uppercase tracking-widest">
             Conseils personnalisés selon votre formulaire de voyage.
           </p>
         )}

@@ -28,11 +28,10 @@ function applyTheme(next: Theme) {
 }
 
 export function useTheme() {
-    const [theme, setThemeState] = useState<Theme>('dark');
+    const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
-        setThemeState(getInitialTheme());
 
         const onThemeChange = (event: Event) => {
             const detail = (event as CustomEvent<Theme>).detail;

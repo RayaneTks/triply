@@ -30,10 +30,10 @@ jobs:
         run: npm ci
 
       - name: Lint
-        # Non bloquant pendant la phase de migration Vite → Next.js.
-        # À ré-activer en bloquant une fois la dette résorbée.
-        continue-on-error: true
         run: npm run lint --if-present
+
+      - name: Test
+        run: npm run test:run --if-present
 
       - name: Build
         run: npm run build

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, Check, ChevronRight, Github, Bot, Loader2 } from "lucide-react";
@@ -80,7 +81,7 @@ export function RegisterView() {
         <div className="flex-1 flex flex-col justify-center">
            <div className="mb-10">
              <h1 className="text-3xl font-display font-bold mb-2">Rejoignez Triply</h1>
-             <p className="text-light-muted font-bold uppercase text-[10px] tracking-widest leading-loose">Inscription gratuite en moins de 30 secondes.</p>
+             <p className="text-light-muted font-bold uppercase text-xs tracking-widest leading-loose">Inscription gratuite en moins de 30 secondes.</p>
            </div>
 
            <form className="space-y-5" onSubmit={handleSubmit}>
@@ -164,7 +165,7 @@ export function RegisterView() {
 
            <div className="my-8 flex items-center gap-4">
               <div className="flex-1 h-px bg-light-border" />
-              <span className="text-[10px] font-bold text-light-muted uppercase">Ou avec vos comptes</span>
+              <span className="text-xs font-bold text-light-muted uppercase">Ou avec vos comptes</span>
               <div className="flex-1 h-px bg-light-border" />
            </div>
 
@@ -174,7 +175,7 @@ export function RegisterView() {
                 GitHub
              </button>
              <button type="button" className="py-4 bg-card border border-light-border rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-light-bg transition-colors text-foreground">
-                <img src="https://www.google.com/favicon.ico" className="w-5 h-5 grayscale opacity-70" alt="Google" />
+                <Image src="https://www.google.com/favicon.ico" width={20} height={20} unoptimized className="grayscale opacity-70" alt="Google" />
                 Google
              </button>
            </div>

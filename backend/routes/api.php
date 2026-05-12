@@ -54,7 +54,7 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
-    Route::get('/share/{token}', [TripSharingController::class, 'showPublic']);
+    Route::get('/share/{token}', [TripSharingController::class, 'showPublic'])->middleware('throttle:places');
 
     Route::get('/consent', [ConsentController::class, 'show']);
     Route::post('/consent', [ConsentController::class, 'store']);
@@ -64,13 +64,16 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/profile', [ProfileController::class, 'update']);
         Route::patch('/profile/preferences', [ProfileController::class, 'updatePreferences']);
 
-        Route::get('/user/export', [UserAccountController::class, 'export']);
+        Route::get('/user/export', [UserAccountController::class, 'export'])->middleware('throttle:ai');
         Route::delete('/user', [UserAccountController::class, 'destroy']);
 
         Route::post('/trips', [TripController::class, 'store']);
         Route::get('/trips', [TripController::class, 'index']);
         Route::get('/trips/{trip}', [TripController::class, 'show']);
         Route::patch('/trips/{trip}', [TripController::class, 'update']);
+        Route::delete('/trips/{trip}', [TripController::class, 'destroy']);
+        Route::delete('/trips/{trip}/cities/{city}', [TripController::class, 'destroyCity'])
+            ->where('city', '.*');
         Route::post('/trips/{trip}/duplicate', [TripController::class, 'duplicate']);
         Route::post('/trips/{trip}/validate', [TripController::class, 'validateTrip']);
 

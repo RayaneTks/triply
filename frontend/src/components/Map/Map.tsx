@@ -820,7 +820,7 @@ export const WorldMap: React.FC<MapProps> = ({
 
             {hasSegmentRoutes && (
                 <div className="absolute bottom-4 left-4 z-10 max-w-[min(100vw-2rem,420px)] rounded-2xl border border-white/15 bg-slate-900/95 px-4 py-2.5 shadow-lg backdrop-blur-md">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Itinéraire du jour</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Itinéraire du jour</div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium text-slate-100">
                         {routeSegments.map((s, i) => {
                             const colors: Record<string, string> = {

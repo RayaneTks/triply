@@ -41,7 +41,7 @@ export function AppShell({
       <header className="sticky top-0 z-40 w-full border-b border-light-border bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/" aria-label="Accueil Triply" className="shrink-0">
-            <TriplyLogo />
+            <TriplyLogo priority />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex" aria-label="Navigation principale">

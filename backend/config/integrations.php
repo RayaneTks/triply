@@ -14,4 +14,10 @@ return [
     'google_places' => [
         'api_key' => env('GOOGLE_PLACES_API_KEY'),
     ],
+    'booking' => [
+        'affiliate_id' => env('BOOKING_AFFILIATE_ID'),
+    ],
+    'skyscanner' => [
+        'sub_id' => env('SKYSCANNER_SUB_ID'),
+    ],
 ];

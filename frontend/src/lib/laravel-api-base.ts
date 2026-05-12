@@ -17,7 +17,7 @@ export function normalizeLaravelApiV1Base(raw: string | undefined, fallback = "/
     return mustEndWithApiV1(fb, fb);
   }
 
-  let base = trimmed.replace(/\/+$/, "");
+  const base = trimmed.replace(/\/+$/, "");
   const lower = base.toLowerCase();
 
   if (lower.endsWith("/api/v1")) {

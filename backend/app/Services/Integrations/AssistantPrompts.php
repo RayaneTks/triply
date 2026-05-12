@@ -100,22 +100,21 @@ TXT;
         $titles = $currentDayActivityTitles !== []
             ? implode(', ', $currentDayActivityTitles)
             : 'aucune activité encore';
-        $full = $requestFullItinerary ? "\n- **Programme multi-jours demandé** : couverture **obligatoire** des jours **1 à {$travelDays}** dans suggestedActivities, champ **day** obligatoire sur chaque activité.\n" : '';
 
-        $multiRule = $travelDays > 1
-            ? "\n- **Règle multi-jours (travelDays = {$travelDays})** : sauf si l’utilisateur demande **explicitement** un seul jour précis (ex. « uniquement le jour 2 »), tu DOIS inclure des activités pour **chaque** jour de **1** à **{$travelDays}** (au moins 2 activités distinctes par jour, lieux différents). Il est **interdit** de ne remplir suggestedActivities que pour le dernier jour ou seulement pour selectedDay ({$selectedDay}).\n"
+        $minActivities = $travelDays * 3;
+        $obligationHeader = ($requestFullItinerary || $travelDays > 1)
+            ? "\n=== OBLIGATION ABSOLUE — COUVERTURE MULTI-JOURS ===\nLe séjour fait {$travelDays} jours. Tu dois retourner AU MOINS {$minActivities} activités au total (3 par jour × {$travelDays} jours), avec le champ **day** entier entre 1 et {$travelDays} sur CHAQUE activité.\nDistribution OBLIGATOIRE : day=1 doit apparaître, day=2 doit apparaître, ..., day={$travelDays} doit apparaître. Aucun jour omis.\nUne réponse qui ne couvre pas tous les jours sera rejetée et la requête sera renvoyée. Tu N'es PAS autorisé à proposer uniquement le jour {$selectedDay} ou uniquement le dernier jour.\n===================================================\n"
             : '';
 
         return <<<TXT
 
-
+{$obligationHeader}
 CONTEXTE PLANIFICATEUR (session courante) :
 - Destination : "{$destinationContext}"
 - Jour affiché / édité dans l’UI : {$selectedDay} / {$travelDays} (selectedDay = jour focal dans l’interface, travelDays = durée totale du séjour)
 - Budget temps activités **par jour** : environ {$maxActivityHoursPerDay} h
 - Mode utilisateur : {$planningMode}
 - Activités déjà ajoutées sur le jour focal : {$titles}
-{$full}{$multiRule}
 - Pour suggestedActivities : complète sans dupliquer les titres déjà listés pour le jour concerné quand tu enrichis ce jour précis.
 
 TXT;

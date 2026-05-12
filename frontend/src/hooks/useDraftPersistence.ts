@@ -1,23 +1,18 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ActiveTrip } from "../types/app";
 
-/**
- * Hook pour la persistance locale du brouillon en cours.
- */
 export function useDraftPersistence() {
-  const [draft, setDraft] = useState<Partial<ActiveTrip> | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [draft, setDraft] = useState<Partial<ActiveTrip> | null>(() => {
+    if (typeof window === 'undefined') return null;
     try {
-      const saved = localStorage.getItem("triply_draft");
-      if (saved) setDraft(JSON.parse(saved));
+      const saved = localStorage.getItem('triply_draft');
+      return saved ? (JSON.parse(saved) as Partial<ActiveTrip>) : null;
     } catch {
-      // ignore corrupted draft
+      return null;
     }
-  }, []);
+  });
 
   const persist = (data: Partial<ActiveTrip>) => {
     if (typeof window !== "undefined") {

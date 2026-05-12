@@ -1,7 +1,7 @@
 'use client';
 
 import React from "react";
-import { Calendar, Users, Wallet, CheckCircle, Clock, MapPin, ExternalLink, Bot } from "lucide-react";
+import { Calendar, Users, Wallet, CheckCircle, Clock, ExternalLink, Bot } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export function ItineraryView() {
@@ -15,7 +15,7 @@ export function ItineraryView() {
         <div className="lg:col-span-2 space-y-12">
           
           <header className="space-y-6">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand bg-brand/5 px-3 py-1 rounded-full w-fit">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand bg-brand/5 px-3 py-1 rounded-full w-fit">
                <CheckCircle size={12} /> Cadrage terminé
             </div>
             <h1 className="text-5xl font-display font-bold">Week-end à Rome</h1>
@@ -83,7 +83,7 @@ export function ItineraryView() {
                   <div key={item.id} className="flex items-center justify-between">
                      <span className="text-sm font-bold text-light-foreground">{item.label}</span>
                      <span className={cn(
-                       "text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full",
+                       "text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full",
                        item.status === 'todo' ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
                      )}>
                        {item.status === 'todo' ? 'À creuser' : 'Cadré'}

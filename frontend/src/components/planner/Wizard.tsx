@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -20,8 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { Assistant } from "./Assistant";
-import { CopilotMobileSheet } from "../layout/CopilotMobileSheet";
+import { AssistantBubble } from "./AssistantBubble";
 import { CityAutocomplete } from "../CityAutocomplete/CityAutocomplete";
 import { DateRangePicker } from "../DataRangePicker/DataRangePicker";
 import { TravelerCounter } from "../TravelerCounter/TravelerCounter";
@@ -29,6 +28,9 @@ import type { PlanningNeeds } from "../../types/planning-needs";
 import { appendTripFromWizard } from "../../lib/local-trips-store";
 import { formatTripDateRange } from "../../lib/format-trip-dates";
 import type { AssistantPlannerContext, Step1FormPatch } from "../../lib/integrations/assistant";
+import { authClient, fetchPreferences } from "../../lib/auth-client";
+import { tripsClient } from "../../lib/trips-client";
+import type { PlanSnapshot } from "../../lib/plan-snapshot";
 
 function travelDaysBetween(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 1;
@@ -75,8 +77,6 @@ interface WizardFormActions {
 export function Wizard() {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>('destination');
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
-
   const [destination, setDestination] = useState("");
   const [travelers, setTravelers] = useState(2);
   const [budget, setBudget] = useState(2500);
@@ -90,24 +90,87 @@ export function Wizard() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [datesFlexible, setDatesFlexible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [visitedCities, setVisitedCities] = useState<string[]>([]);
+
+  useEffect(() => {
+    const token = authClient.getToken();
+    if (!token) return;
+    let cancelled = false;
+    void fetchPreferences(token)
+      .then((prefs) => {
+        if (!cancelled && Array.isArray(prefs.visited_cities)) {
+          setVisitedCities(prefs.visited_cities);
+        }
+      })
+      .catch(() => {
+        // L'absence de préférences ne doit pas bloquer le wizard.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const stepsOrder: WizardStep[] = ['destination', 'dates', 'travelers', 'budget', 'styles', 'needs', 'review'];
   const currentIndex = stepsOrder.indexOf(step);
 
+  const buildPlanSnapshot = (): PlanSnapshot => ({
+    days: [],
+    planningMode: needs.activities ? 'semi_ai' : 'full_ai',
+    destinationSummary: destination.trim()
+      ? { cityName: destination.trim() }
+      : undefined,
+  });
+
+  const finalize = async () => {
+    if (submitting) return;
+
+    const titleBase = destination.trim() || 'Mon prochain voyage';
+    const formattedDates = formatTripDateRange(startDate || undefined, endDate || undefined);
+    const title = formattedDates ? `${titleBase} · ${formattedDates}` : titleBase;
+    const planSnapshot = buildPlanSnapshot();
+
+    setSubmitError(null);
+
+    const token = authClient.getToken();
+    if (token) {
+      setSubmitting(true);
+      try {
+        const trip = await tripsClient.create({
+          title,
+          destination: destination.trim() || 'À préciser',
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          travelers_count: travelers,
+          plan_snapshot: planSnapshot,
+        });
+        router.push(`/voyages/${trip.id}`);
+        return;
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Sauvegarde impossible.');
+        setSubmitting(false);
+        // En cas d'échec API, on tombe dans le fallback localStorage pour ne pas perdre la saisie.
+      }
+    }
+
+    appendTripFromWizard({
+      destination: destination.trim() || 'Destination à préciser',
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      datesFlexible,
+      budget,
+      travelers,
+      styles: [...selectedStyles],
+      needs: { ...needs },
+      status: 'planned',
+    });
+    router.push('/voyages');
+  };
+
   const next = () => {
     if (currentIndex === stepsOrder.length - 1) {
-      appendTripFromWizard({
-        destination: destination.trim() || "Destination à préciser",
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        datesFlexible,
-        budget,
-        travelers,
-        styles: [...selectedStyles],
-        needs: { ...needs },
-        status: "planned",
-      });
-      router.push("/itineraire");
+      void finalize();
     } else {
       setStep(stepsOrder[currentIndex + 1]);
     }
@@ -199,14 +262,9 @@ export function Wizard() {
           {/* Header Mobile / Tablet */}
           <div className="lg:hidden py-4 flex items-center justify-between sticky top-0 bg-light-bg z-10 border-b border-light-border mb-4">
              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Étape {currentIndex + 1} / {stepsOrder.length}</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-light-muted">Étape {currentIndex + 1} / {stepsOrder.length}</span>
              </div>
-             <button 
-                onClick={() => setIsCopilotOpen(true)}
-                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
-              >
-                <Bot size={14} /> Aide
-              </button>
+             <div className="w-8" />
           </div>
 
           {/* Stepper Desktop */}
@@ -230,42 +288,48 @@ export function Wizard() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-12"
             >
-              <StepRenderer step={step} state={formState} actions={formActions} />
+              <StepRenderer step={step} state={formState} actions={formActions} visitedCities={visitedCities} />
             </motion.div>
           </AnimatePresence>
 
         </div>
 
         {/* Sticky Actions Bar */}
-        <div className="fixed bottom-[64px] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex items-center justify-between z-40">
-           <button 
-            onClick={prev}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-2 font-bold text-light-muted hover:text-light-foreground disabled:opacity-0 transition-all px-4"
-           >
-             <ChevronLeft size={20} />
-             Précédent
-           </button>
-           
-           <button 
-            onClick={next}
-            className="btn-primary flex items-center gap-2"
-           >
-             {currentIndex === stepsOrder.length - 1 ? "Valider l'itinéraire" : currentIndex === stepsOrder.length - 2 ? "Voir le récap" : "Continuer"}
-             <ChevronRight size={18} />
-           </button>
+        <div className="fixed bottom-[64px] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex flex-col gap-2 z-40">
+           {submitError && (
+             <p className="text-xs font-medium text-error" role="alert">
+               {submitError}
+             </p>
+           )}
+           <div className="flex items-center justify-between">
+             <button
+              onClick={prev}
+              disabled={currentIndex === 0 || submitting}
+              className="flex items-center gap-2 font-bold text-light-muted hover:text-light-foreground disabled:opacity-0 transition-all px-4"
+             >
+               <ChevronLeft size={20} />
+               Précédent
+             </button>
+
+             <button
+              onClick={next}
+              disabled={submitting}
+              className="btn-primary flex items-center gap-2 disabled:opacity-60"
+             >
+               {submitting
+                 ? 'Enregistrement…'
+                 : currentIndex === stepsOrder.length - 1
+                   ? "Valider l'itinéraire"
+                   : currentIndex === stepsOrder.length - 2
+                     ? 'Voir le récap'
+                     : 'Continuer'}
+               <ChevronRight size={18} />
+             </button>
+           </div>
         </div>
       </div>
 
-      {/* Side Assistant Desktop */}
-      <aside className="hidden lg:block w-[350px] bg-card border-l border-light-border">
-         <Assistant plannerContext={plannerContext} onApplyStep1Patch={applyStep1Patch} />
-      </aside>
-
-      {/* Mobile Copilot Sheet */}
-      <CopilotMobileSheet isOpen={isCopilotOpen} onClose={() => setIsCopilotOpen(false)}>
-         <Assistant isMobile plannerContext={plannerContext} onApplyStep1Patch={applyStep1Patch} />
-      </CopilotMobileSheet>
+      <AssistantBubble plannerContext={plannerContext} onApplyStep1Patch={applyStep1Patch} />
     </div>
   );
 }
@@ -274,33 +338,53 @@ function StepRenderer({
   step,
   state,
   actions,
+  visitedCities,
 }: {
   step: WizardStep;
   state: WizardFormState;
   actions: WizardFormActions;
+  visitedCities: string[];
 }) {
+  const normalizedVisited = useMemo(
+    () => new Set(visitedCities.map((c) => c.trim().toLowerCase())),
+    [visitedCities],
+  );
   switch (step) {
     case 'destination':
       return (
         <div className="space-y-8">
           <h1 className="text-4xl font-display font-bold">Où avez-vous envie d'aller ?</h1>
           <div className="space-y-4">
-             <label className="text-[10px] font-bold uppercase tracking-widest text-light-muted">Destination</label>
+             <label className="text-xs font-bold uppercase tracking-widest text-light-muted">Destination</label>
              <CityAutocomplete value={state.destination} onChange={actions.setDestination} />
              <div className="flex flex-wrap gap-2 mt-4">
-                {["Rome", "Lisbonne", "Tokyo", "Berlin"].map(city => (
-                  <button 
-                    key={city} 
-                    onClick={() => actions.setDestination(city)}
-                    className={cn(
-                      "px-4 py-2 bg-card border rounded-full text-xs font-bold transition-all",
-                      state.destination === city ? "border-brand text-brand opacity-100" : "border-light-border text-light-muted opacity-60 hover:opacity-100"
-                    )}
-                  >
-                    {city}
-                  </button>
-                ))}
+                {["Rome", "Lisbonne", "Tokyo", "Berlin", ...visitedCities].map(city => {
+                  const alreadyVisited = normalizedVisited.has(city.toLowerCase());
+                  return (
+                    <button
+                      key={city}
+                      onClick={() => actions.setDestination(city)}
+                      className={cn(
+                        "px-4 py-2 bg-card border rounded-full text-xs font-bold transition-all flex items-center gap-2",
+                        state.destination === city ? "border-brand text-brand opacity-100" : "border-light-border text-light-muted opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      {city}
+                      {alreadyVisited && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold uppercase text-emerald-900 bg-emerald-100 border border-emerald-300 rounded-full px-2 py-0.5">
+                          Déjà visitée
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
              </div>
+             {visitedCities.length > 0 && (
+               <p className="text-xs text-light-muted">
+                 Astuce : Triply met en avant les villes que vous avez déjà visitées pour vous aider à choisir une
+                 nouvelle destination ou y retourner.
+               </p>
+             )}
           </div>
         </div>
       );
@@ -331,7 +415,7 @@ function StepRenderer({
           <div className="py-12">
             <TravelerCounter count={state.travelers} onChange={actions.setTravelers} />
           </div>
-          <p className="text-light-muted font-bold uppercase text-[10px] tracking-widest max-w-xs leading-relaxed">
+          <p className="text-light-muted font-bold uppercase text-xs tracking-widest max-w-xs leading-relaxed">
             Configurez le groupe pour que le copilote ajuste le rythme et les types de logements recommandés.
           </p>
         </div>
@@ -446,18 +530,18 @@ function StepRenderer({
           <div className="triply-card p-8 lg:p-12 space-y-10">
              <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Destination</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Destination</p>
                    <p className="text-2xl font-bold flex items-center gap-2">
                      {state.destination || "Non précisé"}{" "}
                      <MapPin size={20} className="text-brand shrink-0" aria-hidden />
                    </p>
                 </div>
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Enveloppe</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Enveloppe</p>
                    <p className="text-2xl font-bold text-brand">{state.budget.toLocaleString()}€</p>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Dates</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Dates</p>
                    <p className="text-xl font-bold">
                      {formatTripDateRange(
                        state.startDate || undefined,
@@ -469,27 +553,27 @@ function StepRenderer({
                    </p>
                 </div>
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Voyageurs</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Voyageurs</p>
                    <p className="text-2xl font-bold">{state.travelers} personnes</p>
                 </div>
                 <div className="space-y-2">
-                   <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Besoins</p>
+                   <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Besoins</p>
                    <div className="flex flex-wrap gap-2">
                       {Object.entries(state.needs)
                         .filter(([, v]) => v)
                         .map(([k]) => (
-                          <div key={k} className="p-2 bg-light-bg rounded-lg" title={k}>
-                            {k === "flights" && <Plane size={14} />}
-                            {k === "hotels" && <Hotel size={14} />}
-                            {k === "activities" && <Check size={14} />}
-                            {k === "restaurants" && <Users size={14} />}
+                          <div key={k} className="p-2 bg-light-bg rounded-lg" aria-label={k}>
+                            {k === "flights" && <Plane size={14} aria-hidden />}
+                            {k === "hotels" && <Hotel size={14} aria-hidden />}
+                            {k === "activities" && <Check size={14} aria-hidden />}
+                            {k === "restaurants" && <Users size={14} aria-hidden />}
                           </div>
                         ))}
                    </div>
                 </div>
                 {state.selectedStyles.length > 0 ? (
                   <div className="space-y-2 md:col-span-2">
-                    <p className="text-[10px] font-bold text-light-muted uppercase tracking-widest">Rythme</p>
+                    <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Rythme</p>
                     <p className="text-sm font-bold text-light-foreground">
                       {state.selectedStyles.join(" · ")}
                     </p>
@@ -510,7 +594,7 @@ function StepRenderer({
           
           <div className="flex items-center gap-3 px-2">
              <Sparkles size={16} className="text-brand" />
-             <span className="text-[10px] uppercase font-bold tracking-widest text-light-muted leading-relaxed">
+             <span className="text-xs uppercase font-bold tracking-widest text-light-muted leading-relaxed">
                L'itinéraire sera sauvegardé automatiquement dans vos voyages.
              </span>
           </div>

@@ -21,5 +21,12 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        User::factory()->create([
+            'name'      => 'Admin Triply',
+            'email'     => 'admin@triply.app',
+            'password'  => bcrypt('admin1234'),
+            'est_admin' => true,
+        ]);
     }
 }
