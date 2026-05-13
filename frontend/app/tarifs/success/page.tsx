@@ -33,8 +33,12 @@ function CheckoutSuccessInner() {
       body: JSON.stringify({ session_id: sessionId, plan, billing }),
     })
       .then(async (r) => {
-        if (!r.ok) throw new Error('confirm failed');
-        return r.json();
+        const body = await r.json().catch(() => null);
+        if (!r.ok) {
+          const backendMessage = body?.error?.message || body?.error?.code || 'confirm failed';
+          throw new Error(backendMessage);
+        }
+        return body;
       })
       .then((body) => {
         setTier(body?.data?.tier ?? plan);
@@ -42,7 +46,10 @@ function CheckoutSuccessInner() {
         // Force le rafraîchissement de useAuthSession dans l'app.
         window.dispatchEvent(new CustomEvent('triply-auth-changed'));
       })
-      .catch(() => setState('error'));
+      .catch((err: unknown) => {
+        console.error('Subscription confirmation failed', err);
+        setState('error');
+      });
   }, [shouldConfirm, sessionId, plan, billing]);
 
   if (state === 'pending') {
