@@ -181,8 +181,15 @@ class AmadeusClientTest extends TestCase
 
         Http::assertSent(function ($request) {
             $body = json_decode($request->body(), true);
+            $ods = $body['originDestinations'] ?? null;
+
             return ($body['currencyCode'] ?? null) === 'EUR'
-                && ($body['originLocationCode'] ?? null) === 'PAR';
+                && is_array($ods)
+                && ($ods[0]['originLocationCode'] ?? null) === 'PAR'
+                && ($ods[0]['destinationLocationCode'] ?? null) === 'BCN'
+                && ($ods[0]['departureDateTimeRange']['date'] ?? null) === '2026-09-01'
+                && is_array($body['travelers'] ?? null)
+                && ($body['travelers'][0]['travelerType'] ?? null) === 'ADULT';
         });
     }
 

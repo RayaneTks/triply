@@ -28,10 +28,18 @@ class AmadeusFlightsProxyController extends ApiController
         }
 
         if (isset($data['errors']) && is_array($data['errors']) && $data['errors'] !== []) {
+            Log::warning('amadeus flights rejected', [
+                'request' => $request->all(),
+                'errors' => $data['errors'],
+            ]);
             return response()->json($data, 422);
         }
 
         if (isset($data['error']) && is_string($data['error'])) {
+            Log::warning('amadeus flights error payload', [
+                'request' => $request->all(),
+                'error' => $data['error'],
+            ]);
             return response()->json([
                 'errors' => [
                     [

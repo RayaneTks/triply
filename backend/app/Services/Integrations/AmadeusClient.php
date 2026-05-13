@@ -541,11 +541,52 @@ class AmadeusClient
     public function flightOffers(array $flightRequestBody): array
     {
         $token = $this->getAccessToken();
-        $body = array_merge($flightRequestBody, ['currencyCode' => 'EUR']);
-        $res = Http::withToken($token)->acceptJson()->timeout(60)->post(
-            $this->baseUrl().'/v2/shopping/flight-offers',
-            $body
-        );
+        $hasStructuredBody = isset($flightRequestBody['originDestinations'])
+            && is_array($flightRequestBody['originDestinations'])
+            && $flightRequestBody['originDestinations'] !== [];
+
+        if ($hasStructuredBody) {
+            $body = $flightRequestBody;
+            if (! is_string($body['currencyCode'] ?? null) || trim((string) $body['currencyCode']) === '') {
+                $body['currencyCode'] = 'EUR';
+            }
+            if (! isset($body['sources']) || ! is_array($body['sources']) || $body['sources'] === []) {
+                $body['sources'] = ['GDS'];
+            }
+            $res = Http::withToken($token)->acceptJson()->timeout(60)->post(
+                $this->baseUrl().'/v2/shopping/flight-offers',
+                $body
+            );
+        } else {
+            // Frontend currently sends legacy flat payload. Query mode is the most
+            // stable path on Amadeus self-service for this shape.
+            $query = [
+                'originLocationCode' => strtoupper(trim((string) ($flightRequestBody['originLocationCode'] ?? ''))),
+                'destinationLocationCode' => strtoupper(trim((string) ($flightRequestBody['destinationLocationCode'] ?? ''))),
+                'departureDate' => trim((string) ($flightRequestBody['departureDate'] ?? '')),
+                'adults' => max(1, min(9, (int) ($flightRequestBody['adults'] ?? 1))),
+                'currencyCode' => 'EUR',
+                'max' => max(1, min(50, (int) ($flightRequestBody['max'] ?? 10))),
+            ];
+            $returnDate = trim((string) ($flightRequestBody['returnDate'] ?? ''));
+            if ($returnDate !== '') {
+                $query['returnDate'] = $returnDate;
+            }
+            if (isset($flightRequestBody['maxPrice']) && is_numeric($flightRequestBody['maxPrice'])) {
+                $maxPrice = (int) round((float) $flightRequestBody['maxPrice']);
+                if ($maxPrice > 0) {
+                    $query['maxPrice'] = $maxPrice;
+                }
+            }
+            if (isset($flightRequestBody['nonStop']) && filter_var($flightRequestBody['nonStop'], FILTER_VALIDATE_BOOLEAN)) {
+                $query['nonStop'] = 'true';
+            }
+
+            $res = Http::withToken($token)->acceptJson()->timeout(60)->get(
+                $this->baseUrl().'/v2/shopping/flight-offers',
+                $query
+            );
+        }
 
         $json = $res->json();
         if (! $res->successful()) {
