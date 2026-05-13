@@ -72,7 +72,7 @@ function offerToHotelPayload(offer: HotelOffer, fallbackCity: string): Omit<Hote
 }
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '—';
+    if (!iso) return '?';
     try {
         return new Date(iso).toLocaleDateString('fr-FR', {
             day: '2-digit',
@@ -83,6 +83,27 @@ function formatDate(iso: string | null): string {
         return iso;
     }
 }
+
+function buildHotelsErrorMessage(err: unknown): string {
+    if (err instanceof ApiError) {
+        const backendMsg = extractErrorMessage(err.body);
+        if (backendMsg) return backendMsg;
+        if (err.status === 405) {
+            return 'La methode HTTP de recherche d\'hotels est refusee par le serveur. Rechargez l\'application puis reessayez.';
+        }
+        if (err.status === 422) {
+            return 'La recherche d\'hotels a ete refusee (parametres invalides ou proxy API). Verifiez la ville et les dates.';
+        }
+        if (err.status >= 500) {
+            return 'Le service hotels est temporairement indisponible. Reessayez dans quelques instants.';
+        }
+        return err.message;
+    }
+
+    if (err instanceof Error) return err.message;
+    return 'Recherche impossible.';
+}
+
 
 export function HotelsSection({
     tripId,
@@ -148,13 +169,13 @@ export function HotelsSection({
             if (!inD || !isoDate.test(inD) || !outD || !isoDate.test(outD)) {
                 setApiResponse({
                     ...emptyEnv,
-                    error: 'Indiquez des dates d’arrivée et de départ au format AAAA-MM-JJ.',
+                    error: 'Indiquez des dates d-arrivée et de départ au format AAAA-MM-JJ.',
                 } as unknown as AmadeusHotelResponse);
                 return;
             }
             const resolvedCode = await resolveCityCode(cityCode);
             if (!resolvedCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN…).` } as unknown as AmadeusHotelResponse);
+                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN...).` } as unknown as AmadeusHotelResponse);
                 return;
             }
             const body: HotelSearchBody = {
@@ -177,13 +198,7 @@ export function HotelsSection({
             }
             setApiResponse(res as AmadeusHotelResponse);
         } catch (err) {
-            const msg =
-                err instanceof ApiError
-                    ? extractErrorMessage(err.body) ?? err.message
-                    : err instanceof Error
-                      ? err.message
-                      : 'Recherche impossible.';
-            setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusHotelResponse);
+            setApiResponse({ ...emptyEnv, error: buildHotelsErrorMessage(err) } as unknown as AmadeusHotelResponse);
         } finally {
             setIsSearching(false);
         }
@@ -242,7 +257,7 @@ export function HotelsSection({
     };
 
     const headerSubtitle = useMemo(() => {
-        if (loading) return 'Chargement…';
+        if (loading) return 'Chargement...';
         if (hotels.length === 0) return 'Aucun hôtel sélectionné';
         return `${hotels.length} hôtel${hotels.length > 1 ? 's' : ''} enregistré${hotels.length > 1 ? 's' : ''}`;
     }, [loading, hotels.length]);
@@ -299,7 +314,7 @@ export function HotelsSection({
                                     {[hotel.adresse, hotel.ville].filter(Boolean).join(' · ')}
                                 </p>
                                 <p className="text-xs text-light-muted">
-                                    {formatDate(hotel.arrivee_le)} → {formatDate(hotel.depart_le)}
+                                    {formatDate(hotel.arrivee_le)} - {formatDate(hotel.depart_le)}
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">

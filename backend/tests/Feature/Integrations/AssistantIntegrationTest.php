@@ -263,7 +263,7 @@ class AssistantIntegrationTest extends TestCase
     public function test_amadeus_hotels_by_geocode_requires_lat_lng(): void
     {
         $response = $this->getJson('/api/v1/integrations/amadeus/hotels/by-geocode');
-        $response->assertStatus(400);
+        $response->assertStatus(422);
     }
 
     public function test_assistant_endpoint_requires_auth(): void

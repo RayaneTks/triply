@@ -22,6 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prependToGroup('api', TrackRequestStart::class);
         $middleware->appendToGroup('api', SecurityHeaders::class);
+        $middleware->redirectGuestsTo(function ($request) {
+            if ($request->is('api/*')) {
+                return null;
+            }
+
+            return '/login';
+        });
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,

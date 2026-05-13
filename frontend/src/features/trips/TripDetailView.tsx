@@ -42,6 +42,8 @@ import {
 } from '../../lib/activities-client';
 import { citiesClient } from '../../lib/cities-client';
 import { tripDetailFromApi, tripDetailFromStored, type TripDetailDisplay } from '../../lib/trip-view-adapter';
+import { useAuthSession } from '../../hooks/useAuthSession';
+import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
 interface UndoneActivity {
     id: string;
@@ -51,6 +53,7 @@ interface UndoneActivity {
 
 export function TripDetailView() {
     const { tripId } = useParams<{ tripId: string }>();
+    const { isConnected, isLoading: authLoading } = useAuthSession();
     const [activeTab, setActiveTab] = useState<'itinerary' | 'flights' | 'hotels' | 'map' | 'docs'>('itinerary');
     const [isLoading, setIsLoading] = useState(true);
     const [apiTrip, setApiTrip] = useState<TripApi | null | undefined>(undefined);
@@ -61,6 +64,7 @@ export function TripDetailView() {
     const [activitiesError, setActivitiesError] = useState<string | null>(null);
     /** Jours affichés sur la carte (vide = tous). */
     const [selectedMapDayIds, setSelectedMapDayIds] = useState<string[]>([]);
+    const [mapRouteMode, setMapRouteMode] = useState<'full' | 'localOnly'>('full');
 
     const [pendingCityDelete, setPendingCityDelete] = useState<string | null>(null);
     const [deletingCity, setDeletingCity] = useState(false);
@@ -124,6 +128,7 @@ export function TripDetailView() {
 
     useEffect(() => {
         setSelectedMapDayIds([]);
+        setMapRouteMode('full');
     }, [tripId]);
 
     useEffect(() => {
@@ -212,7 +217,7 @@ export function TripDetailView() {
         }> = [];
 
         // First leg: depart city → premier point géolocalisé de l'itinéraire.
-        if (originCoords) {
+        if (mapRouteMode === 'full' && originCoords) {
             const firstActivity = mapDaysFiltered
                 .flatMap((d) => d.activities)
                 .find((a) => a.attributes.lat != null && a.attributes.lng != null);
@@ -251,7 +256,7 @@ export function TripDetailView() {
             });
         });
         return segments;
-    }, [mapDaysFiltered, DAY_PALETTE, originCoords]);
+    }, [mapDaysFiltered, DAY_PALETTE, originCoords, mapRouteMode]);
 
     const cityGroups = useMemo(() => {
         const groups = new globalThis.Map<string, ActivityResource[]>();
@@ -327,7 +332,7 @@ export function TripDetailView() {
         }
     };
 
-    if (isLoading) {
+    if (authLoading || isLoading) {
         return (
             <div className="max-w-7xl mx-auto px-6 py-20 space-y-12 animate-pulse">
                 <div className="h-10 bg-slate-200 w-1/4 rounded-lg" />
@@ -340,6 +345,15 @@ export function TripDetailView() {
                     <div className="h-96 bg-slate-100 rounded-[32px]" />
                 </div>
             </div>
+        );
+    }
+
+    if (!isConnected) {
+        return (
+            <AuthRequiredCard
+                title="Connexion requise"
+                description="Le détail d’un voyage est disponible uniquement pour les comptes connectés."
+            />
         );
     }
 
@@ -631,6 +645,35 @@ export function TripDetailView() {
                                             })}
                                     </div>
                                 )}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-bold uppercase tracking-widest text-light-muted">
+                                        Trajets
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMapRouteMode('full')}
+                                        className={cn(
+                                            'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                            mapRouteMode === 'full'
+                                                ? 'border-brand bg-brand/10 text-brand'
+                                                : 'border-light-border bg-card text-light-muted hover:text-light-foreground',
+                                        )}
+                                    >
+                                        Trajet complet
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMapRouteMode('localOnly')}
+                                        className={cn(
+                                            'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                            mapRouteMode === 'localOnly'
+                                                ? 'border-brand bg-brand/10 text-brand'
+                                                : 'border-light-border bg-card text-light-muted hover:text-light-foreground',
+                                        )}
+                                    >
+                                        Sur place uniquement
+                                    </button>
+                                </div>
                                 <div className="aspect-video lg:aspect-auto lg:h-[600px] w-full bg-light-bg rounded-[40px] overflow-hidden border border-light-border relative">
                                     <WorldMap
                                         accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}

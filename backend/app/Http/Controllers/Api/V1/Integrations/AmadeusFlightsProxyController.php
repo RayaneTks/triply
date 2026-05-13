@@ -12,8 +12,15 @@ class AmadeusFlightsProxyController extends ApiController
 {
     public function store(Request $request, AmadeusClient $amadeus): JsonResponse
     {
+        return $this->search($request, $amadeus);
+    }
+
+    public function search(Request $request, AmadeusClient $amadeus): JsonResponse
+    {
+        $payload = $request->all();
+
         try {
-            $data = $amadeus->flightOffers($request->all());
+            $data = $amadeus->flightOffers($payload);
         } catch (\Throwable $e) {
             Log::warning('amadeus flights proxy', ['message' => $e->getMessage()]);
 
@@ -21,7 +28,7 @@ class AmadeusFlightsProxyController extends ApiController
                 'errors' => [
                     [
                         'title' => 'Flight search unavailable',
-                        'detail' => 'Impossible de contacter le service de vols. Réessayez plus tard.',
+                        'detail' => 'Impossible de contacter le service de vols. Reessayez plus tard.',
                     ],
                 ],
             ], 502);
@@ -29,17 +36,19 @@ class AmadeusFlightsProxyController extends ApiController
 
         if (isset($data['errors']) && is_array($data['errors']) && $data['errors'] !== []) {
             Log::warning('amadeus flights rejected', [
-                'request' => $request->all(),
+                'request' => $payload,
                 'errors' => $data['errors'],
             ]);
+
             return response()->json($data, 422);
         }
 
         if (isset($data['error']) && is_string($data['error'])) {
             Log::warning('amadeus flights error payload', [
-                'request' => $request->all(),
+                'request' => $payload,
                 'error' => $data['error'],
             ]);
+
             return response()->json([
                 'errors' => [
                     [

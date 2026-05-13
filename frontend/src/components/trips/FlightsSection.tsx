@@ -31,7 +31,7 @@ async function resolveIata(keyword: string): Promise<string | null> {
         return term.toUpperCase();
     }
 
-    // Try Amadeus IATA-only lookup first — guarantees a 3-letter code.
+    // Try Amadeus IATA-only lookup first - guarantees a 3-letter code.
     try {
         const results: AmadeusLocation[] = await lookupIata(term, 'AIRPORT,CITY');
         const airport = results.find((r) => r.subType === 'AIRPORT' && r.iataCode);
@@ -82,7 +82,7 @@ function offerToFlightPayload(offer: FlightOffer, carrierName: string): Omit<Fli
 }
 
 function formatDateTime(iso: string | null): string {
-    if (!iso) return '—';
+    if (!iso) return '?';
     try {
         return new Date(iso).toLocaleString('fr-FR', {
             day: '2-digit',
@@ -94,6 +94,27 @@ function formatDateTime(iso: string | null): string {
         return iso;
     }
 }
+
+function buildFlightsErrorMessage(err: unknown): string {
+    if (err instanceof ApiError) {
+        const backendMsg = extractErrorMessage(err.body);
+        if (backendMsg) return backendMsg;
+        if (err.status === 405) {
+            return 'La methode HTTP de recherche de vols est refusee par le serveur. Rechargez l\'application puis reessayez.';
+        }
+        if (err.status === 422) {
+            return 'La recherche de vols a ete refusee (parametres invalides ou proxy API). Verifiez les villes et les dates.';
+        }
+        if (err.status >= 500) {
+            return 'Le service de vols est temporairement indisponible. Reessayez dans quelques instants.';
+        }
+        return err.message;
+    }
+
+    if (err instanceof Error) return err.message;
+    return 'Recherche impossible.';
+}
+
 
 export function FlightsSection({
     tripId,
@@ -197,7 +218,7 @@ export function FlightsSection({
             }
             const destCode = await resolveIata(arrivalCity);
             if (!originCode || !destCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun aéroport IATA trouvé pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCN…).` } as unknown as AmadeusResponse);
+                setApiResponse({ ...emptyEnv, error: `Aucun aéroport IATA trouvé pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCN...).` } as unknown as AmadeusResponse);
                 return;
             }
             const body = {
@@ -218,13 +239,7 @@ export function FlightsSection({
             }
             setApiResponse(res as AmadeusResponse);
         } catch (err) {
-            const msg =
-                err instanceof ApiError
-                    ? extractErrorMessage(err.body) ?? err.message
-                    : err instanceof Error
-                      ? err.message
-                      : 'Recherche impossible.';
-            setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusResponse);
+            setApiResponse({ ...emptyEnv, error: buildFlightsErrorMessage(err) } as unknown as AmadeusResponse);
         } finally {
             setIsSearching(false);
         }
@@ -284,7 +299,7 @@ export function FlightsSection({
     };
 
     const headerSubtitle = useMemo(() => {
-        if (loading) return 'Chargement…';
+        if (loading) return 'Chargement...';
         if (flights.length === 0) return 'Aucun vol sélectionné';
         return `${flights.length} vol${flights.length > 1 ? 's' : ''} enregistré${flights.length > 1 ? 's' : ''}`;
     }, [loading, flights.length]);
@@ -338,7 +353,7 @@ export function FlightsSection({
                             <div className="flex-1 min-w-0 space-y-1">
                                 <p className="font-bold text-light-foreground">{flight.type}</p>
                                 <p className="text-xs text-light-muted font-bold">
-                                    {flight.depart_lieu} → {flight.arrivee_lieu}
+                                    {flight.depart_lieu} - {flight.arrivee_lieu}
                                 </p>
                                 <p className="text-xs text-light-muted">
                                     {formatDateTime(flight.depart_le)} · {formatDateTime(flight.arrivee_le)}

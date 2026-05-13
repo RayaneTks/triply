@@ -23,6 +23,8 @@ import { formatTripDateRange } from '../../lib/format-trip-dates';
 import { authClient } from '../../lib/auth-client';
 import { tripsClient } from '../../lib/trips-client';
 import { tripApiToStoredTripForList } from '../../lib/trip-view-adapter';
+import { useAuthSession } from '../../hooks/useAuthSession';
+import { AuthRequiredCard } from '../auth/AuthRequiredCard';
 
 interface TripListItem extends StoredTrip {
     /** Source de la donnée pour décider si on appelle l'API ou le localStorage à la suppression. */
@@ -48,6 +50,7 @@ function deleteLocalTrip(id: string): void {
 export function TripsListView() {
     const router = useRouter();
     const pathname = usePathname();
+    const { isConnected, isLoading: authLoading } = useAuthSession();
     const [trips, setTrips] = useState<TripListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -130,7 +133,7 @@ export function TripsListView() {
         }
     };
 
-    if (isLoading) {
+    if (authLoading || isLoading) {
         return (
             <div className="max-w-4xl mx-auto px-6 py-20 animate-pulse space-y-12">
                 <div className="h-12 bg-slate-200 w-1/3 rounded-lg" />
@@ -140,6 +143,15 @@ export function TripsListView() {
                     ))}
                 </div>
             </div>
+        );
+    }
+
+    if (!isConnected) {
+        return (
+            <AuthRequiredCard
+                title="Connectez-vous pour accéder à vos voyages"
+                description="Votre espace voyages est réservé aux comptes connectés. Connectez-vous ou créez un compte pour retrouver et gérer vos itinéraires."
+            />
         );
     }
 
