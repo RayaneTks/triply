@@ -472,10 +472,25 @@ export function Wizard() {
   const currentValidation = stepValidation[step];
   const canAdvance = currentValidation.ok && !submitting;
 
+  const firstMissingStep = (): WizardStep | null => {
+    for (const s of stepsOrder) {
+      if (s === 'review') continue;
+      if (!stepValidation[s].ok) return s;
+    }
+    return null;
+  };
+
   const next = () => {
     if (!canAdvance) return;
     if (currentIndex === stepsOrder.length - 1) {
-      void finalize();
+      const missing = firstMissingStep();
+      if (missing && missing !== step) {
+        setStep(missing);
+      } else if (step !== 'review') {
+        setStep('review');
+      } else {
+        void finalize();
+      }
     } else {
       setStep(stepsOrder[currentIndex + 1]);
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '../ThemeToggle/ThemeToggle';
@@ -8,6 +8,7 @@ import { TriplyLogo } from './TriplyLogo';
 import { SiteFooter } from './SiteFooter';
 import { MobileBottomNav } from './MobileBottomNav';
 import { cn } from '../../lib/utils';
+import { authClient, type AuthUser } from '../../lib/auth-client';
 
 interface NavItem {
   href: string;
@@ -35,6 +36,31 @@ export function AppShell({
   contentClassName,
 }: AppShellProps) {
   const pathname = usePathname();
+
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const token = authClient.getToken();
+    if (!token) {
+      setCurrentUser(null);
+      return;
+    }
+    void authClient
+      .me()
+      .then((user) => {
+        if (!cancelled) setCurrentUser(user);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentUser(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const subscriptionTier = currentUser?.subscription_tier ?? null;
+  const hasVoyageurSub = subscriptionTier === 'voyageur';
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -69,7 +95,7 @@ export function AppShell({
             <Link
               href="/profil"
               className={cn(
-                'hidden h-9 w-9 items-center justify-center rounded-full border border-light-border bg-card text-light-muted transition-colors hover:border-brand hover:text-brand md:inline-flex',
+                'hidden h-9 w-9 items-center justify-center rounded-full border border-light-border bg-card text-light-muted transition-colors hover:border-brand hover:text-brand md:inline-flex relative',
                 pathname === '/profil' && 'border-brand text-brand',
               )}
               aria-label="Mon profil"
@@ -79,6 +105,11 @@ export function AppShell({
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
+              {hasVoyageurSub && (
+                <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
+                  V
+                </span>
+              )}
             </Link>
           </div>
         </div>

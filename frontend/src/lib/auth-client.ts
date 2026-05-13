@@ -5,6 +5,11 @@ export interface AuthUser {
     name: string;
     email: string;
     est_admin?: boolean;
+    /**
+     * Niveau d'abonnement courant (ex: "voyageur", "premium", null pour gratuit).
+     * Aligné sur users.subscription_tier côté backend.
+     */
+    subscription_tier?: string | null;
     email_verified_at?: string | null;
     created_at?: string;
     updated_at?: string;

@@ -293,6 +293,12 @@ export function ProfileView() {
                                                                 <Clock size={12} /> {profile.timezone}
                                                             </span>
                                                         )}
+                                                        <span className="bg-emerald-50 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-emerald-200 text-emerald-700">
+                                                            <CreditCard size={12} />
+                                                            {profile.preferences?.planning_mode === 'manual'
+                                                                ? 'Abonnement Voyageur actif'
+                                                                : 'Profil gratuit'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </header>
