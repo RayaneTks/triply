@@ -88,6 +88,11 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
             }
         }
 
+        $tripBudget = Arr::get($snapshot, 'trip_budget_eur');
+        if (is_numeric($tripBudget) && (float) $tripBudget > 0) {
+            $stored['trip_budget_eur'] = (int) round((float) $tripBudget);
+        }
+
         return $stored !== [] ? $stored : null;
     }
 
@@ -169,6 +174,11 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
     {
         if (! is_array($snapshot)) {
             return 0;
+        }
+
+        $tripBudgetRaw = Arr::get($snapshot, 'trip_budget_eur');
+        if (is_numeric($tripBudgetRaw) && (float) $tripBudgetRaw > 0) {
+            return (int) round((float) $tripBudgetRaw);
         }
 
         $flightPrice = $this->extractMoney($this->getStringFromSnapshot($snapshot, ['flightSummary', 'price']));

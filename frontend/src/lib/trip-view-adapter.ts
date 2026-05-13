@@ -11,7 +11,12 @@ export function tripApiToStoredTripForList(t: TripApi): StoredTrip {
     destination: (typeof t.destination === "string" && t.destination.trim()) || t.title || "Sans titre",
     startDate: typeof t.start_date === "string" ? t.start_date : undefined,
     endDate: typeof t.end_date === "string" ? t.end_date : undefined,
-    budget: typeof t.budget_total === "number" ? t.budget_total : 0,
+    budget: (() => {
+      const raw = typeof t.budget_total === "number" ? t.budget_total : 0;
+      const snap = t.plan_snapshot?.trip_budget_eur;
+      const fromSnap = typeof snap === "number" && Number.isFinite(snap) && snap > 0 ? snap : 0;
+      return raw > 0 ? raw : fromSnap;
+    })(),
     travelers: typeof t.travelers_count === "number" ? t.travelers_count : 1,
     styles: [],
     needs: { flights: false, hotels: false, activities: false, restaurants: false },
@@ -58,7 +63,11 @@ export function tripDetailFromStored(stored: StoredTrip): TripDetailDisplay {
 export function tripDetailFromApi(t: TripApi): TripDetailDisplay {
   const rawDest = (typeof t.destination === "string" && t.destination.trim()) || t.title || "—";
   const dest = rawDest.split(",")[0]?.trim() || rawDest;
-  const budget = typeof t.budget_total === "number" ? t.budget_total : 0;
+  const snapBudget = t.plan_snapshot?.trip_budget_eur;
+  const fromSnapshot =
+    typeof snapBudget === "number" && Number.isFinite(snapBudget) && snapBudget > 0 ? snapBudget : 0;
+  const rawTotal = typeof t.budget_total === "number" ? t.budget_total : 0;
+  const budget = rawTotal > 0 ? rawTotal : fromSnapshot;
   const travelers = typeof t.travelers_count === "number" ? t.travelers_count : 1;
   const status =
     typeof t.status === "string" && t.status.trim() !== "" ? t.status : "En cours";

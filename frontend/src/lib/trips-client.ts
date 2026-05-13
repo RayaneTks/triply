@@ -1,6 +1,7 @@
 'use client';
 
 import type { PlanSnapshot } from '@/src/lib/plan-snapshot';
+import { normalizeLaravelApiV1Base } from './laravel-api-base';
 
 export interface TripSummary {
     id: string;
@@ -44,7 +45,9 @@ interface ApiError {
     };
 }
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL || '/api/v1').replace(/\/$/, '');
+const API_BASE_URL = normalizeLaravelApiV1Base(
+    process.env.NEXT_PUBLIC_BACKEND_API_URL as string | undefined,
+).replace(/\/$/, '');
 
 function getApiUrl(path: string): string {
     return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;

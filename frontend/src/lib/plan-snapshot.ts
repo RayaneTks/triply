@@ -14,6 +14,8 @@ export interface PlanSnapshotDay {
 
 export interface PlanSnapshot {
     days: PlanSnapshotDay[];
+    /** Budget total déclaré au wizard (EUR), persisté pour budget_total et affichage. */
+    trip_budget_eur?: number;
     planningMode?: string;
     flightSummary?: {
         carrier?: string;
@@ -42,6 +44,19 @@ export interface PlanSnapshot {
         cityName?: string;
         airportName?: string;
         iataCode?: string;
+    };
+    /**
+     * Origin (departure) city captured during the wizard. Persisted in plan_snapshot
+     * so downstream views (flight search modal, recap) can prefill it without a
+     * follow-up lookup.
+     */
+    origin?: {
+        cityName: string;
+        iataCode: string;
+        airportName?: string;
+        countryName?: string;
+        lat?: number;
+        lng?: number;
     };
 }
 

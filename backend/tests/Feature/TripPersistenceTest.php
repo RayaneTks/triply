@@ -95,6 +95,76 @@ class TripPersistenceTest extends TestCase
         $this->assertArrayNotHasKey('days', $storedTrip->plan_snapshot);
     }
 
+    public function test_store_trip_uses_trip_budget_eur_when_no_flight_hotel_estimates(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        $payload = [
+            'title' => 'Berlin budget wizard',
+            'destination' => 'Berlin',
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-05',
+            'travelers_count' => 2,
+            'plan_snapshot' => [
+                'days' => [],
+                'trip_budget_eur' => 2500,
+                'destinationSummary' => [
+                    'cityName' => 'Berlin',
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/api/v1/trips', $payload);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.budget_total', 2500);
+
+        $tripId = $response->json('data.id');
+        $this->assertDatabaseHas('voyages', [
+            'id' => (int) $tripId,
+            'budget_total' => 2500,
+        ]);
+
+        $storedTrip = Voyage::query()->findOrFail($tripId);
+        $this->assertSame(2500, $storedTrip->plan_snapshot['trip_budget_eur'] ?? null);
+    }
+
+    public function test_store_trip_trip_budget_eur_takes_priority_over_flight_hotel_sum(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        $response = $this->postJson('/api/v1/trips', [
+            'title' => 'Nice',
+            'destination' => 'Nice',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'travelers_count' => 1,
+            'plan_snapshot' => [
+                'days' => [],
+                'trip_budget_eur' => 5000,
+                'flightSummary' => [
+                    'carrier' => 'AF',
+                    'price' => '100',
+                    'currency' => 'EUR',
+                ],
+                'hotelSummary' => [
+                    'name' => 'Hotel',
+                    'cityName' => 'Nice',
+                    'totalPrice' => '200',
+                    'currency' => 'EUR',
+                ],
+                'destinationSummary' => [
+                    'cityName' => 'Nice',
+                ],
+            ],
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.budget_total', 5000);
+    }
+
     public function test_store_trip_normalizes_snapshot_days_into_journees_and_etapes(): void
     {
         $user = User::factory()->create();
