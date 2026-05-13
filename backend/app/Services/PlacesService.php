@@ -139,7 +139,7 @@ class PlacesService implements PlacesServiceInterface
             }
         }
         if (! isset($extra['lat'], $extra['lng']) || ! is_numeric($extra['lat']) || ! is_numeric($extra['lng'])) {
-            return null;
+            return $this->geocodeEtapeForNearby($etape);
         }
 
         return [
@@ -152,6 +152,57 @@ class PlacesService implements PlacesServiceInterface
                 'country' => $etape->pays,
             ],
         ];
+    }
+
+    /**
+     * @return array{lat: float, lng: float, activity: array<string, mixed>}|null
+     */
+    private function geocodeEtapeForNearby(Etape $etape): ?array
+    {
+        $activity = [
+            'id' => (string) $etape->id,
+            'title' => $etape->titre,
+            'city' => $etape->ville,
+            'country' => $etape->pays,
+        ];
+
+        $t = trim((string) $etape->titre);
+        $v = trim((string) $etape->ville);
+        $queries = [];
+        if ($t !== '' && $v !== '') {
+            $queries[] = $t.', '.$v;
+        }
+        if ($v !== '') {
+            $queries[] = $v;
+        }
+        if ($t !== '') {
+            $queries[] = $t;
+        }
+        $queries = array_values(array_unique(array_filter($queries, fn (string $q): bool => strlen($q) >= 2)));
+
+        foreach ($queries as $q) {
+            $locs = $this->amadeus->locationsByKeyword($q);
+            foreach ($locs as $loc) {
+                if (! is_array($loc)) {
+                    continue;
+                }
+                $geo = $loc['geoCode'] ?? null;
+                if (! is_array($geo)) {
+                    continue;
+                }
+                $lat = $geo['latitude'] ?? null;
+                $lng = $geo['longitude'] ?? null;
+                if (is_numeric($lat) && is_numeric($lng)) {
+                    return [
+                        'lat' => (float) $lat,
+                        'lng' => (float) $lng,
+                        'activity' => $activity,
+                    ];
+                }
+            }
+        }
+
+        return null;
     }
 
     private function haversineMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
