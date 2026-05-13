@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { cn } from '../../lib/utils';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useAuthSession } from '../../hooks/useAuthSession';
 import {
     authClient,
     fetchProfile,
@@ -69,6 +70,7 @@ function initials(name: string): string {
 
 export function ProfileView() {
     const router = useRouter();
+    const { currentUser } = useAuthSession();
     const [activeTab, setActiveTab] = useState<TabId>('compte');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -205,6 +207,10 @@ export function ProfileView() {
         }
     };
 
+    const isAdmin = currentUser?.est_admin === true;
+    const subscriptionTier = currentUser?.subscription_tier ?? null;
+    const subscriptionLabel = subscriptionTier ? `Abonnement ${subscriptionTier}` : 'Profil gratuit';
+
     return (
         <div className="max-w-5xl mx-auto px-6 py-12 lg:py-20">
             <PageHeader
@@ -293,15 +299,39 @@ export function ProfileView() {
                                                                 <Clock size={12} /> {profile.timezone}
                                                             </span>
                                                         )}
-                                                        <span className="bg-emerald-50 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-emerald-200 text-emerald-700">
+                                                        <span className={cn(
+                                                            'px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border',
+                                                            subscriptionTier
+                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                                                : 'bg-light-bg border-light-border text-light-muted',
+                                                        )}>
                                                             <CreditCard size={12} />
-                                                            {profile.preferences?.planning_mode === 'manual'
-                                                                ? 'Abonnement Voyageur actif'
-                                                                : 'Profil gratuit'}
+                                                            {subscriptionLabel}
                                                         </span>
+                                                        {isAdmin && (
+                                                            <span className="bg-brand/10 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-brand/30 text-brand">
+                                                                <Shield size={12} /> Administrateur
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </header>
+
+                                            {isAdmin && (
+                                                <div className="rounded-2xl border border-brand/20 bg-brand/5 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                                    <div>
+                                                        <p className="font-bold text-brand">Back-office administrateur</p>
+                                                        <p className="text-sm text-light-muted">Accédez aux métriques et à la gestion des utilisateurs Triply.</p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => router.push('/admin')}
+                                                        className="btn-primary py-2 px-5 text-sm"
+                                                    >
+                                                        Ouvrir le back-office
+                                                    </button>
+                                                </div>
+                                            )}
 
                                             <form onSubmit={handleAccountSubmit} className="grid md:grid-cols-2 gap-8">
                                                 <div className="space-y-2">

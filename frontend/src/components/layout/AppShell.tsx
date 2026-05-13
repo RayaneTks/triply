@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '../ThemeToggle/ThemeToggle';
@@ -8,7 +8,7 @@ import { TriplyLogo } from './TriplyLogo';
 import { SiteFooter } from './SiteFooter';
 import { MobileBottomNav } from './MobileBottomNav';
 import { cn } from '../../lib/utils';
-import { authClient, type AuthUser } from '../../lib/auth-client';
+import { useAuthSession } from '../../hooks/useAuthSession';
 
 interface NavItem {
   href: string;
@@ -37,30 +37,11 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
 
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const token = authClient.getToken();
-    if (!token) {
-      setCurrentUser(null);
-      return;
-    }
-    void authClient
-      .me()
-      .then((user) => {
-        if (!cancelled) setCurrentUser(user);
-      })
-      .catch(() => {
-        if (!cancelled) setCurrentUser(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { currentUser } = useAuthSession();
 
   const subscriptionTier = currentUser?.subscription_tier ?? null;
   const hasVoyageurSub = subscriptionTier === 'voyageur';
+  const isAdmin = currentUser?.est_admin === true;
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -92,6 +73,19 @@ export function AppShell({
 
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={cn(
+                  'hidden rounded-full border px-3 py-1.5 text-xs font-bold md:inline-flex',
+                  pathname?.startsWith('/admin')
+                    ? 'border-brand bg-brand/10 text-brand'
+                    : 'border-light-border bg-card text-light-muted hover:border-brand hover:text-brand',
+                )}
+              >
+                Admin
+              </Link>
+            )}
             <Link
               href="/profil"
               className={cn(
@@ -108,6 +102,11 @@ export function AppShell({
               {hasVoyageurSub && (
                 <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
                   V
+                </span>
+              )}
+              {isAdmin && (
+                <span className="absolute -bottom-1 -right-1 rounded-full bg-brand text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
+                  A
                 </span>
               )}
             </Link>

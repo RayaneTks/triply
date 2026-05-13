@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AdminMetricsController;
+use App\Http\Controllers\Api\V1\AdminInsightsController;
+use App\Http\Controllers\Api\V1\AdminTripsController;
 use App\Http\Controllers\Api\V1\AiController;
+use App\Http\Controllers\Api\V1\AdminUsersController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ConsentController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -137,5 +140,10 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/subscriptions/confirm', [SubscriptionController::class, 'confirm']);
 
         Route::get('/admin/metrics', [AdminMetricsController::class, 'index'])->middleware('admin');
+        Route::get('/admin/insights', [AdminInsightsController::class, 'index'])->middleware('admin');
+        Route::get('/admin/users', [AdminUsersController::class, 'index'])->middleware('admin');
+        Route::patch('/admin/users/{user}', [AdminUsersController::class, 'update'])->middleware('admin');
+        Route::get('/admin/trips', [AdminTripsController::class, 'index'])->middleware('admin');
+        Route::delete('/admin/trips/{trip}', [AdminTripsController::class, 'destroy'])->middleware('admin');
     });
 });
