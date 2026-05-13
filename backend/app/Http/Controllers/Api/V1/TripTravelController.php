@@ -24,17 +24,17 @@ class TripTravelController extends ApiController
 
     public function storeFlight(StoreFlightRequest $request, string $trip)
     {
-        return $this->successResponse(new StubResource($this->travelService->createFlight($trip, $request->validated())), status: 201);
+        return $this->successResponse($this->travelService->createFlight($trip, $request->validated()), status: 201);
     }
 
     public function updateFlight(UpdateFlightRequest $request, string $trip, string $flight)
     {
-        return $this->successResponse(new StubResource($this->travelService->updateFlight($trip, $flight, $request->validated())));
+        return $this->successResponse($this->travelService->updateFlight($trip, $flight, $request->validated()));
     }
 
     public function deleteFlight(string $trip, string $flight)
     {
-        return $this->successResponse(new StubResource($this->travelService->deleteFlight($trip, $flight)));
+        return $this->successResponse($this->travelService->deleteFlight($trip, $flight));
     }
 
     public function listHotels(string $trip)
@@ -44,17 +44,17 @@ class TripTravelController extends ApiController
 
     public function storeHotel(StoreHotelRequest $request, string $trip)
     {
-        return $this->successResponse(new StubResource($this->travelService->createHotel($trip, $request->validated())), status: 201);
+        return $this->successResponse($this->travelService->createHotel($trip, $request->validated()), status: 201);
     }
 
     public function updateHotel(UpdateHotelRequest $request, string $trip, string $hotel)
     {
-        return $this->successResponse(new StubResource($this->travelService->updateHotel($trip, $hotel, $request->validated())));
+        return $this->successResponse($this->travelService->updateHotel($trip, $hotel, $request->validated()));
     }
 
     public function deleteHotel(string $trip, string $hotel)
     {
-        return $this->successResponse(new StubResource($this->travelService->deleteHotel($trip, $hotel)));
+        return $this->successResponse($this->travelService->deleteHotel($trip, $hotel));
     }
 
     public function listLocalTransports(string $trip)

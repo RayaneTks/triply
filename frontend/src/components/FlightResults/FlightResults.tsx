@@ -20,7 +20,17 @@ function isAmadeusResponse(d: FlightResultsProps['data']): d is AmadeusResponse 
 }
 
 export const FlightResults = ({ data, onSelectOffer }: FlightResultsProps) => {
-    if (!isAmadeusResponse(data) || !data.data.length) return <div style={{ color: 'var(--foreground)' }}>Aucun résultat.</div>;
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+        return (
+            <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-sm" style={{ color: 'var(--foreground)' }}>
+                <p className="font-bold mb-1">Recherche impossible</p>
+                <p className="opacity-90">{data.error}</p>
+            </div>
+        );
+    }
+    if (!isAmadeusResponse(data) || !data.data.length) {
+        return <div style={{ color: 'var(--foreground)' }}>Aucun résultat pour ces critères. Essayez d&apos;ajuster les dates ou le budget.</div>;
+    }
 
     return (
         <div className="flex flex-col gap-4 p-4 pb-20 max-w-4xl mx-auto w-full" style={{ color: 'var(--foreground)' }}>

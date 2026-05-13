@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
         },
       },
     ],
-    success_url: `${baseUrl}/tarifs/success?session_id={CHECKOUT_SESSION_ID}`,
+    metadata: { plan, billing },
+    success_url: `${baseUrl}/tarifs/success?session_id={CHECKOUT_SESSION_ID}&plan=${plan}&billing=${billing}`,
     cancel_url:  `${baseUrl}/tarifs`,
   });
 

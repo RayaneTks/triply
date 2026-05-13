@@ -2,6 +2,7 @@
 
 import { FC, useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { CheckCircle2 } from 'lucide-react';
 
 // Interface pour la réponse d'Amadeus
 interface AmadeusLocation {
@@ -20,6 +21,14 @@ export interface CityAutocompleteProps {
     value: string; // Code IATA (ex: "PAR")
     onChange: (iataCode: string) => void;
 
+    /** Fired on every keystroke (not only on select). Use it to invalidate any
+     * "validated selection" flag in the parent. */
+    onInputChange?: (text: string) => void;
+
+    /** Visual confirmation that the current value comes from a list selection.
+     * When true, input gets an emerald border + checkmark icon. */
+    selected?: boolean;
+
     // La prop magique pour remonter le nom à l'Assistant
     onSelectName?: (cityName: string) => void;
 
@@ -35,8 +44,10 @@ export interface CityAutocompleteProps {
 export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                                                 value,
                                                                 onChange,
+                                                                onInputChange,
                                                                 onSelectName,
                                                                 onSelectGeo,
+                                                                selected = false,
                                                                 placeholder = 'Rechercher une ville...',
                                                                 label,
                                                                 className = '',
@@ -111,6 +122,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     // GESTION DE LA SAISIE (AUTOCOMPLETION)
     const handleInputChange = (text: string) => {
         setDisplayValue(text);
+        if (onInputChange) onInputChange(text);
 
         if (!text.trim() || text.length < 2) {
             setSuggestions([]);
@@ -178,15 +190,17 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
 
     // GESTION DE LA SÉLECTION
     const handleSelect = (feature: AmadeusLocation) => {
-        // 1. On construit le joli nom : "Rome (ROM)"
+        // 1. On construit le joli nom : "Rome (ROM)" si IATA présent, sinon "Rome"
         const cityName = feature.address?.cityName || feature.name;
-        const displayName = `${cityName} (${feature.iataCode})`;
+        const iata = feature.iataCode?.trim() ?? '';
+        const displayName = iata !== '' ? `${cityName} (${iata})` : cityName;
 
         // 2. On met à jour l'affichage local
         setDisplayValue(displayName);
 
-        // 3. On envoie le CODE IATA au formulaire (pour les vols)
-        onChange(feature.iataCode);
+        // 3. On envoie le CODE IATA au formulaire si présent (vols), sinon le nom de ville
+        //    (fallback Nominatim) — évite d'envoyer une chaîne vide au parent.
+        onChange(iata !== '' ? iata : cityName);
 
         // 4. On envoie le NOM VILLE à l'Assistant (pour le chat)
         if (onSelectName) {
@@ -240,7 +254,9 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     {label}
                 </label>
             )}
-            <div className="relative input-assistant w-full min-w-0">
+            <div
+                className={`relative input-assistant w-full min-w-0 transition-colors ${selected ? 'ring-2 ring-emerald-500 border-emerald-500' : ''}`}
+            >
                 <input
                     ref={inputRef}
                     type="text"
@@ -249,7 +265,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     onFocus={() => { if(suggestions.length > 0) setIsOpen(true); }}
                     onKeyDown={handleInputKeyDown}
                     placeholder={placeholder}
-                    className="w-full bg-transparent focus:outline-none text-sm placeholder-normal"
+                    className={`w-full bg-transparent focus:outline-none text-sm placeholder-normal ${selected ? 'pr-10' : ''}`}
                     style={{ color: 'var(--foreground, #ededed)' }}
                     role="combobox"
                     aria-autocomplete="list"
@@ -257,6 +273,12 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     aria-controls={listboxId}
                     aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
                 />
+
+                {selected && !loading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500" aria-label="Sélection validée">
+                        <CheckCircle2 size={18} strokeWidth={2.5} />
+                    </div>
+                )}
 
                 {loading && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">

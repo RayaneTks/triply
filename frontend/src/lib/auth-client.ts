@@ -5,6 +5,11 @@ export interface AuthUser {
     name: string;
     email: string;
     est_admin?: boolean;
+    /**
+     * Niveau d'abonnement courant (ex: "voyageur", "premium", null pour gratuit).
+     * Aligné sur users.subscription_tier côté backend.
+     */
+    subscription_tier?: string | null;
     email_verified_at?: string | null;
     created_at?: string;
     updated_at?: string;
@@ -95,10 +100,20 @@ function getErrorMessage(payload: ApiErrorResponse | null, fallback: string): st
     return detailMessage || payload?.error?.message || payload?.message || fallback;
 }
 
+function handleUnauthorized(): void {
+    clearSession();
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('triply-auth-changed'));
+    }
+}
+
 async function parseJsonResponse<T>(response: Response, fallback: string): Promise<T> {
     const payload = (await response.json().catch(() => null)) as ApiErrorResponse | ApiSuccess<T> | null;
 
     if (!response.ok) {
+        if (response.status === 401) {
+            handleUnauthorized();
+        }
         throw new Error(getErrorMessage(payload as ApiErrorResponse | null, fallback));
     }
 
@@ -192,6 +207,7 @@ export async function logout(token: string): Promise<void> {
     });
 
     if (!response.ok) {
+        if (response.status === 401) handleUnauthorized();
         const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
         throw new Error(getErrorMessage(payload, 'Deconnexion impossible.'));
     }
@@ -243,6 +259,7 @@ export async function updatePreferences(token: string, payload: UserPreferences)
     });
 
     if (!response.ok) {
+        if (response.status === 401) handleUnauthorized();
         const errorPayload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
         throw new Error(getErrorMessage(errorPayload, 'Mise a jour des preferences impossible.'));
     }

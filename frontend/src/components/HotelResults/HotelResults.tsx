@@ -90,10 +90,18 @@ function isAmadeusHotelResponse(d: HotelResultsProps['data']): d is AmadeusHotel
 }
 
 export const HotelResults = ({ data, onSelectOffer }: HotelResultsProps) => {
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+        return (
+            <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-sm text-white">
+                <p className="font-bold mb-1">Recherche impossible</p>
+                <p className="opacity-90">{data.error}</p>
+            </div>
+        );
+    }
     const offers = isAmadeusHotelResponse(data) ? flattenHotelOffers(data) : [];
 
     if (offers.length === 0) {
-        return <div className="text-white">Aucun résultat.</div>;
+        return <div className="text-white">Aucun résultat pour ces critères. Essayez d&apos;ajuster les dates ou le budget.</div>;
     }
 
     return (

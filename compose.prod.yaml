@@ -7,6 +7,9 @@ services:
       context: .
       dockerfile: ./docker/spa-prod/Dockerfile
       target: production
+      args:
+        NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://triply.ovh}
     container_name: tri-app
     # Le serveur standalone Next.js écoute sur PORT=3000 ; pas de bind-mount, code figé dans l'image.
     restart: unless-stopped

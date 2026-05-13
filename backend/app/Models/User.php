@@ -21,6 +21,7 @@ class User extends Authenticatable
         'photo_url',
         'timezone',
         'preferences',
+        'subscription_tier',
     ];
 
     protected $hidden = [

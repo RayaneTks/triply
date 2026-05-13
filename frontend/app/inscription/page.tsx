@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { RegisterView } from '@/src/features/auth/RegisterView';
 import { FloatingThemeToggle } from '@/src/components/layout/FloatingThemeToggle';
 
@@ -9,7 +10,9 @@ export default function InscriptionPage() {
   return (
     <>
       <FloatingThemeToggle />
-      <RegisterView />
+      <Suspense fallback={null}>
+        <RegisterView />
+      </Suspense>
     </>
   );
 }

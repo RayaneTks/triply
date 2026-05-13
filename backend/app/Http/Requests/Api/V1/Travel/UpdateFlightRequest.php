@@ -9,10 +9,14 @@ class UpdateFlightRequest extends BaseApiRequest
     public function rules(): array
     {
         return [
-            'airline' => ['sometimes', 'string', 'max:120'],
-            'flight_number' => ['sometimes', 'string', 'max:50'],
-            'departure_at' => ['sometimes', 'date'],
-            'arrival_at' => ['sometimes', 'date'],
+            'type' => ['sometimes', 'string', 'max:128'],
+            'depart_lieu' => ['sometimes', 'string', 'max:255'],
+            'arrivee_lieu' => ['sometimes', 'string', 'max:255'],
+            'depart_le' => ['sometimes', 'date'],
+            'arrivee_le' => ['sometimes', 'date'],
+            'prix' => ['sometimes', 'integer', 'min:0'],
+            'devise' => ['nullable', 'string', 'size:3'],
+            'information_supplementaire' => ['nullable', 'string', 'max:5000'],
         ];
     }
 }

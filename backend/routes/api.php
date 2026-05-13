@@ -7,12 +7,14 @@ use App\Http\Controllers\Api\V1\ConsentController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Integrations\AmadeusFlightsProxyController;
 use App\Http\Controllers\Api\V1\Integrations\AmadeusHotelsProxyController;
+use App\Http\Controllers\Api\V1\Integrations\AmadeusIataLookupController;
 use App\Http\Controllers\Api\V1\Integrations\AmadeusPlacesSearchController;
 use App\Http\Controllers\Api\V1\Integrations\AssistantChatController;
 use App\Http\Controllers\Api\V1\Integrations\GooglePlaceReviewsController;
 use App\Http\Controllers\Api\V1\PlacesController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RestaurantController;
+use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TripActivityController;
 use App\Http\Controllers\Api\V1\TripBookingController;
 use App\Http\Controllers\Api\V1\TripController;
@@ -28,10 +30,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', [HealthController::class, 'show']);
 
-    /** Intégrations publiques (Amadeus lieux, avis lieu) — clés côté serveur. */
+    /** Intégrations publiques (Amadeus lieux, avis lieu, lookup IATA) — clés côté serveur. */
     Route::prefix('integrations')->middleware('throttle:places')->group(function (): void {
         Route::get('/amadeus/places', [AmadeusPlacesSearchController::class, 'index']);
         Route::get('/google/place-reviews', [GooglePlaceReviewsController::class, 'index']);
+        // Lookup IATA exposé en public : le wizard l'appelle avant login pour
+        // résoudre la ville de départ. Pas de secret côté réponse, seulement
+        // des codes IATA + coordonnées de villes publiques.
+        Route::get('/amadeus/iata-lookup', [AmadeusIataLookupController::class, 'index']);
     });
 
     Route::middleware('auth:sanctum')->prefix('integrations')->group(function (): void {
@@ -127,6 +133,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/trips/{trip}/export/ics', [TripExportController::class, 'exportIcs']);
 
         Route::post('/trips/{trip}/booking/checkout', [TripBookingController::class, 'checkout']);
+
+        Route::post('/subscriptions/confirm', [SubscriptionController::class, 'confirm']);
 
         Route::get('/admin/metrics', [AdminMetricsController::class, 'index'])->middleware('admin');
     });

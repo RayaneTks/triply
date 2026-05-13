@@ -1,15 +1,24 @@
 'use client';
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Map, Sparkles, Plane, ListChecks, Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import Link from "next/link";
+import { authClient } from "../../lib/auth-client";
 
 export function PricingView() {
+  const router = useRouter();
   const [isAnnual, setIsAnnual] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCheckout(planId: string) {
+    setError(null);
+    if (!authClient.getToken()) {
+      router.push('/connexion?returnTo=/tarifs');
+      return;
+    }
     setLoadingPlan(planId);
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -18,7 +27,13 @@ export function PricingView() {
         body: JSON.stringify({ plan: planId, billing: isAnnual ? 'annual' : 'monthly' }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error || 'Impossible de démarrer le paiement.');
+        return;
+      }
       if (data.url) window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau ou serveur.');
     } finally {
       setLoadingPlan(null);
     }
@@ -56,6 +71,11 @@ export function PricingView() {
       <div className="text-center mb-16">
         <h1 className="text-5xl font-display font-bold mb-6">Un copilote pour chaque budget</h1>
         <p className="text-light-muted text-lg mb-12">Commencez gratuitement, évoluez selon vos aventures.</p>
+        {error && (
+          <div className="max-w-md mx-auto mb-8 px-4 py-3 rounded-xl border border-red-300 bg-red-50 text-red-900 text-sm font-bold">
+            {error}
+          </div>
+        )}
 
         {/* Toggle Billing */}
         <div className="flex items-center justify-center gap-4">

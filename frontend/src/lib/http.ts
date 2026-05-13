@@ -65,6 +65,14 @@ export function extractErrorMessage(body: unknown): string | null {
     if (typeof e.message === "string") return e.message;
   }
   if (b.errors && typeof b.errors === "object") {
+    if (Array.isArray(b.errors) && b.errors.length > 0) {
+      const first = b.errors[0];
+      if (first && typeof first === "object") {
+        const o = first as Record<string, unknown>;
+        if (typeof o.detail === "string") return o.detail;
+        if (typeof o.title === "string") return o.title;
+      }
+    }
     const first = Object.values(b.errors as Record<string, unknown>)[0];
     if (Array.isArray(first) && typeof first[0] === "string") return first[0];
   }
