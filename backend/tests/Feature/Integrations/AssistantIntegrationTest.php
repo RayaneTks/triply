@@ -204,7 +204,7 @@ class AssistantIntegrationTest extends TestCase
     {
         Http::fake([
             'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
-            'https://test.api.amadeus.com/v2/shopping/flight-offers' => Http::response([
+            'https://test.api.amadeus.com/v2/shopping/flight-offers*' => Http::response([
                 'data' => [['id' => 'F1']],
                 'dictionaries' => ['carriers' => []],
             ], 200),
@@ -225,7 +225,7 @@ class AssistantIntegrationTest extends TestCase
     {
         Http::fake([
             'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
-            'https://test.api.amadeus.com/v2/shopping/flight-offers' => Http::response([
+            'https://test.api.amadeus.com/v2/shopping/flight-offers*' => Http::response([
                 'errors' => [
                     ['title' => 'INVALID', 'detail' => 'Invalid departure date'],
                 ],

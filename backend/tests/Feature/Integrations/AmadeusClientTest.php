@@ -163,7 +163,7 @@ class AmadeusClientTest extends TestCase
     {
         Http::fake([
             'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
-            'https://test.api.amadeus.com/v2/shopping/flight-offers' => Http::response([
+            'https://test.api.amadeus.com/v2/shopping/flight-offers*' => Http::response([
                 'data' => [['id' => 'offer1', 'price' => ['grandTotal' => '120', 'currency' => 'EUR']]],
                 'dictionaries' => ['carriers' => ['AF' => 'Air France']],
             ], 200),
@@ -180,16 +180,13 @@ class AmadeusClientTest extends TestCase
         $this->assertSame('offer1', $result['data'][0]['id']);
 
         Http::assertSent(function ($request) {
-            $body = json_decode($request->body(), true);
-            $ods = $body['originDestinations'] ?? null;
-
-            return ($body['currencyCode'] ?? null) === 'EUR'
-                && is_array($ods)
-                && ($ods[0]['originLocationCode'] ?? null) === 'PAR'
-                && ($ods[0]['destinationLocationCode'] ?? null) === 'BCN'
-                && ($ods[0]['departureDateTimeRange']['date'] ?? null) === '2026-09-01'
-                && is_array($body['travelers'] ?? null)
-                && ($body['travelers'][0]['travelerType'] ?? null) === 'ADULT';
+            return $request->method() === 'GET'
+                && str_contains($request->url(), '/v2/shopping/flight-offers')
+                && $request['currencyCode'] === 'EUR'
+                && $request['originLocationCode'] === 'PAR'
+                && $request['destinationLocationCode'] === 'BCN'
+                && $request['departureDate'] === '2026-09-01'
+                && (int) $request['adults'] === 1;
         });
     }
 
@@ -197,7 +194,7 @@ class AmadeusClientTest extends TestCase
     {
         Http::fake([
             'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
-            'https://test.api.amadeus.com/v2/shopping/flight-offers' => Http::response([
+            'https://test.api.amadeus.com/v2/shopping/flight-offers*' => Http::response([
                 'errors' => [
                     ['title' => 'INVALID DATE', 'detail' => 'Departure date in the past'],
                 ],
