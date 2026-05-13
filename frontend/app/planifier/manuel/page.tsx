@@ -1,29 +1,39 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ManualCanvasView } from '@/src/features/modes/ManualCanvasView';
 import { AppShell } from '@/src/components/layout/AppShell';
-import { RedirectType } from 'next/dist/client/components/redirect';
-import { redirect } from 'next/navigation';
-import { authClient, type AuthUser } from '@/src/lib/auth-client';
+import { useAuthSession } from '@/src/hooks/useAuthSession';
 
 export const metadata = {
   title: 'Mode manuel | Triply',
 };
 
-export default async function PlanifierManuelPage() {
-  let user: AuthUser | null = null;
-  try {
-    user = await authClient.me();
-  } catch {
-    user = null;
-  }
+export default function PlanifierManuelPage() {
+  const router = useRouter();
+  const { currentUser, isLoading } = useAuthSession();
+  const hasVoyageurSub = currentUser?.subscription_tier === 'voyageur';
 
-  if (!user) {
-    redirect('/connexion?returnTo=/planifier/manuel', RedirectType.replace);
-  }
+  useEffect(() => {
+    if (isLoading) return;
+    if (!currentUser) {
+      router.replace('/connexion?returnTo=/planifier/manuel');
+      return;
+    }
+    if (!hasVoyageurSub) {
+      router.replace('/tarifs');
+    }
+  }, [currentUser, hasVoyageurSub, isLoading, router]);
 
-  const hasVoyageurSub = user.subscription_tier === 'voyageur';
-
-  if (!hasVoyageurSub) {
-    redirect('/tarifs', RedirectType.replace);
+  if (isLoading || !currentUser || !hasVoyageurSub) {
+    return (
+      <AppShell showFooter={false}>
+        <div className="max-w-3xl mx-auto px-6 py-16 text-center text-light-muted">
+          Vérification de votre accès…
+        </div>
+      </AppShell>
+    );
   }
 
   return (
