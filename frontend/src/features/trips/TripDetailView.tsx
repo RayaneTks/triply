@@ -42,6 +42,8 @@ import {
 } from '../../lib/activities-client';
 import { citiesClient } from '../../lib/cities-client';
 import { tripDetailFromApi, tripDetailFromStored, type TripDetailDisplay } from '../../lib/trip-view-adapter';
+import { useAuthSession } from '../../hooks/useAuthSession';
+import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
 interface UndoneActivity {
     id: string;
@@ -51,6 +53,7 @@ interface UndoneActivity {
 
 export function TripDetailView() {
     const { tripId } = useParams<{ tripId: string }>();
+    const { isConnected, isLoading: authLoading } = useAuthSession();
     const [activeTab, setActiveTab] = useState<'itinerary' | 'flights' | 'hotels' | 'map' | 'docs'>('itinerary');
     const [isLoading, setIsLoading] = useState(true);
     const [apiTrip, setApiTrip] = useState<TripApi | null | undefined>(undefined);
@@ -329,7 +332,7 @@ export function TripDetailView() {
         }
     };
 
-    if (isLoading) {
+    if (authLoading || isLoading) {
         return (
             <div className="max-w-7xl mx-auto px-6 py-20 space-y-12 animate-pulse">
                 <div className="h-10 bg-slate-200 w-1/4 rounded-lg" />
@@ -342,6 +345,15 @@ export function TripDetailView() {
                     <div className="h-96 bg-slate-100 rounded-[32px]" />
                 </div>
             </div>
+        );
+    }
+
+    if (!isConnected) {
+        return (
+            <AuthRequiredCard
+                title="Connexion requise"
+                description="Le détail d’un voyage est disponible uniquement pour les comptes connectés."
+            />
         );
     }
 

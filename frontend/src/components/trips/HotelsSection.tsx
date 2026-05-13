@@ -169,13 +169,13 @@ export function HotelsSection({
             if (!inD || !isoDate.test(inD) || !outD || !isoDate.test(outD)) {
                 setApiResponse({
                     ...emptyEnv,
-                    error: 'Indiquez des dates d�??arrivée et de départ au format AAAA-MM-JJ.',
+                    error: 'Indiquez des dates d-arrivée et de départ au format AAAA-MM-JJ.',
                 } as unknown as AmadeusHotelResponse);
                 return;
             }
             const resolvedCode = await resolveCityCode(cityCode);
             if (!resolvedCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN�?�).` } as unknown as AmadeusHotelResponse);
+                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN...).` } as unknown as AmadeusHotelResponse);
                 return;
             }
             const body: HotelSearchBody = {
@@ -257,7 +257,7 @@ export function HotelsSection({
     };
 
     const headerSubtitle = useMemo(() => {
-        if (loading) return 'Chargement�?�';
+        if (loading) return 'Chargement...';
         if (hotels.length === 0) return 'Aucun hôtel sélectionné';
         return `${hotels.length} hôtel${hotels.length > 1 ? 's' : ''} enregistré${hotels.length > 1 ? 's' : ''}`;
     }, [loading, hotels.length]);
@@ -314,7 +314,7 @@ export function HotelsSection({
                                     {[hotel.adresse, hotel.ville].filter(Boolean).join(' · ')}
                                 </p>
                                 <p className="text-xs text-light-muted">
-                                    {formatDate(hotel.arrivee_le)} �?? {formatDate(hotel.depart_le)}
+                                    {formatDate(hotel.arrivee_le)} - {formatDate(hotel.depart_le)}
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">

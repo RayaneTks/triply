@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle/ThemeToggle';
 import { TriplyLogo } from './TriplyLogo';
 import { SiteFooter } from './SiteFooter';
@@ -37,8 +38,7 @@ export function AppShell({
   contentClassName,
 }: AppShellProps) {
   const pathname = usePathname();
-
-  const { currentUser } = useAuthSession();
+  const { currentUser, isConnected, logout } = useAuthSession();
 
   const subscriptionTier = currentUser?.subscription_tier ?? null;
   const hasPaidPlanner = hasPlannerPaidSubscription(subscriptionTier);
@@ -87,30 +87,49 @@ export function AppShell({
                 Admin
               </Link>
             )}
-            <Link
-              href="/profil"
-              className={cn(
-                'hidden h-9 w-9 items-center justify-center rounded-full border border-light-border bg-card text-light-muted transition-colors hover:border-brand hover:text-brand md:inline-flex relative',
-                pathname === '/profil' && 'border-brand text-brand',
-              )}
-              aria-label="Mon profil"
-              title="Mon profil"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              {hasPaidPlanner && (
-                <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
-                  V
-                </span>
-              )}
-              {isAdmin && (
-                <span className="absolute -bottom-1 -right-1 rounded-full bg-brand text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
-                  A
-                </span>
-              )}
-            </Link>
+            {isConnected ? (
+              <>
+                <Link
+                  href="/profil"
+                  className={cn(
+                    'hidden h-9 w-9 items-center justify-center rounded-full border border-light-border bg-card text-light-muted transition-colors hover:border-brand hover:text-brand md:inline-flex relative',
+                    pathname === '/profil' && 'border-brand text-brand',
+                  )}
+                  aria-label="Mon profil"
+                  title="Mon profil"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  {hasPaidPlanner && (
+                    <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
+                      V
+                    </span>
+                  )}
+                  {isAdmin && (
+                    <span className="absolute -bottom-1 -right-1 rounded-full bg-brand text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
+                      A
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-light-border bg-card px-3 py-1.5 text-xs font-bold text-light-muted transition-colors hover:border-brand hover:text-brand"
+                >
+                  <LogOut size={14} />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/connexion"
+                className="hidden md:inline-flex items-center rounded-full border border-light-border bg-card px-4 py-1.5 text-xs font-bold text-light-muted transition-colors hover:border-brand hover:text-brand"
+              >
+                Connexion
+              </Link>
+            )}
           </div>
         </div>
       </header>

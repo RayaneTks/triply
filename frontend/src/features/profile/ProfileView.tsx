@@ -33,6 +33,7 @@ import {
     type ProfileAttributes,
     type UserPreferences,
 } from '../../lib/auth-client';
+import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
 type TabId = 'compte' | 'preferences' | 'notifications' | 'securite';
 
@@ -70,7 +71,7 @@ function initials(name: string): string {
 
 export function ProfileView() {
     const router = useRouter();
-    const { currentUser } = useAuthSession();
+    const { currentUser, isConnected, isLoading: authLoading } = useAuthSession();
     const [activeTab, setActiveTab] = useState<TabId>('compte');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -210,6 +211,23 @@ export function ProfileView() {
     const isAdmin = currentUser?.est_admin === true;
     const subscriptionTier = currentUser?.subscription_tier ?? null;
     const subscriptionLabel = subscriptionTier ? `Abonnement ${subscriptionTier}` : 'Profil gratuit';
+
+    if (authLoading) {
+        return (
+            <div className="max-w-5xl mx-auto px-6 py-16">
+                <div className="triply-card p-8 animate-pulse h-56" />
+            </div>
+        );
+    }
+
+    if (!isConnected) {
+        return (
+            <AuthRequiredCard
+                title="Connectez-vous à votre profil"
+                description="Votre espace profil est privé. Connectez-vous ou créez un compte pour y accéder."
+            />
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto px-6 py-12 lg:py-20">

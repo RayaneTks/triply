@@ -31,7 +31,7 @@ async function resolveIata(keyword: string): Promise<string | null> {
         return term.toUpperCase();
     }
 
-    // Try Amadeus IATA-only lookup first â?? guarantees a 3-letter code.
+    // Try Amadeus IATA-only lookup first - guarantees a 3-letter code.
     try {
         const results: AmadeusLocation[] = await lookupIata(term, 'AIRPORT,CITY');
         const airport = results.find((r) => r.subType === 'AIRPORT' && r.iataCode);
@@ -218,7 +218,7 @@ export function FlightsSection({
             }
             const destCode = await resolveIata(arrivalCity);
             if (!originCode || !destCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun aÃ©roport IATA trouvÃ© pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCNâ?¦).` } as unknown as AmadeusResponse);
+                setApiResponse({ ...emptyEnv, error: `Aucun aÃ©roport IATA trouvÃ© pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCN...).` } as unknown as AmadeusResponse);
                 return;
             }
             const body = {
@@ -299,7 +299,7 @@ export function FlightsSection({
     };
 
     const headerSubtitle = useMemo(() => {
-        if (loading) return 'Chargementâ?¦';
+        if (loading) return 'Chargement...';
         if (flights.length === 0) return 'Aucun vol sÃ©lectionnÃ©';
         return `${flights.length} vol${flights.length > 1 ? 's' : ''} enregistrÃ©${flights.length > 1 ? 's' : ''}`;
     }, [loading, flights.length]);
@@ -353,7 +353,7 @@ export function FlightsSection({
                             <div className="flex-1 min-w-0 space-y-1">
                                 <p className="font-bold text-light-foreground">{flight.type}</p>
                                 <p className="text-xs text-light-muted font-bold">
-                                    {flight.depart_lieu} â?? {flight.arrivee_lieu}
+                                    {flight.depart_lieu} - {flight.arrivee_lieu}
                                 </p>
                                 <p className="text-xs text-light-muted">
                                     {formatDateTime(flight.depart_le)} Â· {formatDateTime(flight.arrivee_le)}

@@ -29,6 +29,8 @@ import { bookingClient } from '../../lib/booking-client';
 import { authClient } from '../../lib/auth-client';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { cn } from '../../lib/utils';
+import { useAuthSession } from '../../hooks/useAuthSession';
+import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
@@ -39,6 +41,7 @@ interface RecapVoyageViewProps {
 
 export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
     const searchParams = useSearchParams();
+    const { isConnected, isLoading: authLoading } = useAuthSession();
     const tripIdParam = searchParams?.get('tripId') ?? null;
 
     const [recap, setRecap] = useState<TripRecap | null>(null);
@@ -212,7 +215,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
         }
     }, [shareUrl]);
 
-    if (loading) {
+    if (authLoading || loading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
                 <div className="text-center">
@@ -222,6 +225,15 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
                     </p>
                 </div>
             </div>
+        );
+    }
+
+    if (!isPublic && !isConnected) {
+        return (
+            <AuthRequiredCard
+                title="Connexion requise"
+                description="Connectez-vous pour accéder au récapitulatif de votre voyage."
+            />
         );
     }
 

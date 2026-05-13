@@ -9,7 +9,7 @@ NODE ?= node
 	clear \
 	local-setup local-install local-env local-key local-cache-clear local-swagger local-routes local-serve local-test local-test-auth local-test-feature local-test-unit local-tinker local-fresh \
 	docker-up docker-down docker-start docker-stop docker-restart docker-rebuild docker-logs docker-logs-back docker-shell-back \
-	docker-setup docker-migrate docker-fresh docker-seed docker-key docker-test docker-test-auth docker-test-feature docker-test-unit docker-swagger docker-routes docker-clean \
+	docker-setup docker-migrate docker-fresh docker-seed demo-users docker-key docker-test docker-test-auth docker-test-feature docker-test-unit docker-swagger docker-routes docker-clean \
 	docker-reinstall docker-fresh-rebuild docker-prune docker-clean-cache docker-image-sizes \
 	bootstrap
 
@@ -25,7 +25,7 @@ help:
 	@echo Usage: make target
 	@echo.
 	@echo Docker workflow:
-	@echo   make init                  - full setup (build + db/bootstrap + env + migrate + swagger)
+	@echo   make init                  - full setup (build + db/bootstrap + env + migrate + comptes demo + swagger)
 	@echo   make install               - alias of make init
 	@echo   make ensure-dev-env        - cree .env racine + backend + frontend si absents
 	@echo   make migrate               - run safe DB migrations in backend container
@@ -48,6 +48,7 @@ help:
 	@echo   make logs-back             - backend logs
 	@echo   make pgadmin-reset         - reset pgadmin container data and reload preconfigured server
 	@echo   make shell                 - backend shell
+	@echo   make demo-users            - cree ou reinitialise test@example.com + admin@triply.app (dev)
 	@echo   make routes                - list API routes
 	@echo   make swagger               - regenerate swagger
 	@echo   make verify                - full backend checks (composer dev deps + tests)
@@ -71,6 +72,7 @@ init: ensure-dev-env
 	$(COMPOSE) exec -T tri-php-fpm php artisan key:generate --force
 	$(COMPOSE) exec -T tri-php-fpm php artisan optimize:clear
 	$(COMPOSE) exec -T tri-php-fpm sh -lc "php artisan migrate --force --graceful || php artisan migrate --force"
+	$(MAKE) demo-users
 	-$(COMPOSE) exec -T tri-php-fpm php artisan l5-swagger:generate
 
 vendor-init:
@@ -298,6 +300,9 @@ docker-fresh:
 
 docker-seed:
 	$(COMPOSE) exec -T tri-php-fpm php artisan db:seed --force
+
+demo-users:
+	$(COMPOSE) exec -T tri-php-fpm php artisan db:seed --class=DatabaseSeeder --force
 
 docker-key:
 	$(COMPOSE) exec -T tri-php-fpm php artisan key:generate --force
