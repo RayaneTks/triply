@@ -61,6 +61,7 @@ export function TripDetailView() {
     const [activitiesError, setActivitiesError] = useState<string | null>(null);
     /** Jours affichés sur la carte (vide = tous). */
     const [selectedMapDayIds, setSelectedMapDayIds] = useState<string[]>([]);
+    const [mapRouteMode, setMapRouteMode] = useState<'full' | 'localOnly'>('full');
 
     const [pendingCityDelete, setPendingCityDelete] = useState<string | null>(null);
     const [deletingCity, setDeletingCity] = useState(false);
@@ -124,6 +125,7 @@ export function TripDetailView() {
 
     useEffect(() => {
         setSelectedMapDayIds([]);
+        setMapRouteMode('full');
     }, [tripId]);
 
     useEffect(() => {
@@ -212,7 +214,7 @@ export function TripDetailView() {
         }> = [];
 
         // First leg: depart city → premier point géolocalisé de l'itinéraire.
-        if (originCoords) {
+        if (mapRouteMode === 'full' && originCoords) {
             const firstActivity = mapDaysFiltered
                 .flatMap((d) => d.activities)
                 .find((a) => a.attributes.lat != null && a.attributes.lng != null);
@@ -251,7 +253,7 @@ export function TripDetailView() {
             });
         });
         return segments;
-    }, [mapDaysFiltered, DAY_PALETTE, originCoords]);
+    }, [mapDaysFiltered, DAY_PALETTE, originCoords, mapRouteMode]);
 
     const cityGroups = useMemo(() => {
         const groups = new globalThis.Map<string, ActivityResource[]>();
@@ -631,6 +633,35 @@ export function TripDetailView() {
                                             })}
                                     </div>
                                 )}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-bold uppercase tracking-widest text-light-muted">
+                                        Trajets
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMapRouteMode('full')}
+                                        className={cn(
+                                            'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                            mapRouteMode === 'full'
+                                                ? 'border-brand bg-brand/10 text-brand'
+                                                : 'border-light-border bg-card text-light-muted hover:text-light-foreground',
+                                        )}
+                                    >
+                                        Trajet complet
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMapRouteMode('localOnly')}
+                                        className={cn(
+                                            'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                            mapRouteMode === 'localOnly'
+                                                ? 'border-brand bg-brand/10 text-brand'
+                                                : 'border-light-border bg-card text-light-muted hover:text-light-foreground',
+                                        )}
+                                    >
+                                        Sur place uniquement
+                                    </button>
+                                </div>
                                 <div className="aspect-video lg:aspect-auto lg:h-[600px] w-full bg-light-bg rounded-[40px] overflow-hidden border border-light-border relative">
                                     <WorldMap
                                         accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}

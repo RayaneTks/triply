@@ -45,9 +45,9 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('auth:sanctum')->prefix('integrations')->group(function (): void {
         Route::post('/assistant', [AssistantChatController::class, 'store'])->middleware('throttle:ai');
-        Route::post('/amadeus/flights/search', [AmadeusFlightsProxyController::class, 'store'])->middleware('throttle:ai');
+        Route::match(['GET', 'POST'], '/amadeus/flights/search', [AmadeusFlightsProxyController::class, 'search'])->middleware('throttle:ai');
         Route::get('/amadeus/hotels/by-geocode', [AmadeusHotelsProxyController::class, 'index'])->middleware('throttle:ai');
-        Route::post('/amadeus/hotels/search', [AmadeusHotelsProxyController::class, 'store'])->middleware('throttle:ai');
+        Route::match(['GET', 'POST'], '/amadeus/hotels/search', [AmadeusHotelsProxyController::class, 'search'])->middleware('throttle:ai');
     });
 
     Route::prefix('auth')->group(function (): void {
@@ -147,3 +147,4 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/admin/trips/{trip}', [AdminTripsController::class, 'destroy'])->middleware('admin');
     });
 });
+
