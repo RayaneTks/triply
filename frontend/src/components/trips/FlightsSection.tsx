@@ -7,6 +7,7 @@ import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard
 import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 import { searchFlights, searchPlaces, lookupIata, type AmadeusLocation } from '@/src/lib/integrations/amadeus';
 import { tripTravelClient, bookingCheckout, type FlightRecord } from '@/src/lib/trip-travel-client';
+import { ApiError, extractErrorMessage } from '@/src/lib/http';
 
 interface FlightsSectionProps {
     tripId: string;
@@ -15,6 +16,10 @@ interface FlightsSectionProps {
     endDate?: string | null;
     travelers?: number;
     budgetTotal?: number;
+    /** Origin captured at wizard time (plan_snapshot.origin). When provided we
+     *  prefill the flight search modal instead of falling back to "Paris". */
+    defaultOriginCity?: string;
+    defaultOriginIata?: string;
 }
 
 async function resolveIata(keyword: string): Promise<string | null> {
@@ -97,13 +102,18 @@ export function FlightsSection({
     endDate,
     travelers,
     budgetTotal,
+    defaultOriginCity,
+    defaultOriginIata,
 }: FlightsSectionProps) {
     const [flights, setFlights] = useState<FlightRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
 
+    const initialOrigin = (defaultOriginCity && defaultOriginCity.trim())
+        || (defaultOriginIata && defaultOriginIata.trim())
+        || 'Paris';
     const [modalOpen, setModalOpen] = useState(false);
-    const [departureCity, setDepartureCity] = useState('Paris');
+    const [departureCity, setDepartureCity] = useState(initialOrigin);
     const [arrivalCity, setArrivalCity] = useState(destination);
     const [arrivalDate, setArrivalDate] = useState(startDate ?? '');
     const [departureDate, setDepartureDate] = useState(endDate ?? '');
@@ -123,6 +133,15 @@ export function FlightsSection({
     useEffect(() => { setArrivalDate(startDate ?? ''); }, [startDate]);
     useEffect(() => { setDepartureDate(endDate ?? ''); }, [endDate]);
     useEffect(() => { if (travelers) setTravelerCount(travelers); }, [travelers]);
+    useEffect(() => {
+        const city = defaultOriginCity?.trim();
+        if (city) {
+            setDepartureCity(city);
+            return;
+        }
+        const iata = defaultOriginIata?.trim();
+        if (iata) setDepartureCity(iata);
+    }, [defaultOriginCity, defaultOriginIata]);
 
     const reload = useCallback(async () => {
         setLoading(true);
@@ -144,10 +163,39 @@ export function FlightsSection({
         setApiResponse(null);
         const emptyEnv = { data: [] as never[], dictionaries: { carriers: {}, locations: {} } };
         try {
-            const [originCode, destCode] = await Promise.all([
-                resolveIata(departureCity),
-                resolveIata(arrivalCity),
-            ]);
+            const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+            const dep = arrivalDate.trim();
+            if (!dep || !isoDate.test(dep)) {
+                setApiResponse({
+                    ...emptyEnv,
+                    error: 'Indiquez une date de départ (aller) au format AAAA-MM-JJ.',
+                } as unknown as AmadeusResponse);
+                return;
+            }
+            const ret = departureDate.trim();
+            if (ret && !isoDate.test(ret)) {
+                setApiResponse({
+                    ...emptyEnv,
+                    error: 'Date de retour invalide : utilisez le format AAAA-MM-JJ.',
+                } as unknown as AmadeusResponse);
+                return;
+            }
+            const oCity = defaultOriginCity?.trim();
+            const oIata = defaultOriginIata?.trim();
+            const depTrim = departureCity.trim();
+            let originCode: string | null = null;
+            if (oIata && /^[A-Za-z]{3}$/.test(oIata)) {
+                const iataUp = oIata.toUpperCase();
+                if (depTrim.toUpperCase() === iataUp) {
+                    originCode = iataUp;
+                } else if (oCity && depTrim.toLowerCase() === oCity.toLowerCase()) {
+                    originCode = iataUp;
+                }
+            }
+            if (!originCode) {
+                originCode = await resolveIata(departureCity);
+            }
+            const destCode = await resolveIata(arrivalCity);
             if (!originCode || !destCode) {
                 setApiResponse({ ...emptyEnv, error: `Aucun aéroport IATA trouvé pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCN…).` } as unknown as AmadeusResponse);
                 return;
@@ -170,11 +218,17 @@ export function FlightsSection({
             }
             setApiResponse(res as AmadeusResponse);
         } catch (err) {
-            setApiResponse({ ...emptyEnv, error: err instanceof Error ? err.message : 'Recherche impossible.' } as unknown as AmadeusResponse);
+            const msg =
+                err instanceof ApiError
+                    ? extractErrorMessage(err.body) ?? err.message
+                    : err instanceof Error
+                      ? err.message
+                      : 'Recherche impossible.';
+            setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusResponse);
         } finally {
             setIsSearching(false);
         }
-    }, [departureCity, arrivalCity, arrivalDate, departureDate, travelerCount, budget]);
+    }, [departureCity, arrivalCity, arrivalDate, departureDate, travelerCount, budget, defaultOriginCity, defaultOriginIata]);
 
     const handleSelectOffer = useCallback(async (offer: FlightOffer, carrierName: string) => {
         if (persisting) return;

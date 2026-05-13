@@ -67,6 +67,11 @@ interface Location {
     coordinates: Coordinates;
     type?: string;
     zoom?: number;
+    /** Couleur d’accent (cercle marker) — utilisé pour différencier les jours
+     *  dans un itinéraire multi-jours. */
+    color?: string;
+    /** Numéro d’ordre affiché en surimpression du marker (1, 2, 3…). */
+    order?: number;
 }
 
 /** Tronçon d’itinéraire affiché sur la carte (mode + géométrie d’un leg) */
@@ -76,6 +81,12 @@ export type RouteMapSegment = {
     geometry: GeoJSON.LineString;
     /** Durée du tronçon en secondes */
     durationSec: number;
+    /** Couleur personnalisée pour ce tronçon (CSS color). Si fournie, prend
+     *  le pas sur la couleur dérivée du `profile`. Utilisé pour différencier
+     *  visuellement les jours d’un itinéraire multi-jours. */
+    color?: string;
+    /** Label optionnel (ex: "Jour 2") affiché dans la légende. */
+    label?: string;
 };
 
 export interface MapProps {
@@ -590,7 +601,9 @@ export const WorldMap: React.FC<MapProps> = ({
                 properties: {
                     id: loc.id,
                     title: loc.title,
-                    type: loc.type || 'hotel'
+                    type: loc.type || 'hotel',
+                    color: loc.color ?? null,
+                    order: typeof loc.order === 'number' ? String(loc.order) : null,
                 }
             }))
         };
@@ -696,11 +709,34 @@ export const WorldMap: React.FC<MapProps> = ({
                             type="circle"
                             filter={['==', ['get', 'type'], 'itinerary-activity']}
                             paint={{
-                                'circle-radius': 7,
-                                'circle-color': '#06b6d4',
-                                'circle-stroke-width': 2,
+                                'circle-radius': 12,
+                                'circle-color': [
+                                    'case',
+                                    ['has', 'color'],
+                                    ['coalesce', ['get', 'color'], '#06b6d4'],
+                                    '#06b6d4',
+                                ],
+                                'circle-stroke-width': 3,
                                 'circle-stroke-color': '#ffffff',
-                                'circle-opacity': 0.95,
+                                'circle-opacity': 0.98,
+                            }}
+                            minzoom={3}
+                        />
+                        <Layer
+                            id="locations-itinerary-numbers"
+                            type="symbol"
+                            filter={['all', ['==', ['get', 'type'], 'itinerary-activity'], ['has', 'order']]}
+                            layout={{
+                                'text-field': ['coalesce', ['get', 'order'], ''],
+                                'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+                                'text-size': 12,
+                                'text-allow-overlap': true,
+                                'text-ignore-placement': true,
+                            }}
+                            paint={{
+                                'text-color': '#ffffff',
+                                'text-halo-color': 'rgba(15,23,42,0.45)',
+                                'text-halo-width': 1,
                             }}
                             minzoom={3}
                         />
@@ -712,13 +748,13 @@ export const WorldMap: React.FC<MapProps> = ({
                                 'text-field': ['get', 'title'],
                                 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
                                 'text-size': 11,
-                                'text-offset': [0, 1.45],
+                                'text-offset': [0, 1.8],
                                 'text-anchor': 'top',
                                 'text-max-width': 16,
                             }}
                             paint={{
-                                'text-color': '#67e8f9',
-                                'text-halo-color': '#0f172a',
+                                'text-color': '#0f172a',
+                                'text-halo-color': '#ffffff',
                                 'text-halo-width': 2,
                             }}
                             minzoom={9}
@@ -771,7 +807,7 @@ export const WorldMap: React.FC<MapProps> = ({
                                         'line-cap': 'round',
                                     }}
                                     paint={{
-                                        'line-color': colors[seg.profile] ?? '#22d3ee',
+                                        'line-color': seg.color ?? colors[seg.profile] ?? '#22d3ee',
                                         'line-width': 5,
                                         'line-opacity': 0.88,
                                     }}
@@ -820,34 +856,31 @@ export const WorldMap: React.FC<MapProps> = ({
 
             {hasSegmentRoutes && (
                 <div className="absolute bottom-4 left-4 z-10 max-w-[min(100vw-2rem,420px)] rounded-2xl border border-white/15 bg-slate-900/95 px-4 py-2.5 shadow-lg backdrop-blur-md">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Itinéraire du jour</div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium text-slate-100">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Itinéraire</div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-slate-100">
                         {routeSegments.map((s, i) => {
                             const colors: Record<string, string> = {
                                 driving: '#f97316',
                                 walking: '#22d3ee',
                                 cycling: '#84cc16',
                             };
+                            const dotColor = s.color ?? colors[s.profile] ?? '#22d3ee';
+                            const label = s.label ?? routeProfileLabels[s.profile];
                             return (
                                 <span key={`${s.id}-${i}`} className="inline-flex items-center gap-1.5">
                                     <span
                                         className="h-2 w-2 shrink-0 rounded-full"
-                                        style={{ backgroundColor: colors[s.profile] ?? '#22d3ee' }}
+                                        style={{ backgroundColor: dotColor }}
                                     />
-                                    {routeProfileLabels[s.profile]}
-                                    <span className="tabular-nums text-slate-300">
-                                        {s.durationSec > 0 ? `${Math.round(s.durationSec / 60)} min` : '—'}
-                                    </span>
-                                    {i < routeSegments.length - 1 ? <span className="text-slate-500">·</span> : null}
+                                    {label}
+                                    {s.durationSec > 0 && (
+                                        <span className="tabular-nums text-slate-300">
+                                            · {Math.round(s.durationSec / 60)} min
+                                        </span>
+                                    )}
                                 </span>
                             );
                         })}
-                    </div>
-                    <div className="mt-1 text-[12px] text-slate-400">
-                        Total{' '}
-                        <span className="font-medium text-slate-200">
-                            {Math.round(routeSegments.reduce((acc, s) => acc + s.durationSec, 0) / 60)} min
-                        </span>
                     </div>
                 </div>
             )}

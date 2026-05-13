@@ -25,11 +25,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { PageHeader } from '../../components/ui/PageHeader';
 import { WorldMap } from '../../components/Map/Map';
-import { LikeButtons } from '../../components/activities/LikeButtons';
-import { NearbyRestaurants } from '../../components/activities/NearbyRestaurants';
 import { LocalTransportsSection } from '../../components/trips/LocalTransportsSection';
 import { FlightsSection } from '../../components/trips/FlightsSection';
 import { HotelsSection } from '../../components/trips/HotelsSection';
+import { DayTimeline } from './DayTimeline';
 import { cn } from '../../lib/utils';
 import { getStoredTrip } from '../../lib/local-trips-store';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -60,6 +59,8 @@ export function TripDetailView() {
     const [activitiesByDay, setActivitiesByDay] = useState<ActivityDayBucket[]>([]);
     const [activitiesLoading, setActivitiesLoading] = useState(false);
     const [activitiesError, setActivitiesError] = useState<string | null>(null);
+    /** Jours affichés sur la carte (vide = tous). */
+    const [selectedMapDayIds, setSelectedMapDayIds] = useState<string[]>([]);
 
     const [pendingCityDelete, setPendingCityDelete] = useState<string | null>(null);
     const [deletingCity, setDeletingCity] = useState(false);
@@ -122,6 +123,10 @@ export function TripDetailView() {
     }, [tripId, reloadActivities]);
 
     useEffect(() => {
+        setSelectedMapDayIds([]);
+    }, [tripId]);
+
+    useEffect(() => {
         // Cleanup pending undo timers on unmount
         return () => {
             undoStack.forEach((u) => window.clearTimeout(u.timer));
@@ -134,6 +139,119 @@ export function TripDetailView() {
         if (storedOnly) return tripDetailFromStored(storedOnly);
         return null;
     }, [apiTrip, storedOnly]);
+
+    // Palette pour différencier visuellement les jours sur la carte (cycle).
+    const DAY_PALETTE = useMemo(
+        () => ['#06b6d4', '#f97316', '#8b5cf6', '#22c55e', '#ec4899', '#facc15', '#0ea5e9', '#f43f5e'],
+        [],
+    );
+
+    const originCoords = useMemo(() => {
+        const o = apiTrip?.plan_snapshot?.origin;
+        if (!o || typeof o.lat !== 'number' || typeof o.lng !== 'number') return null;
+        if (!Number.isFinite(o.lat) || !Number.isFinite(o.lng)) return null;
+        return { lat: o.lat, lng: o.lng, cityName: o.cityName, iataCode: o.iataCode };
+    }, [apiTrip]);
+
+    const ORIGIN_COLOR = '#0f172a';
+
+    const mapDaysFiltered = useMemo(() => {
+        if (selectedMapDayIds.length === 0) return activitiesByDay;
+        const allowed = new Set(selectedMapDayIds);
+        return activitiesByDay.filter((d) => allowed.has(d.day_id));
+    }, [activitiesByDay, selectedMapDayIds]);
+
+    const mapLocations = useMemo(() => {
+        const items: {
+            id: string;
+            title: string;
+            coordinates: { latitude: number; longitude: number };
+            type: string;
+            color?: string;
+            order?: number;
+        }[] = [];
+
+        if (originCoords) {
+            items.push({
+                id: 'origin',
+                title: `${originCoords.cityName}${originCoords.iataCode ? ` (${originCoords.iataCode})` : ''}`,
+                coordinates: { latitude: originCoords.lat, longitude: originCoords.lng },
+                type: 'itinerary-activity',
+                color: ORIGIN_COLOR,
+                order: 0,
+            });
+        }
+
+        mapDaysFiltered.forEach((day) => {
+            const color = DAY_PALETTE[(day.index - 1 + DAY_PALETTE.length) % DAY_PALETTE.length];
+            day.activities.forEach((act, idx) => {
+                const lat = act.attributes.lat;
+                const lng = act.attributes.lng;
+                if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                items.push({
+                    id: act.id,
+                    title: act.attributes.title || `Activité ${idx + 1}`,
+                    coordinates: { latitude: lat, longitude: lng },
+                    type: 'itinerary-activity',
+                    color,
+                    order: idx + 1,
+                });
+            });
+        });
+        return items;
+    }, [mapDaysFiltered, DAY_PALETTE, originCoords]);
+
+    const mapRouteSegments = useMemo(() => {
+        const segments: Array<{
+            id: string;
+            profile: 'walking' | 'driving';
+            geometry: GeoJSON.LineString;
+            durationSec: number;
+            color: string;
+            label: string;
+        }> = [];
+
+        // First leg: depart city → premier point géolocalisé de l'itinéraire.
+        if (originCoords) {
+            const firstActivity = mapDaysFiltered
+                .flatMap((d) => d.activities)
+                .find((a) => a.attributes.lat != null && a.attributes.lng != null);
+            if (firstActivity && firstActivity.attributes.lat != null && firstActivity.attributes.lng != null) {
+                segments.push({
+                    id: 'leg-arrival',
+                    profile: 'driving',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [
+                            [originCoords.lng, originCoords.lat],
+                            [firstActivity.attributes.lng, firstActivity.attributes.lat],
+                        ],
+                    },
+                    durationSec: 0,
+                    color: ORIGIN_COLOR,
+                    label: `Départ${originCoords.iataCode ? ` (${originCoords.iataCode})` : ''}`,
+                });
+            }
+        }
+
+        mapDaysFiltered.forEach((day) => {
+            const coords = day.activities
+                .map((a) => (a.attributes.lat != null && a.attributes.lng != null
+                    ? [a.attributes.lng, a.attributes.lat] as [number, number]
+                    : null))
+                .filter((c): c is [number, number] => c !== null);
+            if (coords.length < 2) return;
+            segments.push({
+                id: `day-${day.day_id}`,
+                profile: 'walking',
+                geometry: { type: 'LineString', coordinates: coords },
+                durationSec: 0,
+                color: DAY_PALETTE[(day.index - 1 + DAY_PALETTE.length) % DAY_PALETTE.length],
+                label: `Jour ${day.index}`,
+            });
+        });
+        return segments;
+    }, [mapDaysFiltered, DAY_PALETTE, originCoords]);
 
     const cityGroups = useMemo(() => {
         const groups = new globalThis.Map<string, ActivityResource[]>();
@@ -366,79 +484,13 @@ export function TripDetailView() {
                                     activitiesByDay
                                         .filter((day) => day.activities.length > 0)
                                         .map((day) => (
-                                            <div key={day.day_id} className="triply-card p-6 space-y-4">
-                                                <header className="flex items-center justify-between border-b border-light-border pb-4">
-                                                    <div>
-                                                        <span className="text-xs font-bold text-brand bg-brand/10 px-2 py-1 rounded">
-                                                            JOUR {String(day.index).padStart(2, '0')}
-                                                        </span>
-                                                        {day.date && (
-                                                            <span className="ml-3 text-xs text-light-muted font-bold">
-                                                                {new Date(day.date).toLocaleDateString('fr-FR', {
-                                                                    weekday: 'long',
-                                                                    day: 'numeric',
-                                                                    month: 'long',
-                                                                })}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-xs text-light-muted font-bold">
-                                                        {day.activities.length} activité{day.activities.length > 1 ? 's' : ''}
-                                                    </span>
-                                                </header>
-                                                <ul className="space-y-3">
-                                                    {day.activities.map((activity) => (
-                                                        <li
-                                                            key={activity.id}
-                                                            className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-light-bg/50 border border-light-border"
-                                                        >
-                                                            <div className="space-y-1 flex-1">
-                                                                <p className="font-bold text-light-foreground">
-                                                                    {activity.attributes.title}
-                                                                </p>
-                                                                <div className="flex flex-wrap items-center gap-3 text-xs text-light-muted font-medium">
-                                                                    {activity.attributes.city && (
-                                                                        <span className="inline-flex items-center gap-1">
-                                                                            <MapPin size={10} />
-                                                                            {activity.attributes.city}
-                                                                            {activity.attributes.country
-                                                                                ? `, ${activity.attributes.country}`
-                                                                                : ''}
-                                                                        </span>
-                                                                    )}
-                                                                    {activity.attributes.duration && (
-                                                                        <span className="inline-flex items-center gap-1">
-                                                                            <Clock size={10} />
-                                                                            {activity.attributes.duration}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <NearbyRestaurants
-                                                                    activityId={activity.id}
-                                                                    activityTitle={activity.attributes.title}
-                                                                />
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <LikeButtons
-                                                                    tripId={tripId}
-                                                                    activityId={activity.id}
-                                                                    initialState={activity.attributes.liked_state}
-                                                                    onChange={(state) => setActivityLiked(activity.id, state)}
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleDeleteActivity(activity)}
-                                                                    aria-label="Supprimer cette activité"
-                                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-light-muted hover:text-error hover:bg-red-50 transition-colors"
-                                                                    title="Supprimer"
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
+                                            <DayTimeline
+                                                key={day.day_id}
+                                                tripId={tripId ?? ''}
+                                                day={day}
+                                                onLikedChange={(activityId, state) => setActivityLiked(activityId, state)}
+                                                onDelete={handleDeleteActivity}
+                                            />
                                         ))
                                 ) : (
                                     !activitiesLoading && (
@@ -490,6 +542,8 @@ export function TripDetailView() {
                                 endDate={apiTrip?.end_date}
                                 travelers={apiTrip?.travelers_count}
                                 budgetTotal={apiTrip?.budget_total}
+                                defaultOriginCity={apiTrip?.plan_snapshot?.origin?.cityName}
+                                defaultOriginIata={apiTrip?.plan_snapshot?.origin?.iataCode}
                             />
                         )}
 
@@ -497,6 +551,11 @@ export function TripDetailView() {
                             <HotelsSection
                                 tripId={tripId}
                                 destination={trip.destination}
+                                defaultDestinationCityCode={
+                                    apiTrip?.plan_snapshot?.destinationSummary?.iataCode
+                                    ?? apiTrip?.plan_snapshot?.hotelSummary?.cityCode
+                                    ?? undefined
+                                }
                                 startDate={apiTrip?.start_date}
                                 endDate={apiTrip?.end_date}
                                 travelers={apiTrip?.travelers_count}
@@ -505,8 +564,83 @@ export function TripDetailView() {
                         )}
 
                         {activeTab === 'map' && (
-                            <div className="aspect-video lg:aspect-auto lg:h-[600px] w-full bg-light-bg rounded-[40px] overflow-hidden border border-light-border">
-                                <WorldMap accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''} />
+                            <div className="space-y-4">
+                                {activitiesByDay.some((d) =>
+                                    d.activities.some(
+                                        (a) =>
+                                            a.attributes.lat != null &&
+                                            a.attributes.lng != null &&
+                                            Number.isFinite(a.attributes.lat) &&
+                                            Number.isFinite(a.attributes.lng),
+                                    ),
+                                ) && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-xs font-bold uppercase tracking-widest text-light-muted">
+                                            Afficher
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedMapDayIds([])}
+                                            className={cn(
+                                                'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                                selectedMapDayIds.length === 0
+                                                    ? 'border-brand bg-brand/10 text-brand'
+                                                    : 'border-light-border bg-card text-light-muted hover:text-light-foreground',
+                                            )}
+                                        >
+                                            Tous les jours
+                                        </button>
+                                        {activitiesByDay
+                                            .filter((d) =>
+                                                d.activities.some(
+                                                    (a) =>
+                                                        a.attributes.lat != null &&
+                                                        a.attributes.lng != null &&
+                                                        Number.isFinite(a.attributes.lat) &&
+                                                        Number.isFinite(a.attributes.lng),
+                                                ),
+                                            )
+                                            .map((day) => {
+                                                const on = selectedMapDayIds.includes(day.day_id);
+                                                return (
+                                                    <button
+                                                        key={day.day_id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedMapDayIds((prev) => {
+                                                                if (prev.includes(day.day_id)) {
+                                                                    const next = prev.filter((id) => id !== day.day_id);
+                                                                    return next;
+                                                                }
+                                                                return [...prev, day.day_id];
+                                                            });
+                                                        }}
+                                                        className={cn(
+                                                            'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                                                            on
+                                                                ? 'border-brand bg-brand/10 text-brand'
+                                                                : 'border-light-border bg-card text-light-muted hover:text-light-foreground',
+                                                        )}
+                                                    >
+                                                        Jour {day.index}
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                )}
+                                <div className="aspect-video lg:aspect-auto lg:h-[600px] w-full bg-light-bg rounded-[40px] overflow-hidden border border-light-border relative">
+                                    <WorldMap
+                                        accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}
+                                        locations={mapLocations}
+                                        routeSegments={mapRouteSegments}
+                                        mapStyle="mapbox://styles/mapbox/light-v11"
+                                    />
+                                    {mapLocations.length === 0 && (
+                                        <div className="absolute top-4 left-4 z-10 max-w-xs rounded-2xl bg-white/95 px-4 py-3 shadow-lg border border-slate-200 text-xs text-slate-700 font-bold">
+                                            Aucune activité géolocalisée. Ajoutez des activités pour visualiser l’itinéraire sur la carte.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 

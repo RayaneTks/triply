@@ -7,10 +7,13 @@ import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import { searchHotels, searchPlaces, lookupIata, type AmadeusLocation, type HotelSearchBody } from '@/src/lib/integrations/amadeus';
 import { tripTravelClient, bookingCheckout, type HotelRecord } from '@/src/lib/trip-travel-client';
+import { ApiError, extractErrorMessage } from '@/src/lib/http';
 
 interface HotelsSectionProps {
     tripId: string;
     destination: string;
+    /** Code ville Amadeus 3 lettres issu du snapshot (ex. HRG) pour préremplir la recherche. */
+    defaultDestinationCityCode?: string | null;
     startDate?: string | null;
     endDate?: string | null;
     travelers?: number;
@@ -84,6 +87,7 @@ function formatDate(iso: string | null): string {
 export function HotelsSection({
     tripId,
     destination,
+    defaultDestinationCityCode,
     startDate,
     endDate,
     travelers,
@@ -108,6 +112,12 @@ export function HotelsSection({
     const [opMessage, setOpMessage] = useState<string | null>(null);
 
     useEffect(() => { setCityCode(destination); }, [destination]);
+    useEffect(() => {
+        const hint = defaultDestinationCityCode?.trim();
+        if (hint && /^[A-Za-z]{3}$/.test(hint)) {
+            setCityCode(hint.toUpperCase());
+        }
+    }, [defaultDestinationCityCode]);
     useEffect(() => { setArrivalDate(startDate ?? ''); }, [startDate]);
     useEffect(() => { setDepartureDate(endDate ?? ''); }, [endDate]);
     useEffect(() => { if (travelers) setTravelerCount(travelers); }, [travelers]);
@@ -132,6 +142,16 @@ export function HotelsSection({
         setApiResponse(null);
         const emptyEnv = { data: [] as never[] };
         try {
+            const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+            const inD = arrivalDate.trim();
+            const outD = departureDate.trim();
+            if (!inD || !isoDate.test(inD) || !outD || !isoDate.test(outD)) {
+                setApiResponse({
+                    ...emptyEnv,
+                    error: 'Indiquez des dates d’arrivée et de départ au format AAAA-MM-JJ.',
+                } as unknown as AmadeusHotelResponse);
+                return;
+            }
             const resolvedCode = await resolveCityCode(cityCode);
             if (!resolvedCode) {
                 setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN…).` } as unknown as AmadeusHotelResponse);
@@ -157,7 +177,13 @@ export function HotelsSection({
             }
             setApiResponse(res as AmadeusHotelResponse);
         } catch (err) {
-            setApiResponse({ ...emptyEnv, error: err instanceof Error ? err.message : 'Recherche impossible.' } as unknown as AmadeusHotelResponse);
+            const msg =
+                err instanceof ApiError
+                    ? extractErrorMessage(err.body) ?? err.message
+                    : err instanceof Error
+                      ? err.message
+                      : 'Recherche impossible.';
+            setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusHotelResponse);
         } finally {
             setIsSearching(false);
         }
