@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuthSession } from '../../src/hooks/useAuthSession';
 import { authClient } from '../../src/lib/auth-client';
-import { Users, Map, CreditCard, TrendingUp, ShieldAlert } from 'lucide-react';
+import {
+  Users,
+  Map,
+  CreditCard,
+  TrendingUp,
+  ShieldAlert,
+  Search,
+  RefreshCcw,
+  UserCog,
+  PlaneTakeoff,
+  Sparkles,
+} from 'lucide-react';
 
 interface Metrics {
   users: { total: number; new_this_month: number; growth: { month: string; count: number }[] };
@@ -18,6 +29,14 @@ interface AdminUser {
   email: string;
   est_admin: boolean;
   subscription_tier: string | null;
+  latest_subscription?: {
+    id: string;
+    tier: string | null;
+    status: 'active' | 'canceled' | 'expired' | 'incomplete' | string;
+    billing: 'monthly' | 'annual' | null;
+    starts_at: string | null;
+    ends_at: string | null;
+  } | null;
   created_at: string | null;
   suspended?: boolean;
 }
@@ -50,6 +69,41 @@ interface AdminInsights {
   improvement_axes: string[];
 }
 
+const DEFAULT_METRICS: Metrics = {
+  users: { total: 0, new_this_month: 0, growth: [] },
+  trips: { total: 0, new_this_month: 0 },
+  subscriptions: { total: 0, active: 0 },
+  payments: { total: 0, revenue_eur: 0 },
+};
+
+function normalizeMetrics(payload: unknown): Metrics {
+  const source = payload as Partial<Metrics> | null | undefined;
+  const users = source?.users;
+  const trips = source?.trips;
+  const subscriptions = source?.subscriptions;
+  const payments = source?.payments;
+
+  return {
+    users: {
+      total: typeof users?.total === 'number' ? users.total : 0,
+      new_this_month: typeof users?.new_this_month === 'number' ? users.new_this_month : 0,
+      growth: Array.isArray(users?.growth) ? users.growth : [],
+    },
+    trips: {
+      total: typeof trips?.total === 'number' ? trips.total : 0,
+      new_this_month: typeof trips?.new_this_month === 'number' ? trips.new_this_month : 0,
+    },
+    subscriptions: {
+      total: typeof subscriptions?.total === 'number' ? subscriptions.total : 0,
+      active: typeof subscriptions?.active === 'number' ? subscriptions.active : 0,
+    },
+    payments: {
+      total: typeof payments?.total === 'number' ? payments.total : 0,
+      revenue_eur: typeof payments?.revenue_eur === 'number' ? payments.revenue_eur : 0,
+    },
+  };
+}
+
 function KpiCard({
   icon: Icon,
   label,
@@ -64,17 +118,67 @@ function KpiCard({
   accent?: boolean;
 }) {
   return (
-    <div className="triply-card p-6 flex flex-col gap-4">
+    <div className="triply-card p-6 flex flex-col gap-4 rounded-2xl border border-light-border/70 bg-card/95 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-light-muted uppercase tracking-wider">{label}</span>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${accent ? 'bg-brand/15 text-brand' : 'bg-light-border text-light-muted'}`}>
+        <span className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em]">{label}</span>
+        <div
+          className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+            accent ? 'bg-brand/15 text-brand' : 'bg-light-border/70 text-light-muted'
+          }`}
+        >
           <Icon size={20} />
         </div>
       </div>
       <div>
-        <p className="text-4xl font-display font-bold">{value}</p>
-        {sub && <p className="text-xs text-light-muted mt-1">{sub}</p>}
+        <p className="text-3xl md:text-4xl font-display font-bold leading-tight">{value}</p>
+        {sub && <p className="text-xs text-light-muted mt-2">{sub}</p>}
       </div>
+    </div>
+  );
+}
+
+function StatusBadge({
+  label,
+  tone = 'neutral',
+}: {
+  label: string;
+  tone?: 'neutral' | 'success' | 'warning' | 'danger';
+}) {
+  const tones = {
+    neutral: 'bg-light-border/60 text-light-muted',
+    success: 'bg-emerald-500/15 text-emerald-600',
+    warning: 'bg-amber-500/15 text-amber-600',
+    danger: 'bg-red-500/15 text-red-600',
+  };
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>
+      {label}
+    </span>
+  );
+}
+
+function SectionHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mb-4">
+      <h2 className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em]">{title}</h2>
+      {subtitle && <p className="mt-2 text-sm text-light-muted">{subtitle}</p>}
+    </div>
+  );
+}
+
+function TableSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {[...Array(rows)].map((_, i) => (
+        <div key={i} className="h-12 animate-pulse rounded-lg bg-light-border/35" />
+      ))}
     </div>
   );
 }
@@ -98,6 +202,15 @@ export default function AdminDashboard() {
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<'overview' | 'users' | 'trips' | 'insights'>('overview');
 
+  const formatDate = (value: string | null) =>
+    value ? new Date(value).toLocaleDateString('fr-FR') : '—';
+  const formatDateTimeInput = (value: string | null | undefined) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 16);
+  };
+
   useEffect(() => {
     if (isLoading || !currentUser?.est_admin) return;
     const token = authClient.getToken();
@@ -108,8 +221,8 @@ export default function AdminDashboard() {
     })
       .then((r) => r.json())
       .then((body) => {
-        const attrs = body?.data?.attributes ?? body?.data;
-        setMetrics(attrs);
+        const attrs = body?.data?.attributes ?? body?.data ?? DEFAULT_METRICS;
+        setMetrics(normalizeMetrics(attrs));
       })
       .catch(() => setError('Impossible de charger les métriques.'));
   }, [currentUser, isLoading]);
@@ -207,7 +320,17 @@ export default function AdminDashboard() {
     void loadInsights();
   }, [loadInsights]);
 
-  const updateUser = async (userId: string, patch: Partial<Pick<AdminUser, 'est_admin' | 'subscription_tier'>>) => {
+  const updateUser = async (
+    userId: string,
+    patch: Partial<{
+      est_admin: boolean;
+      subscription_tier: string | null;
+      subscription_status: 'active' | 'canceled' | 'expired' | 'incomplete' | null;
+      subscription_billing: 'monthly' | 'annual' | null;
+      subscription_ends_at: string | null;
+      suspended: boolean;
+    }>,
+  ) => {
     const token = authClient.getToken();
     if (!token) return;
     setSavingUserId(userId);
@@ -235,6 +358,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const refreshActivePanel = () => {
+    if (activePanel === 'overview') return;
+    if (activePanel === 'users') {
+      void loadUsers(search);
+      return;
+    }
+    if (activePanel === 'trips') {
+      void loadTrips(tripSearch);
+      return;
+    }
+    void loadInsights();
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen text-light-muted">Chargement…</div>;
   }
@@ -250,35 +386,66 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-display font-bold">Back office</h1>
-        <p className="text-light-muted mt-1">Vue d'ensemble de l'activité Triply</p>
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-10">
+      <div className="triply-card mb-6 rounded-2xl border border-light-border/70 bg-card/95 p-6 md:p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">Admin panel</p>
+            <h1 className="mt-2 text-3xl font-display font-bold md:text-4xl">Back office Triply</h1>
+            <p className="mt-2 text-sm text-light-muted">Pilotage des utilisateurs, voyages et KPI business.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:min-w-80">
+            <div className="rounded-xl border border-light-border/70 bg-light-bg/25 px-4 py-3">
+              <p className="text-xs text-light-muted">Utilisateurs</p>
+              <p className="text-xl font-bold">{metrics?.users.total ?? 0}</p>
+            </div>
+            <div className="rounded-xl border border-light-border/70 bg-light-bg/25 px-4 py-3">
+              <p className="text-xs text-light-muted">Voyages</p>
+              <p className="text-xl font-bold">{metrics?.trips.total ?? 0}</p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="mb-6 flex flex-wrap gap-2">
+
+      <div className="sticky top-2 z-10 mb-6 flex flex-col gap-3 rounded-2xl border border-light-border/60 bg-card/80 p-3 backdrop-blur md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap gap-2">
         {[
-          { id: 'overview', label: 'Vue globale' },
-          { id: 'users', label: 'Utilisateurs' },
-          { id: 'trips', label: 'Voyages' },
-          { id: 'insights', label: 'KPI SaaS' },
+          { id: 'overview', label: 'Vue globale', icon: Sparkles },
+          { id: 'users', label: 'Utilisateurs', icon: UserCog },
+          { id: 'trips', label: 'Voyages', icon: PlaneTakeoff },
+          { id: 'insights', label: 'KPI SaaS', icon: TrendingUp },
         ].map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActivePanel(tab.id as typeof activePanel)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
               activePanel === tab.id
-                ? 'bg-brand/15 text-brand border border-brand/30'
-                : 'bg-card border border-light-border text-light-muted hover:text-foreground'
+                ? 'bg-brand/15 text-brand border border-brand/30 shadow-sm'
+                : 'bg-card border border-light-border text-light-muted hover:text-foreground hover:border-light-muted hover:-translate-y-0.5'
             }`}
           >
-            {tab.label}
+            <span className="inline-flex items-center gap-2">
+              <tab.icon size={15} />
+              {tab.label}
+            </span>
           </button>
         ))}
+        </div>
+        {activePanel !== 'overview' && (
+          <button
+            type="button"
+            onClick={refreshActivePanel}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-light-border px-4 py-2 text-sm font-semibold transition-colors hover:bg-light-bg"
+          >
+            <RefreshCcw size={15} />
+            Actualiser la section
+          </button>
+        )}
       </div>
 
       {error && (
-        <div className="triply-card border-red-500/30 bg-red-500/5 p-4 text-red-400 text-sm mb-8 rounded-xl">
+        <div className="triply-card border-red-500/30 bg-red-500/5 p-4 text-red-400 text-sm mb-6 rounded-xl">
           {error}
         </div>
       )}
@@ -293,7 +460,7 @@ export default function AdminDashboard() {
         <>
           {activePanel === 'overview' && (
           <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-8">
             <KpiCard
               icon={Users}
               label="Utilisateurs"
@@ -323,10 +490,11 @@ export default function AdminDashboard() {
           </div>
 
           {/* Croissance utilisateurs */}
-          <div className="triply-card p-6">
-            <h2 className="text-sm font-semibold text-light-muted uppercase tracking-wider mb-6">
-              Nouveaux utilisateurs — 6 derniers mois
-            </h2>
+          <div className="triply-card p-6 rounded-2xl border border-light-border/70 bg-card/95">
+            <SectionHeader
+              title="Nouveaux utilisateurs — 6 derniers mois"
+              subtitle="Tendance d'acquisition mensuelle pour suivre la dynamique de croissance."
+            />
             <div className="flex items-end gap-3 h-28">
               {metrics.users.growth.map((g) => {
                 const max = Math.max(...metrics.users.growth.map((x) => x.count), 1);
@@ -335,7 +503,7 @@ export default function AdminDashboard() {
                   <div key={g.month} className="flex flex-col items-center gap-2 flex-1">
                     <span className="text-xs font-bold text-light-muted">{g.count}</span>
                     <div
-                      className="w-full bg-brand/70 rounded-t-md transition-all"
+                      className="w-full bg-brand/70 rounded-t-md transition-all duration-500"
                       style={{ height: `${Math.max(pct, 4)}%` }}
                     />
                     <span className="text-xs text-light-muted">{g.month}</span>
@@ -346,16 +514,17 @@ export default function AdminDashboard() {
           </div>
 
           {/* Tableau utilisateurs récents */}
-          <div className="triply-card p-6 mt-6">
-            <h2 className="text-sm font-semibold text-light-muted uppercase tracking-wider mb-4">
-              Aperçu abonnements
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-light-border/20 rounded-xl p-4 text-center">
+          <div className="triply-card p-6 mt-6 rounded-2xl border border-light-border/70 bg-card/95">
+            <SectionHeader
+              title="Aperçu abonnements"
+              subtitle="Répartition rapide entre comptes actifs et abonnements expirés."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-light-border/20 rounded-xl p-5 text-center">
                 <p className="text-3xl font-bold">{metrics.subscriptions.active}</p>
                 <p className="text-xs text-light-muted mt-1">Actifs</p>
               </div>
-              <div className="bg-light-border/20 rounded-xl p-4 text-center">
+              <div className="bg-light-border/20 rounded-xl p-5 text-center">
                 <p className="text-3xl font-bold">
                   {metrics.subscriptions.total - metrics.subscriptions.active}
                 </p>
@@ -367,27 +536,31 @@ export default function AdminDashboard() {
           )}
 
           {activePanel === 'users' && (
-          <div className="triply-card p-6 mt-6">
+          <div className="triply-card p-6 mt-2 rounded-2xl border border-light-border/70 bg-card/95">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="text-sm font-semibold text-light-muted uppercase tracking-wider">
-                Gestion utilisateurs
-              </h2>
+              <div>
+                <h2 className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em]">Gestion utilisateurs</h2>
+                <p className="mt-2 text-sm text-light-muted">Recherche, rôles et suspension en un seul flux.</p>
+              </div>
               <form
-                className="flex items-center gap-2"
+                className="flex w-full max-w-md items-center gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void loadUsers(search);
                 }}
               >
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher email/nom"
-                  className="rounded-lg border border-light-border bg-card px-3 py-2 text-sm"
-                />
+                <div className="relative flex-1">
+                  <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-light-muted" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Rechercher email ou nom"
+                    className="w-full rounded-lg border border-light-border bg-card py-2 pl-9 pr-3 text-sm outline-none transition focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
                 <button
                   type="submit"
-                  className="rounded-lg border border-light-border px-3 py-2 text-sm font-semibold hover:bg-light-bg"
+                  className="rounded-lg border border-light-border px-3 py-2 text-sm font-semibold hover:bg-light-bg whitespace-nowrap transition-colors"
                 >
                   Filtrer
                 </button>
@@ -395,24 +568,36 @@ export default function AdminDashboard() {
             </div>
             {usersError && <p className="text-sm text-red-500 mb-3">{usersError}</p>}
             {usersLoading ? (
-              <p className="text-sm text-light-muted">Chargement des utilisateurs…</p>
+              <TableSkeleton rows={6} />
+            ) : users.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-light-border p-8 text-center">
+                <p className="font-semibold">Aucun utilisateur trouvé</p>
+                <p className="mt-1 text-sm text-light-muted">Ajuste le filtre ou recharge la section.</p>
+              </div>
             ) : (
-              <div className="overflow-auto">
+              <div className="overflow-auto rounded-xl border border-light-border/70">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-light-bg/30">
                     <tr className="text-left text-light-muted border-b border-light-border">
                       <th className="py-2 pr-3">Utilisateur</th>
                       <th className="py-2 pr-3">Rôle admin</th>
                       <th className="py-2 pr-3">Abonnement</th>
+                      <th className="py-2 pr-3">Statut</th>
+                      <th className="py-2 pr-3">Billing</th>
+                      <th className="py-2 pr-3">Fin</th>
                       <th className="py-2">Créé le</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u.id} className="border-b border-light-border/60">
+                      <tr key={u.id} className="border-b border-light-border/60 transition-colors hover:bg-light-bg/30">
                         <td className="py-3 pr-3">
-                          <div className="font-semibold">{u.name}</div>
-                          <div className="text-xs text-light-muted">{u.email}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-semibold">{u.name}</div>
+                            {u.suspended && <StatusBadge label="Suspendu" tone="danger" />}
+                            {u.est_admin && <StatusBadge label="Admin" tone="success" />}
+                          </div>
+                          <div className="text-xs text-light-muted mt-1">{u.email}</div>
                         </td>
                         <td className="py-3 pr-3">
                           <label className="inline-flex items-center gap-2">
@@ -428,7 +613,7 @@ export default function AdminDashboard() {
                             type="button"
                             disabled={savingUserId === u.id}
                             onClick={() => void updateUser(u.id, { suspended: !(u.suspended === true) })}
-                            className="ml-3 rounded border border-light-border px-2 py-1 text-xs hover:bg-light-bg"
+                            className="ml-3 rounded border border-light-border px-2 py-1 text-xs transition-colors hover:bg-light-bg"
                           >
                             {u.suspended ? 'Réactiver' : 'Suspendre'}
                           </button>
@@ -440,15 +625,60 @@ export default function AdminDashboard() {
                             onChange={(e) =>
                               void updateUser(u.id, { subscription_tier: e.target.value || null })
                             }
-                            className="rounded-md border border-light-border bg-card px-2 py-1"
+                            className="rounded-md border border-light-border bg-card px-2 py-1 outline-none transition focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
                           >
                             <option value="">gratuit</option>
                             <option value="voyageur">voyageur</option>
-                            <option value="premium">premium</option>
+                            <option value="pilote">pilote</option>
                           </select>
                         </td>
+                        <td className="py-3 pr-3">
+                          <select
+                            value={u.latest_subscription?.status ?? 'active'}
+                            disabled={savingUserId === u.id || !u.subscription_tier}
+                            onChange={(e) =>
+                              void updateUser(u.id, {
+                                subscription_status: e.target.value as 'active' | 'canceled' | 'expired' | 'incomplete',
+                              })
+                            }
+                            className="rounded-md border border-light-border bg-card px-2 py-1 outline-none transition focus:border-brand/60 focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
+                          >
+                            <option value="active">active</option>
+                            <option value="canceled">canceled</option>
+                            <option value="expired">expired</option>
+                            <option value="incomplete">incomplete</option>
+                          </select>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <select
+                            value={u.latest_subscription?.billing ?? 'monthly'}
+                            disabled={savingUserId === u.id || !u.subscription_tier}
+                            onChange={(e) =>
+                              void updateUser(u.id, {
+                                subscription_billing: e.target.value as 'monthly' | 'annual',
+                              })
+                            }
+                            className="rounded-md border border-light-border bg-card px-2 py-1 outline-none transition focus:border-brand/60 focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
+                          >
+                            <option value="monthly">monthly</option>
+                            <option value="annual">annual</option>
+                          </select>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <input
+                            type="datetime-local"
+                            value={formatDateTimeInput(u.latest_subscription?.ends_at)}
+                            disabled={savingUserId === u.id || !u.subscription_tier}
+                            onChange={(e) =>
+                              void updateUser(u.id, {
+                                subscription_ends_at: e.target.value ? new Date(e.target.value).toISOString() : null,
+                              })
+                            }
+                            className="rounded-md border border-light-border bg-card px-2 py-1 outline-none transition focus:border-brand/60 focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
+                          />
+                        </td>
                         <td className="py-3 text-light-muted">
-                          {u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—'}
+                          {formatDate(u.created_at)}
                         </td>
                       </tr>
                     ))}
@@ -460,27 +690,31 @@ export default function AdminDashboard() {
           )}
 
           {activePanel === 'trips' && (
-          <div className="triply-card p-6 mt-6">
+          <div className="triply-card p-6 mt-2 rounded-2xl border border-light-border/70 bg-card/95">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="text-sm font-semibold text-light-muted uppercase tracking-wider">
-                Gestion voyages
-              </h2>
+              <div>
+                <h2 className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em]">Gestion voyages</h2>
+                <p className="mt-2 text-sm text-light-muted">Contrôle du catalogue et suppression rapide des voyages invalides.</p>
+              </div>
               <form
-                className="flex items-center gap-2"
+                className="flex w-full max-w-md items-center gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void loadTrips(tripSearch);
                 }}
               >
-                <input
-                  value={tripSearch}
-                  onChange={(e) => setTripSearch(e.target.value)}
-                  placeholder="Rechercher voyage/proprio"
-                  className="rounded-lg border border-light-border bg-card px-3 py-2 text-sm"
-                />
+                <div className="relative flex-1">
+                  <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-light-muted" />
+                  <input
+                    value={tripSearch}
+                    onChange={(e) => setTripSearch(e.target.value)}
+                    placeholder="Rechercher voyage ou propriétaire"
+                    className="w-full rounded-lg border border-light-border bg-card py-2 pl-9 pr-3 text-sm outline-none transition focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
                 <button
                   type="submit"
-                  className="rounded-lg border border-light-border px-3 py-2 text-sm font-semibold hover:bg-light-bg"
+                  className="rounded-lg border border-light-border px-3 py-2 text-sm font-semibold hover:bg-light-bg whitespace-nowrap transition-colors"
                 >
                   Filtrer
                 </button>
@@ -488,11 +722,16 @@ export default function AdminDashboard() {
             </div>
             {tripsError && <p className="text-sm text-red-500 mb-3">{tripsError}</p>}
             {tripsLoading ? (
-              <p className="text-sm text-light-muted">Chargement des voyages…</p>
+              <TableSkeleton rows={6} />
+            ) : trips.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-light-border p-8 text-center">
+                <p className="font-semibold">Aucun voyage trouvé</p>
+                <p className="mt-1 text-sm text-light-muted">Essaie une recherche plus large.</p>
+              </div>
             ) : (
-              <div className="overflow-auto">
+              <div className="overflow-auto rounded-xl border border-light-border/70">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-light-bg/30">
                     <tr className="text-left text-light-muted border-b border-light-border">
                       <th className="py-2 pr-3">Voyage</th>
                       <th className="py-2 pr-3">Propriétaire</th>
@@ -503,7 +742,7 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody>
                     {trips.map((t) => (
-                      <tr key={t.id} className="border-b border-light-border/60">
+                      <tr key={t.id} className="border-b border-light-border/60 transition-colors hover:bg-light-bg/30">
                         <td className="py-3 pr-3">
                           <div className="font-semibold">{t.title || 'Sans titre'}</div>
                           <div className="text-xs text-light-muted">{t.destination || '—'}</div>
@@ -513,7 +752,7 @@ export default function AdminDashboard() {
                           <div className="text-xs text-light-muted">{t.owner?.email || '—'}</div>
                         </td>
                         <td className="py-3 pr-3 text-light-muted">
-                          {t.start_date || '—'} → {t.end_date || '—'}
+                          {formatDate(t.start_date)} → {formatDate(t.end_date)}
                         </td>
                         <td className="py-3 pr-3">
                           {typeof t.budget_total === 'number' ? `${t.budget_total.toLocaleString('fr-FR')}€` : '—'}
@@ -544,7 +783,7 @@ export default function AdminDashboard() {
                                 setDeletingTripId(null);
                               }
                             }}
-                            className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                            className="rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
                           >
                             Supprimer
                           </button>
@@ -562,18 +801,22 @@ export default function AdminDashboard() {
             <div className="space-y-6 mt-6">
               {insightsError && <p className="text-sm text-red-500">{insightsError}</p>}
               {insightsLoading || !insights ? (
-                <p className="text-sm text-light-muted">Chargement des KPI SaaS…</p>
+                <div className="space-y-3">
+                  <div className="h-12 animate-pulse rounded-lg bg-light-border/35" />
+                  <div className="h-12 animate-pulse rounded-lg bg-light-border/35" />
+                  <div className="h-36 animate-pulse rounded-xl bg-light-border/30" />
+                </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <KpiCard icon={Users} label="Activation" value={`${insights.retention.activation_rate}%`} sub={`${insights.users.with_trips}/${insights.users.total} users avec voyage`} accent />
                     <KpiCard icon={TrendingUp} label="Rétention (2+ voyages)" value={`${insights.retention.repeat_user_rate}%`} sub="Utilisateurs qui reviennent" />
                     <KpiCard icon={CreditCard} label="Conversion abonnement" value={`${insights.subscriptions.conversion_rate}%`} sub={`${insights.subscriptions.paying} payants`} accent />
                     <KpiCard icon={Map} label="Couverture planning" value={`${insights.trips.planning_coverage_rate}%`} sub={`${insights.trips.with_activities}/${insights.trips.total} voyages avec activités`} />
                   </div>
 
-                  <div className="triply-card p-6">
-                    <h3 className="text-sm font-semibold text-light-muted uppercase tracking-wider mb-4">KPI produit complémentaires</h3>
+                  <div className="triply-card p-6 rounded-2xl border border-light-border/70 bg-card/95">
+                    <h3 className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em] mb-4">KPI produit complémentaires</h3>
                     <div className="grid md:grid-cols-3 gap-4">
                       <div className="rounded-xl border border-light-border p-4 bg-light-bg/20">
                         <p className="text-xs text-light-muted uppercase">Nouveaux users (30j)</p>
@@ -591,8 +834,8 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="grid lg:grid-cols-2 gap-6">
-                    <div className="triply-card p-6">
-                      <h3 className="text-sm font-semibold text-light-muted uppercase tracking-wider mb-4">Top destinations</h3>
+                    <div className="triply-card p-6 rounded-2xl border border-light-border/70 bg-card/95">
+                      <h3 className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em] mb-4">Top destinations</h3>
                       <ul className="space-y-3">
                         {insights.top_destinations.length === 0 && (
                           <li className="text-sm text-light-muted">Pas assez de données.</li>
@@ -605,8 +848,8 @@ export default function AdminDashboard() {
                         ))}
                       </ul>
                     </div>
-                    <div className="triply-card p-6">
-                      <h3 className="text-sm font-semibold text-light-muted uppercase tracking-wider mb-4">Axes d’amélioration SaaS</h3>
+                    <div className="triply-card p-6 rounded-2xl border border-light-border/70 bg-card/95">
+                      <h3 className="text-xs font-semibold text-light-muted uppercase tracking-[0.15em] mb-4">Axes d’amélioration SaaS</h3>
                       <ul className="space-y-3 list-disc pl-5 text-sm">
                         {insights.improvement_axes.map((axis) => (
                           <li key={axis}>{axis}</li>

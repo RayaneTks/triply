@@ -31,6 +31,9 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
     {
         $voyage->transports()->delete();
         $voyage->hebergements()->delete();
+        $voyage->journees()->with('etapes')->get()->each(function (Journee $journee): void {
+            $journee->etapes()->delete();
+        });
         $voyage->journees()->delete();
     }
 

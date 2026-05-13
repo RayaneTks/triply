@@ -43,4 +43,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Voyage::class);
     }
+
+    public function abonnements(): HasMany
+    {
+        return $this->hasMany(Abonnement::class, 'utilisateur_id');
+    }
 }

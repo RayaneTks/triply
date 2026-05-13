@@ -21,7 +21,7 @@ class EtapeFactory extends Factory
             'pays' => fake()->country(),
             'source_lien' => fake()->optional()->url(),
             'journee_id' => Journee::factory(),
-            'ordre' => fake()->numberBetween(0, 10),
+            'ordre' => fake()->unique()->numberBetween(1, 1000000),
             'liked_state' => 'neutral',
         ];
     }

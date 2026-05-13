@@ -6,10 +6,6 @@ import { ManualCanvasView } from '@/src/features/modes/ManualCanvasView';
 import { AppShell } from '@/src/components/layout/AppShell';
 import { useAuthSession } from '@/src/hooks/useAuthSession';
 
-export const metadata = {
-  title: 'Mode manuel | Triply',
-};
-
 export default function PlanifierManuelPage() {
   const router = useRouter();
   const { currentUser, isLoading } = useAuthSession();

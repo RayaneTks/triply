@@ -22,12 +22,24 @@ class AuthServiceEmailTest extends TestCase
         $this->service = $this->app->make(AuthServiceInterface::class);
     }
 
+    private function verificationPayload(User $user, ?int $expires = null): array
+    {
+        $ts = $expires ?? now()->addHour()->timestamp;
+        $base = [
+            'id' => $user->id,
+            'hash' => sha1($user->getEmailForVerification()),
+            'expires' => $ts,
+        ];
+        $base['signature'] = hash_hmac('sha256', http_build_query($base), (string) config('app.key'));
+
+        return $base;
+    }
+
     public function test_verify_email_marks_user_as_verified(): void
     {
         $user = User::factory()->unverified()->create();
-        $hash = sha1($user->getEmailForVerification());
 
-        $result = $this->service->verifyEmail(['id' => $user->id, 'hash' => $hash]);
+        $result = $this->service->verifyEmail($this->verificationPayload($user));
 
         $this->assertTrue($result['verified']);
         $this->assertNotNull($user->fresh()->email_verified_at);
@@ -36,15 +48,22 @@ class AuthServiceEmailTest extends TestCase
     public function test_verify_email_rejects_invalid_hash(): void
     {
         $user = User::factory()->unverified()->create();
+        $payload = $this->verificationPayload($user);
+        $payload['hash'] = 'invalid_hash';
 
         $this->expectException(ValidationException::class);
-        $this->service->verifyEmail(['id' => $user->id, 'hash' => 'invalid_hash']);
+        $this->service->verifyEmail($payload);
     }
 
     public function test_verify_email_rejects_unknown_user(): void
     {
         $this->expectException(ValidationException::class);
-        $this->service->verifyEmail(['id' => 99999, 'hash' => 'any']);
+        $this->service->verifyEmail([
+            'id' => 99999,
+            'hash' => 'any',
+            'expires' => now()->addHour()->timestamp,
+            'signature' => 'any',
+        ]);
     }
 
     public function test_forgot_password_emits_event_for_existing_user(): void
@@ -69,14 +88,32 @@ class AuthServiceEmailTest extends TestCase
     {
         $user = User::factory()->create();
         $alreadyVerifiedAt = $user->email_verified_at;
-        $hash = sha1($user->getEmailForVerification());
 
-        $result = $this->service->verifyEmail(['id' => $user->id, 'hash' => $hash]);
+        $result = $this->service->verifyEmail($this->verificationPayload($user));
 
         $this->assertTrue($result['verified']);
         $this->assertEquals(
             $alreadyVerifiedAt->toIso8601String(),
             $user->fresh()->email_verified_at->toIso8601String()
         );
+    }
+
+    public function test_verify_email_rejects_expired_link(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $payload = $this->verificationPayload($user, now()->subMinute()->timestamp);
+
+        $this->expectException(ValidationException::class);
+        $this->service->verifyEmail($payload);
+    }
+
+    public function test_verify_email_rejects_invalid_signature(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $payload = $this->verificationPayload($user);
+        $payload['signature'] = 'bad_signature';
+
+        $this->expectException(ValidationException::class);
+        $this->service->verifyEmail($payload);
     }
 }

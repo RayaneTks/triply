@@ -163,6 +163,25 @@ class AuthService implements AuthServiceInterface
             ]);
         }
 
+        $expires = (int) ($payload['expires'] ?? 0);
+        if ($expires <= 0 || Carbon::now()->getTimestamp() > $expires) {
+            throw ValidationException::withMessages([
+                'expires' => ['Lien de verification expire.'],
+            ]);
+        }
+
+        $signaturePayload = [
+            'id' => $user->id,
+            'hash' => sha1($user->getEmailForVerification()),
+            'expires' => $expires,
+        ];
+        $expectedSignature = hash_hmac('sha256', http_build_query($signaturePayload), (string) config('app.key'));
+        if (! hash_equals($expectedSignature, (string) ($payload['signature'] ?? ''))) {
+            throw ValidationException::withMessages([
+                'signature' => ['Signature de verification invalide.'],
+            ]);
+        }
+
         if (! $user->hasVerifiedEmail()) {
             $user->markEmailAsVerified();
         }

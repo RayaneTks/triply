@@ -41,4 +41,8 @@ return [
         'timeout_seconds' => (int) env('CURRENCY_RATES_TIMEOUT_SECONDS', 4),
     ],
 
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET_KEY'),
+    ],
+
 ];
