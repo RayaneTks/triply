@@ -30,10 +30,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', [HealthController::class, 'show']);
 
-    /** Intégrations publiques (Amadeus lieux, avis lieu) — clés côté serveur. */
+    /** Intégrations publiques (Amadeus lieux, avis lieu, lookup IATA) — clés côté serveur. */
     Route::prefix('integrations')->middleware('throttle:places')->group(function (): void {
         Route::get('/amadeus/places', [AmadeusPlacesSearchController::class, 'index']);
         Route::get('/google/place-reviews', [GooglePlaceReviewsController::class, 'index']);
+        // Lookup IATA exposé en public : le wizard l'appelle avant login pour
+        // résoudre la ville de départ. Pas de secret côté réponse, seulement
+        // des codes IATA + coordonnées de villes publiques.
+        Route::get('/amadeus/iata-lookup', [AmadeusIataLookupController::class, 'index']);
     });
 
     Route::middleware('auth:sanctum')->prefix('integrations')->group(function (): void {
@@ -41,7 +45,6 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/amadeus/flights/search', [AmadeusFlightsProxyController::class, 'store'])->middleware('throttle:ai');
         Route::get('/amadeus/hotels/by-geocode', [AmadeusHotelsProxyController::class, 'index'])->middleware('throttle:ai');
         Route::post('/amadeus/hotels/search', [AmadeusHotelsProxyController::class, 'store'])->middleware('throttle:ai');
-        Route::get('/amadeus/iata-lookup', [AmadeusIataLookupController::class, 'index'])->middleware('throttle:places');
     });
 
     Route::prefix('auth')->group(function (): void {

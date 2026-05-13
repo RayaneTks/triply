@@ -50,6 +50,7 @@ export async function lookupIata(
   const body = await apiFetch<unknown>("/integrations/amadeus/iata-lookup", {
     method: "GET",
     query: { keyword, subType },
+    authenticated: false,
     signal,
   });
   return unwrapPlacesBody(body);

@@ -169,6 +169,37 @@ class AssistantIntegrationTest extends TestCase
         $this->assertSame([], $response->json('data'));
     }
 
+    public function test_iata_lookup_falls_back_to_static_map_when_amadeus_fails(): void
+    {
+        Http::fake([
+            'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
+            'https://test.api.amadeus.com/v1/reference-data/locations*' => Http::response(['errors' => [['title' => 'fail']]], 500),
+        ]);
+
+        $response = $this->getJson('/api/v1/integrations/amadeus/iata-lookup?keyword=Paris');
+
+        $response->assertOk();
+        $items = $response->json('data');
+        $this->assertNotEmpty($items, 'static fallback must return at least one IATA entry for Paris');
+        $this->assertSame('CDG', $items[0]['iataCode']);
+        $this->assertSame('France', $items[0]['address']['countryName']);
+    }
+
+    public function test_iata_lookup_uses_static_map_when_amadeus_returns_no_iata(): void
+    {
+        Http::fake([
+            'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
+            'https://test.api.amadeus.com/v1/reference-data/locations*' => Http::response(['data' => []], 200),
+        ]);
+
+        $response = $this->getJson('/api/v1/integrations/amadeus/iata-lookup?keyword=Lisbonne');
+
+        $response->assertOk();
+        $items = $response->json('data');
+        $this->assertNotEmpty($items);
+        $this->assertSame('LIS', $items[0]['iataCode']);
+    }
+
     public function test_amadeus_flights_search_endpoint_passes_through(): void
     {
         Http::fake([
@@ -188,6 +219,28 @@ class AssistantIntegrationTest extends TestCase
 
         $response->assertOk();
         $this->assertSame('F1', $response->json('data.0.id'));
+    }
+
+    public function test_amadeus_flights_search_returns_422_when_amadeus_rejects(): void
+    {
+        Http::fake([
+            'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
+            'https://test.api.amadeus.com/v2/shopping/flight-offers' => Http::response([
+                'errors' => [
+                    ['title' => 'INVALID', 'detail' => 'Invalid departure date'],
+                ],
+            ], 400),
+        ]);
+
+        $response = $this->postJson('/api/v1/integrations/amadeus/flights/search', [
+            'originLocationCode' => 'CDG',
+            'destinationLocationCode' => 'BCN',
+            'departureDate' => '2020-01-01',
+            'adults' => 1,
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Invalid departure date', (string) $response->json('errors.0.detail'));
     }
 
     public function test_amadeus_hotels_by_geocode_endpoint(): void
@@ -221,11 +274,22 @@ class AssistantIntegrationTest extends TestCase
         $response->assertUnauthorized();
     }
 
-    public function test_iata_lookup_endpoint_requires_auth(): void
+    public function test_iata_lookup_endpoint_is_public(): void
     {
+        // Route déplacée en public : le wizard l'appelle avant login pour
+        // résoudre la ville de départ. Pas de fuite (codes IATA publics).
+        Http::fake([
+            'https://test.api.amadeus.com/v1/security/oauth2/token' => Http::response(['access_token' => 't', 'expires_in' => 1799], 200),
+            'https://test.api.amadeus.com/v1/reference-data/locations*' => Http::response([
+                'data' => [
+                    ['id' => 1, 'name' => 'Paris', 'iataCode' => 'CDG', 'subType' => 'AIRPORT', 'address' => ['cityName' => 'Paris', 'countryName' => 'France']],
+                ],
+            ], 200),
+        ]);
+
         $this->app['auth']->forgetGuards();
         $response = $this->withHeader('Authorization', 'Bearer bad')
             ->getJson('/api/v1/integrations/amadeus/iata-lookup?keyword=Paris');
-        $response->assertUnauthorized();
+        $response->assertOk();
     }
 }

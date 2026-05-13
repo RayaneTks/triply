@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\ApiController;
 use App\Services\Integrations\AmadeusClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AmadeusFlightsProxyController extends ApiController
 {
@@ -14,11 +15,33 @@ class AmadeusFlightsProxyController extends ApiController
         try {
             $data = $amadeus->flightOffers($request->all());
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::warning('amadeus flights proxy', ['message' => $e->getMessage()]);
+
+            return response()->json([
+                'errors' => [
+                    [
+                        'title' => 'Flight search unavailable',
+                        'detail' => 'Impossible de contacter le service de vols. Réessayez plus tard.',
+                    ],
+                ],
+            ], 502);
         }
 
-        $status = isset($data['error']) ? 500 : 200;
+        if (isset($data['errors']) && is_array($data['errors']) && $data['errors'] !== []) {
+            return response()->json($data, 422);
+        }
 
-        return response()->json($data, $status);
+        if (isset($data['error']) && is_string($data['error'])) {
+            return response()->json([
+                'errors' => [
+                    [
+                        'title' => 'Flight search failed',
+                        'detail' => $data['error'],
+                    ],
+                ],
+            ], 422);
+        }
+
+        return response()->json($data, 200);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\ApiController;
 use App\Services\Integrations\AmadeusClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AmadeusIataLookupController extends ApiController
 {
@@ -18,7 +19,14 @@ class AmadeusIataLookupController extends ApiController
             return $this->successResponse([]);
         }
 
-        $items = $amadeus->iataLookup($keyword, $subType);
+        // Never surface a 5xx to the autocomplete UI: a failed lookup must
+        // degrade to "no results" so the frontend can show its own message.
+        try {
+            $items = $amadeus->iataLookup($keyword, $subType);
+        } catch (\Throwable $e) {
+            Log::warning('iata-lookup controller exception', ['message' => $e->getMessage()]);
+            $items = [];
+        }
 
         return $this->successResponse($items);
     }
