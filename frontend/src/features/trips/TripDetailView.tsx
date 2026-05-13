@@ -543,7 +543,10 @@ export function TripDetailView() {
                                 travelers={apiTrip?.travelers_count}
                                 budgetTotal={apiTrip?.budget_total}
                                 defaultOriginCity={apiTrip?.plan_snapshot?.origin?.cityName}
-                                defaultOriginIata={apiTrip?.plan_snapshot?.origin?.iataCode}
+                                defaultOriginIata={
+                                    apiTrip?.plan_snapshot?.origin?.iataCode
+                                    ?? apiTrip?.plan_snapshot?.flightSummary?.originIata
+                                }
                             />
                         )}
 

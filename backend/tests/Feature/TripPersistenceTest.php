@@ -95,6 +95,45 @@ class TripPersistenceTest extends TestCase
         $this->assertArrayNotHasKey('days', $storedTrip->plan_snapshot);
     }
 
+    public function test_store_trip_persists_wizard_origin_in_plan_snapshot(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        $payload = [
+            'title' => 'Hurghada · 2026-10',
+            'destination' => 'Hurghada',
+            'start_date' => '2026-10-01',
+            'end_date' => '2026-10-08',
+            'travelers_count' => 2,
+            'plan_snapshot' => [
+                'days' => [],
+                'trip_budget_eur' => 2000,
+                'destinationSummary' => [
+                    'cityName' => 'Hurghada',
+                    'iataCode' => 'HRG',
+                ],
+                'origin' => [
+                    'cityName' => 'Marseille',
+                    'iataCode' => 'MRS',
+                    'countryName' => 'France',
+                ],
+            ],
+        ];
+
+        Http::fake([
+            'https://api.frankfurter.app/*' => Http::response(['rates' => ['EUR' => 1]], 200),
+        ]);
+
+        $response = $this->postJson('/api/v1/trips', $payload);
+
+        $response->assertCreated();
+        $tripId = $response->json('data.id');
+        $storedTrip = Voyage::query()->findOrFail($tripId);
+        $this->assertSame('MRS', $storedTrip->plan_snapshot['origin']['iataCode'] ?? null);
+        $this->assertSame('Marseille', $storedTrip->plan_snapshot['origin']['cityName'] ?? null);
+    }
+
     public function test_store_trip_uses_trip_budget_eur_when_no_flight_hotel_estimates(): void
     {
         $user = User::factory()->create();

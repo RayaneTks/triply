@@ -1,9 +1,10 @@
 'use client';
 
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import {
     Building,
     Camera,
+    ChevronDown,
     Clock,
     Coffee,
     Compass,
@@ -127,6 +128,8 @@ function formatDurationLabel(hours: number): string {
 }
 
 export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, onDelete }) => {
+    const [expanded, setExpanded] = useState(day.index === 1);
+
     const categorized = useMemo<CategorizedActivity[]>(() => {
         const startOfDay = 9 * 60; // 09:00
         const gap = 30; // minutes between activities
@@ -155,9 +158,22 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
     }, [day.activities]);
 
     return (
-        <section className="triply-card p-6 lg:p-8 space-y-6" aria-label={`Programme du jour ${day.index}`}>
-            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-light-border pb-4">
-                <div className="flex flex-wrap items-center gap-3">
+        <section className="triply-card p-6 lg:p-8 space-y-4" aria-label={`Programme du jour ${day.index}`}>
+            <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-light-border pb-4 text-left rounded-lg -m-1 p-1 hover:bg-light-bg/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+                <div className="flex flex-wrap items-center gap-3 min-w-0">
+                    <ChevronDown
+                        size={18}
+                        className={cn(
+                            'shrink-0 text-light-muted transition-transform duration-200',
+                            expanded ? 'rotate-0' : '-rotate-90',
+                        )}
+                        aria-hidden
+                    />
                     <span className="text-xs font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-full uppercase tracking-widest">
                         Jour {String(day.index).padStart(2, '0')}
                     </span>
@@ -171,7 +187,7 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-light-muted font-bold">
+                <div className="flex items-center gap-4 text-xs text-light-muted font-bold shrink-0">
                     <span className="inline-flex items-center gap-1">
                         <Clock size={12} /> {formatDurationLabel(totalHours)}
                     </span>
@@ -179,8 +195,9 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                         {day.activities.length} activité{day.activities.length > 1 ? 's' : ''}
                     </span>
                 </div>
-            </header>
+            </button>
 
+            {expanded && (
             <ol className="relative space-y-6 pl-8">
                 <span
                     aria-hidden
@@ -267,6 +284,7 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                     </li>
                 ))}
             </ol>
+            )}
         </section>
     );
 };

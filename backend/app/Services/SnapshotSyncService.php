@@ -93,6 +93,25 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
             $stored['trip_budget_eur'] = (int) round((float) $tripBudget);
         }
 
+        $origin = Arr::get($snapshot, 'origin');
+        if (is_array($origin)) {
+            $compactOrigin = [];
+            foreach (['cityName', 'iataCode', 'airportName', 'countryName'] as $key) {
+                $val = $this->asNullableString($origin[$key] ?? null);
+                if ($val !== null) {
+                    $compactOrigin[$key] = $val;
+                }
+            }
+            foreach (['lat', 'lng'] as $key) {
+                if (isset($origin[$key]) && is_numeric($origin[$key])) {
+                    $compactOrigin[$key] = (float) $origin[$key];
+                }
+            }
+            if ($compactOrigin !== []) {
+                $stored['origin'] = $compactOrigin;
+            }
+        }
+
         return $stored !== [] ? $stored : null;
     }
 
