@@ -9,6 +9,7 @@ import { SiteFooter } from './SiteFooter';
 import { MobileBottomNav } from './MobileBottomNav';
 import { cn } from '../../lib/utils';
 import { useAuthSession } from '../../hooks/useAuthSession';
+import { hasPlannerPaidSubscription } from '../../lib/subscription-access';
 
 interface NavItem {
   href: string;
@@ -40,7 +41,7 @@ export function AppShell({
   const { currentUser } = useAuthSession();
 
   const subscriptionTier = currentUser?.subscription_tier ?? null;
-  const hasVoyageurSub = subscriptionTier === 'voyageur';
+  const hasPaidPlanner = hasPlannerPaidSubscription(subscriptionTier);
   const isAdmin = currentUser?.est_admin === true;
 
   return (
@@ -99,7 +100,7 @@ export function AppShell({
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-              {hasVoyageurSub && (
+              {hasPaidPlanner && (
                 <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
                   V
                 </span>

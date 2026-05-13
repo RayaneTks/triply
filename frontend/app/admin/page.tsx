@@ -19,8 +19,16 @@ import {
 interface Metrics {
   users: { total: number; new_this_month: number; growth: { month: string; count: number }[] };
   trips: { total: number; new_this_month: number };
-  subscriptions: { total: number; active: number };
-  payments: { total: number; revenue_eur: number };
+  subscriptions: { total: number; active: number; active_monthly: number; active_annual: number };
+  payments: {
+    total: number;
+    revenue_eur: number;
+    revenue_source: string;
+    paid_revenue_eur: number;
+    estimated_revenue_eur: number;
+    estimated_mrr_eur: number;
+    estimated_arr_eur: number;
+  };
 }
 
 interface AdminUser {
@@ -72,8 +80,16 @@ interface AdminInsights {
 const DEFAULT_METRICS: Metrics = {
   users: { total: 0, new_this_month: 0, growth: [] },
   trips: { total: 0, new_this_month: 0 },
-  subscriptions: { total: 0, active: 0 },
-  payments: { total: 0, revenue_eur: 0 },
+  subscriptions: { total: 0, active: 0, active_monthly: 0, active_annual: 0 },
+  payments: {
+    total: 0,
+    revenue_eur: 0,
+    revenue_source: 'paid_payments',
+    paid_revenue_eur: 0,
+    estimated_revenue_eur: 0,
+    estimated_mrr_eur: 0,
+    estimated_arr_eur: 0,
+  },
 };
 
 function normalizeMetrics(payload: unknown): Metrics {
@@ -96,10 +112,18 @@ function normalizeMetrics(payload: unknown): Metrics {
     subscriptions: {
       total: typeof subscriptions?.total === 'number' ? subscriptions.total : 0,
       active: typeof subscriptions?.active === 'number' ? subscriptions.active : 0,
+      active_monthly: typeof subscriptions?.active_monthly === 'number' ? subscriptions.active_monthly : 0,
+      active_annual: typeof subscriptions?.active_annual === 'number' ? subscriptions.active_annual : 0,
     },
     payments: {
       total: typeof payments?.total === 'number' ? payments.total : 0,
       revenue_eur: typeof payments?.revenue_eur === 'number' ? payments.revenue_eur : 0,
+      revenue_source: typeof payments?.revenue_source === 'string' ? payments.revenue_source : 'paid_payments',
+      paid_revenue_eur: typeof payments?.paid_revenue_eur === 'number' ? payments.paid_revenue_eur : 0,
+      estimated_revenue_eur:
+        typeof payments?.estimated_revenue_eur === 'number' ? payments.estimated_revenue_eur : 0,
+      estimated_mrr_eur: typeof payments?.estimated_mrr_eur === 'number' ? payments.estimated_mrr_eur : 0,
+      estimated_arr_eur: typeof payments?.estimated_arr_eur === 'number' ? payments.estimated_arr_eur : 0,
     },
   };
 }
@@ -485,8 +509,49 @@ export default function AdminDashboard() {
               icon={CreditCard}
               label="Revenus"
               value={`${metrics.payments.revenue_eur.toLocaleString('fr-FR')} €`}
-              sub={`${metrics.payments.total} paiement(s)`}
+              sub={
+                metrics.payments.revenue_source === 'estimated_active_subscriptions'
+                  ? 'Estimé depuis abonnements actifs (mode sandbox)'
+                  : `${metrics.payments.total} paiement(s) confirmé(s)`
+              }
             />
+          </div>
+
+          <div className="triply-card p-6 mb-6 rounded-2xl border border-light-border/70 bg-card/95">
+            <SectionHeader
+              title="Monétisation"
+              subtitle="Pilotage business en temps réel: revenus réalisés Stripe + projection MRR/ARR."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-light-border/70 bg-light-bg/20 p-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-light-muted">Revenu affiché</p>
+                <p className="mt-2 text-2xl font-bold">{metrics.payments.revenue_eur.toLocaleString('fr-FR')}€</p>
+              </div>
+              <div className="rounded-xl border border-light-border/70 bg-light-bg/20 p-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-light-muted">Paiements Stripe</p>
+                <p className="mt-2 text-2xl font-bold">{metrics.payments.paid_revenue_eur.toLocaleString('fr-FR')}€</p>
+              </div>
+              <div className="rounded-xl border border-light-border/70 bg-light-bg/20 p-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-light-muted">MRR estimé</p>
+                <p className="mt-2 text-2xl font-bold">{metrics.payments.estimated_mrr_eur.toLocaleString('fr-FR')}€</p>
+              </div>
+              <div className="rounded-xl border border-light-border/70 bg-light-bg/20 p-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-light-muted">ARR estimé</p>
+                <p className="mt-2 text-2xl font-bold">{metrics.payments.estimated_arr_eur.toLocaleString('fr-FR')}€</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">
+              <StatusBadge label={`${metrics.subscriptions.active_monthly} mensuel(s) actif(s)`} tone="neutral" />
+              <StatusBadge label={`${metrics.subscriptions.active_annual} annuel(s) actif(s)`} tone="success" />
+              <StatusBadge
+                label={
+                  metrics.payments.revenue_source === 'estimated_active_subscriptions'
+                    ? 'Source revenu: estimation abonnements'
+                    : 'Source revenu: paiements Stripe'
+                }
+                tone={metrics.payments.revenue_source === 'estimated_active_subscriptions' ? 'warning' : 'success'}
+              />
+            </div>
           </div>
 
           {/* Croissance utilisateurs */}

@@ -15,18 +15,24 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
+        $user = User::withTrashed()->firstOrNew(['email' => 'test@example.com']);
+        $user->forceFill([
             'name' => 'Test User',
-            'email' => 'test@example.com',
+            'password' => 'password',
+            'est_admin' => false,
+            'email_verified_at' => now(),
+            'deleted_at' => null,
         ]);
+        $user->save();
 
-        User::factory()->create([
-            'name'      => 'Admin Triply',
-            'email'     => 'admin@triply.app',
-            'password'  => bcrypt('admin1234'),
+        $admin = User::withTrashed()->firstOrNew(['email' => 'admin@triply.app']);
+        $admin->forceFill([
+            'name' => 'Admin Triply',
+            'password' => 'admin1234',
             'est_admin' => true,
+            'email_verified_at' => now(),
+            'deleted_at' => null,
         ]);
+        $admin->save();
     }
 }

@@ -10,6 +10,22 @@ use Illuminate\Support\Facades\DB;
 
 class ObservabilityService implements ObservabilityServiceInterface
 {
+    /**
+     * Prix catalogue en EUR (alignés sur le checkout Stripe frontend).
+     *
+     * @var array<string, array<string, int>>
+     */
+    private const PLAN_PRICES_EUR = [
+        'voyageur' => [
+            'monthly' => 12,
+            'annual' => 108,
+        ],
+        'pilote' => [
+            'monthly' => 24,
+            'annual' => 228,
+        ],
+    ];
+
     public function health(): array
     {
         return [
@@ -52,10 +68,45 @@ class ObservabilityService implements ObservabilityServiceInterface
         $totalSubs  = Abonnement::count();
         $activeSubs = Abonnement::where('statut', 'active')->count();
 
-        // Paiements
+        // Paiements (réel) + fallback abonnement (estimé) pour l’admin panel.
         $totalPayments = Paiement::count();
-        $revenueEur    = Paiement::where('statut', 'paid')
-                                  ->sum('montant'); // stocké en centimes
+        $revenuePaidEur = (float) Paiement::where('statut', 'paid')->sum('montant') / 100; // centimes -> EUR
+
+        $activeSubsRows = Abonnement::query()
+            ->where('statut', 'active')
+            ->whereNotNull('tier')
+            ->select(['tier', 'plan_interval'])
+            ->get();
+
+        $estimatedRevenueEur = 0.0;
+        $estimatedMrrEur = 0.0;
+        $estimatedArrEur = 0.0;
+        $activeMonthly = 0;
+        $activeAnnual = 0;
+
+        foreach ($activeSubsRows as $sub) {
+            $tier = strtolower((string) $sub->tier);
+            $billing = strtolower((string) $sub->plan_interval);
+            $price = self::PLAN_PRICES_EUR[$tier][$billing] ?? null;
+            if (! is_int($price)) {
+                continue;
+            }
+
+            $estimatedRevenueEur += $price;
+            if ($billing === 'monthly') {
+                $activeMonthly++;
+                $estimatedMrrEur += $price;
+                $estimatedArrEur += $price * 12;
+            } elseif ($billing === 'annual') {
+                $activeAnnual++;
+                $estimatedArrEur += $price;
+                $estimatedMrrEur += $price / 12;
+            }
+        }
+
+        // Priorité au revenu réel; sinon fallback estimé pour éviter "0€" en sandbox.
+        $revenueEur = $revenuePaidEur > 0 ? $revenuePaidEur : $estimatedRevenueEur;
+        $source = $revenuePaidEur > 0 ? 'paid_payments' : 'estimated_active_subscriptions';
 
         return [
             'users' => [
@@ -70,10 +121,17 @@ class ObservabilityService implements ObservabilityServiceInterface
             'subscriptions' => [
                 'total'  => $totalSubs,
                 'active' => $activeSubs,
+                'active_monthly' => $activeMonthly,
+                'active_annual' => $activeAnnual,
             ],
             'payments' => [
                 'total'       => $totalPayments,
-                'revenue_eur' => round($revenueEur / 100, 2),
+                'revenue_eur' => round($revenueEur, 2),
+                'revenue_source' => $source,
+                'paid_revenue_eur' => round($revenuePaidEur, 2),
+                'estimated_revenue_eur' => round($estimatedRevenueEur, 2),
+                'estimated_mrr_eur' => round($estimatedMrrEur, 2),
+                'estimated_arr_eur' => round($estimatedArrEur, 2),
             ],
         ];
     }
