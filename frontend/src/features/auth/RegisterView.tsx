@@ -3,14 +3,22 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, User, Check, ChevronRight, Github, Bot, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { TriplyLogo } from "../../components/layout/TriplyLogo";
 import { authClient } from "../../lib/auth-client";
 
+function isSafeReturnTo(value: string | null): value is string {
+  if (!value) return false;
+  return value.startsWith('/') && !value.startsWith('//');
+}
+
 export function RegisterView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnToRaw = searchParams.get('returnTo');
+  const returnTo = isSafeReturnTo(returnToRaw) ? returnToRaw : '/planifier';
   const [success, setSuccess] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +62,9 @@ export function RegisterView() {
             <h1 className="text-3xl font-display font-bold">Compte créé !</h1>
             <p className="text-light-muted">Bienvenue à bord. Votre copilote est prêt à décoller avec vous.</p>
           </div>
-          <button type="button" onClick={() => router.push("/planifier")} className="btn-primary w-full">Démarrer mon premier voyage</button>
+          <button type="button" onClick={() => router.push(returnTo)} className="btn-primary w-full">
+            {returnTo === '/planifier' ? 'Démarrer mon premier voyage' : 'Continuer'}
+          </button>
         </motion.div>
       </div>
     );
