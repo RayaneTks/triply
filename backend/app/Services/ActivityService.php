@@ -9,6 +9,7 @@ use App\Services\Contracts\ActivityServiceInterface;
 use App\Services\Geo\CityCountryResolverInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ActivityService implements ActivityServiceInterface
 {
@@ -166,19 +167,79 @@ class ActivityService implements ActivityServiceInterface
 
         $order = isset($payload['order']) && is_array($payload['order']) ? $payload['order'] : [];
         $updated = [];
-
-        foreach ($order as $index => $activityId) {
-            $etape = Etape::query()
-                ->whereHas('journee', fn ($q) => $q->where('voyage_id', $trip->id))
-                ->where('id', $activityId)
-                ->first();
-            if ($etape === null) {
-                continue;
-            }
-            $etape->ordre = (int) $index + 1;
-            $etape->save();
-            $updated[] = (string) $etape->id;
+        $activityIds = array_values(array_filter($order, static fn ($id) => is_scalar($id) && (string) $id !== ''));
+        if ($activityIds === []) {
+            return [
+                'trip_id' => (string) $trip->id,
+                'updated' => $updated,
+            ];
         }
+
+        $activities = Etape::query()
+            ->whereHas('journee', fn ($q) => $q->where('voyage_id', $trip->id))
+            ->whereIn('id', $activityIds)
+            ->get()
+            ->keyBy(fn (Etape $etape) => (string) $etape->id);
+
+        DB::transaction(function () use ($order, $activities, $trip, &$updated): void {
+            $orderedIdsByDay = [];
+            foreach ($order as $activityId) {
+                $key = is_scalar($activityId) ? (string) $activityId : '';
+                if ($key === '' || ! $activities->has($key)) {
+                    continue;
+                }
+
+                /** @var Etape $etape */
+                $etape = $activities->get($key);
+                $dayId = $etape->journee_id;
+                if ($dayId === null) {
+                    continue;
+                }
+                if (! isset($orderedIdsByDay[$dayId])) {
+                    $orderedIdsByDay[$dayId] = [];
+                }
+                $orderedIdsByDay[$dayId][] = (int) $etape->id;
+            }
+
+            foreach ($orderedIdsByDay as $dayId => $orderedIds) {
+                if ($orderedIds === []) {
+                    continue;
+                }
+
+                $dayActivities = Etape::query()
+                    ->where('journee_id', $dayId)
+                    ->whereHas('journee', fn ($q) => $q->where('voyage_id', $trip->id))
+                    ->orderBy('ordre')
+                    ->orderBy('id')
+                    ->get();
+
+                if ($dayActivities->isEmpty()) {
+                    continue;
+                }
+
+                $selected = collect($orderedIds)->flip();
+                $orderedSelection = $dayActivities
+                    ->whereIn('id', $orderedIds)
+                    ->sortBy(fn (Etape $etape) => array_search((int) $etape->id, $orderedIds, true))
+                    ->values();
+                $remaining = $dayActivities
+                    ->reject(fn (Etape $etape) => $selected->has((int) $etape->id))
+                    ->values();
+                $final = $orderedSelection->concat($remaining)->values();
+
+                // Two-phase update prevents transient duplicates on unique(day_id, ordre).
+                foreach ($final as $idx => $etape) {
+                    $etape->ordre = 100000 + $idx + 1;
+                    $etape->save();
+                }
+                foreach ($final as $idx => $etape) {
+                    $etape->ordre = $idx + 1;
+                    $etape->save();
+                }
+
+                $updated = [...$updated, ...$orderedSelection->map(fn (Etape $etape) => (string) $etape->id)->all()];
+            }
+        });
 
         return [
             'trip_id' => (string) $trip->id,

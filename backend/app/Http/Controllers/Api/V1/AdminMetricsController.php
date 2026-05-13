@@ -13,6 +13,11 @@ class AdminMetricsController extends ApiController
 
     public function index()
     {
-        return $this->successResponse(new StubResource($this->observabilityService->metrics()));
+        return $this->successResponse(new StubResource([
+            'id' => 'admin-metrics',
+            'type' => 'admin_metrics',
+            'attributes' => $this->observabilityService->metrics(),
+            'todo' => null,
+        ]));
     }
 }

@@ -213,10 +213,18 @@ class AuthEndpointsTest extends TestCase
         $user = User::factory()->unverified()->create([
             'email' => 'verifyme@example.com',
         ]);
+        $expires = now()->addHour()->timestamp;
+        $signature = hash_hmac('sha256', http_build_query([
+            'id' => $user->id,
+            'hash' => sha1($user->email),
+            'expires' => $expires,
+        ]), (string) config('app.key'));
 
         $response = $this->postJson('/api/v1/auth/email/verify', [
             'id' => (string) $user->id,
             'hash' => sha1($user->email),
+            'expires' => $expires,
+            'signature' => $signature,
         ]);
 
         $response->assertOk();
@@ -230,10 +238,18 @@ class AuthEndpointsTest extends TestCase
     public function test_verify_email_fails_with_invalid_hash(): void
     {
         $user = User::factory()->unverified()->create();
+        $expires = now()->addHour()->timestamp;
+        $signature = hash_hmac('sha256', http_build_query([
+            'id' => $user->id,
+            'hash' => sha1($user->getEmailForVerification()),
+            'expires' => $expires,
+        ]), (string) config('app.key'));
 
         $response = $this->postJson('/api/v1/auth/email/verify', [
             'id' => (string) $user->id,
             'hash' => 'invalid-hash',
+            'expires' => $expires,
+            'signature' => $signature,
         ]);
 
         $response->assertUnprocessable();

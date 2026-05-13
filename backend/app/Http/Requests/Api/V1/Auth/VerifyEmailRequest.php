@@ -11,8 +11,8 @@ class VerifyEmailRequest extends BaseApiRequest
         return [
             'id' => ['required', 'string'],
             'hash' => ['required', 'string'],
-            'signature' => ['nullable', 'string'],
-            'expires' => ['nullable', 'integer'],
+            'signature' => ['required', 'string'],
+            'expires' => ['required', 'integer'],
         ];
     }
 }
