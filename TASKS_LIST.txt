@@ -1,0 +1,46 @@
+ANALYSE COMPLÈTE DES TÂCHES TRIPLY
+
+TACHE     NOM                                                      HEURES  ETAT
+================================================================================
+TRI-25    Questionnaire destination                                 25.9h   TERMINEE
+TRI-31    Définir la répartition du budget                           5.0h   TERMINEE
+TRI-33    Voir le détail complet d'un séjour                        44.6h   TERMINEE
+TRI-34    Valider un séjour                                          1.9h   TERMINEE
+TRI-35    Voir plus de propositions                                  5.4h   TERMINEE
+TRI-527   Mettre en place logs, monitoring et alerting               0.0h   PAS COMMENCEE
+TRI-528   Gérer limites/quotas et rate limiting                      1.5h   TERMINEE
+TRI-529   Écrire tests E2E sur le parcours principal                11.6h   TERMINEE
+TRI-530   Optimiser performance front (lazy load map, cache)         3.2h   TERMINEE
+TRI-531   Badges de notifications dans la sidebar                    2.5h   TERMINEE
+TRI-532   Réinitialiser mon mot de passe                             0.5h   TERMINEE
+TRI-533   Me déconnecter de l'application                            0.5h   TERMINEE
+TRI-534   Valider mon email après inscription                        0.5h   TERMINEE
+TRI-535   Gérer mon profil (nom, photo, préférences)                 2.5h   TERMINEE
+TRI-536   Supprimer mon compte et exporter mes données               6.3h   TERMINEE
+TRI-537   Créer, lister et sélectionner mes voyages                  5.5h   TERMINEE
+TRI-42    Réserver directement via Triply                            4.2h   ANNULEE
+TRI-522   Associer automatiquement le pays aux villes                4.8h   EN COURS
+TRI-103   Consulter mes informations                                 0.0h   TERMINEE
+TRI-525   Attribuer un état à une activité (bien/pas aimé)           2.0h   TERMINEE
+TRI-519   Ressurer chaque trajet sur la map depuis le récap          1.5h   TERMINEE
+TRI-520   Partager un lien de récap (optionnel)                      4.3h   TERMINEE
+TRI-521   Choisir les villes déjà visitées                           6.5h   TERMINEE
+TRI-523   Supprimer une ville déjà validée                           2.0h   TERMINEE
+TRI-524   Choisir plusieurs activités déjà faites par ville          2.4h   TERMINEE
+TRI-526   Supprimer une activité déjà enregistrée                    0.0h   PAS COMMENCEE
+TRI-559   Recevoir suggestions de restaurants proches activité       2.4h   EN COURS
+TRI-560   Ajouter transport local (métro/bus/taxi) pour trajet       3.2h   EN COURS
+TRI-40    Ajouter un séjour à mon espace personnel                   8.0h   TERMINEE
+TRI-561   Email de confirmation à l'inscription et aux resets        0.0h   PAS COMMENCEE
+TRI-562   Rappels (la veille / le matin) pour mes activités          0.0h   PAS COMMENCEE
+
+================================================================================
+
+RÉSUMÉ:
+
+TERMINEE:         23 tâches = 147.3 heures
+EN COURS:          3 tâches = 10.4 heures
+PAS COMMENCEE:     4 tâches = 0.0 heures
+ANNULEE:           1 tâche  = 4.2 heures
+
+TOTAL:            31 tâches = 162.2 heures (~4 semaines de travail)
