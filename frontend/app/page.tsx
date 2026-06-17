@@ -70,8 +70,8 @@ export default function HomePage() {
             lede:
                 "C’est là que Triply se sépare des planificateurs classiques : quand une contrainte tombe, il recompose la journée au lieu de te laisser tout refaire à la main.",
             points: [
-                { label: 'Constraint Replanner', text: 'Vol de 7h35 retardé de 4h ? Triply redécoupe ta journée d’arrivée et décale les visites concernées.' },
-                { label: 'Budget Reshuffle', text: 'Une dépense imprévue ? Réajuste l’enveloppe et vois quelles activités tiennent encore.' },
+                { label: 'Replanification automatique', text: 'Vol de 7h35 retardé de 4h ? Triply redécoupe ta journée d’arrivée et décale les visites concernées.' },
+                { label: 'Budget réajusté', text: 'Une dépense imprévue ? Réajuste ton budget et vois quelles activités tiennent encore.' },
                 { label: 'Décisions traçables', text: 'Chaque réorganisation est explicite : tu gardes la main sur ce qui change.' },
             ],
         },
@@ -83,7 +83,7 @@ export default function HomePage() {
             lede:
                 "Triply suit ta journée en direct et transforme les creux en suggestions concrètes, à distance de marche de là où tu es.",
             points: [
-                { label: 'Free-time Concierge', text: 'Deux heures de libre près du Trastevere ? Triply propose des lieux atteignables à pied dans ton temps restant.' },
+                { label: 'Copilote temps libre', text: 'Deux heures de libre près du Trastevere ? Triply propose des lieux atteignables à pied dans ton temps restant.' },
                 { label: 'À distance de marche', text: 'Les suggestions sont filtrées par temps de trajet réel, aller-retour compris.' },
                 { label: 'Sans doublon', text: 'Ce que tu as déjà prévu n’est jamais reproposé.' },
             ],
@@ -106,7 +106,7 @@ export default function HomePage() {
                         </nav>
                         <div className="flex items-center gap-3">
                             <ThemeToggle className="h-9 w-9" />
-                            <Button label="Commencer" onClick={enterApp} variant="dark" tone="tone1" />
+                            <Button label="Créer un voyage" onClick={enterApp} variant="dark" tone="tone1" />
                         </div>
                     </div>
                 </header>
@@ -172,7 +172,7 @@ export default function HomePage() {
                                 variants={itemVariants}
                                 className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
                             >
-                                <Button label="Accéder à Triply" onClick={enterApp} variant="dark" tone="tone1" />
+                                <Button label="Planifier mon voyage" onClick={enterApp} variant="dark" tone="tone1" />
                                 <a
                                     href="#react"
                                     className="text-sm font-semibold text-primary underline-offset-4 transition-opacity hover:opacity-80"
@@ -262,7 +262,7 @@ export default function HomePage() {
                                     viewport={{ once: true, amount: 0.2 }}
                                 >
                                     {[
-                                        'Une contrainte tombe → la journée se recompose, pas seulement la to-do.',
+                                        'Une contrainte tombe → la journée se recompose, pas seulement la liste.',
                                         'Le budget reste lisible à chaque arbitrage, en euros.',
                                         'Sur place, les temps morts deviennent des suggestions atteignables à pied.',
                                     ].map((line) => (
