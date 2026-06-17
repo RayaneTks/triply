@@ -1,10 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/src/components/ui/Toast";
+import { PwaProvider } from "@/src/components/pwa/PwaProvider";
 
 export const metadata: Metadata = {
   title: "Triply - Planification de voyage",
   description: "Planifiez vos voyages facilement",
+  applicationName: "Triply",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Triply",
+  },
+  icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icons/icon.svg" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -12,6 +23,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
+  // Charte designer : cyan --primary #0096C7 (barre d'état / theme-color PWA).
+  themeColor: "#0096C7",
 };
 
 export default function RootLayout({
@@ -30,6 +43,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased overflow-x-hidden min-h-dvh">
         <ToastProvider>
+          <PwaProvider />
           <main className="flex min-h-dvh flex-col">
             {children}
           </main>
