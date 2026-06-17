@@ -36,10 +36,8 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <h4 className="font-bold text-sm uppercase tracking-widest text-light-foreground mb-6">Communauté</h4>
+          <h4 className="font-bold text-sm uppercase tracking-widest text-light-foreground mb-6">Contact</h4>
           <ul className="space-y-4">
-            <li><a href="#" className="text-light-muted text-sm hover:text-brand transition-colors">Instagram</a></li>
-            <li><a href="#" className="text-light-muted text-sm hover:text-brand transition-colors">Twitter / X</a></li>
             <li><a href="mailto:hello@triply.io" className="text-light-muted text-sm hover:text-brand transition-colors">Support</a></li>
           </ul>
         </div>

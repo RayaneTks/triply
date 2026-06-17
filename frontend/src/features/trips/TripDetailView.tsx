@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
     Archive,
     ArrowLeft,
@@ -28,6 +28,9 @@ import { WorldMap } from '../../components/Map/Map';
 import { LocalTransportsSection } from '../../components/trips/LocalTransportsSection';
 import { FlightsSection } from '../../components/trips/FlightsSection';
 import { HotelsSection } from '../../components/trips/HotelsSection';
+import { ReplanModal, type CurrentActivityForReplan } from '../../components/trips/ReplanModal';
+import { FreeTimeWidget } from '../../components/trips/FreeTimeWidget';
+import { BudgetReshuffleModal } from '../../components/trips/BudgetReshuffleModal';
 import { DayTimeline } from './DayTimeline';
 import { cn } from '../../lib/utils';
 import { getStoredTrip } from '../../lib/local-trips-store';
@@ -53,6 +56,7 @@ interface UndoneActivity {
 
 export function TripDetailView() {
     const { tripId } = useParams<{ tripId: string }>();
+    const router = useRouter();
     const { isConnected, isLoading: authLoading } = useAuthSession();
     const [activeTab, setActiveTab] = useState<'itinerary' | 'flights' | 'hotels' | 'map' | 'docs'>('itinerary');
     const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +73,10 @@ export function TripDetailView() {
     const [pendingCityDelete, setPendingCityDelete] = useState<string | null>(null);
     const [deletingCity, setDeletingCity] = useState(false);
     const [undoStack, setUndoStack] = useState<UndoneActivity[]>([]);
+    const [replanOpen, setReplanOpen] = useState(false);
+    const [budgetOpen, setBudgetOpen] = useState(false);
+    const [duplicating, setDuplicating] = useState(false);
+    const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
     const reloadActivities = useCallback(async () => {
         if (!tripId || !authClient.getToken()) return;
@@ -144,6 +152,32 @@ export function TripDetailView() {
         if (storedOnly) return tripDetailFromStored(storedOnly);
         return null;
     }, [apiTrip, storedOnly]);
+
+    const currentActivitiesForReplan: CurrentActivityForReplan[] = useMemo(() => {
+        const out: CurrentActivityForReplan[] = [];
+        for (const bucket of activitiesByDay) {
+            const dayNumber = (bucket.index ?? 0) + 1;
+            for (const activity of bucket.activities) {
+                const { lat, lng, title } = activity.attributes;
+                if (
+                    typeof lat === 'number' &&
+                    Number.isFinite(lat) &&
+                    typeof lng === 'number' &&
+                    Number.isFinite(lng) &&
+                    title.trim() !== ''
+                ) {
+                    out.push({
+                        id: activity.id,
+                        day: dayNumber,
+                        title,
+                        lat,
+                        lng,
+                    });
+                }
+            }
+        }
+        return out;
+    }, [activitiesByDay]);
 
     // Palette pour différencier visuellement les jours sur la carte (cycle).
     const DAY_PALETTE = useMemo(
@@ -371,6 +405,7 @@ export function TripDetailView() {
     }
 
     const hasRealActivities = activitiesByDay.some((d) => d.activities.length > 0);
+    const canReplan = Boolean(apiTrip) && currentActivitiesForReplan.length > 0;
 
     return (
         <div className="max-w-7xl mx-auto px-6 py-12 lg:py-20">
@@ -385,22 +420,66 @@ export function TripDetailView() {
                 title={`Voyage — ${trip.destination}`}
                 subtitle={`${trip.dates} • ${trip.travelers} voyageur${trip.travelers > 1 ? 's' : ''}`}
                 actions={
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
-                        >
-                            <Copy size={14} /> Dupliquer
-                        </button>
+                    <div className="flex flex-wrap gap-3">
+                        {canReplan && (
+                            <button
+                                type="button"
+                                onClick={() => setReplanOpen(true)}
+                                className="btn-primary py-2 px-4 text-xs flex items-center gap-2"
+                            >
+                                <Sparkles size={14} /> Quelque chose a changé ?
+                            </button>
+                        )}
+                        {apiTrip && (
+                            <button
+                                type="button"
+                                onClick={() => setBudgetOpen(true)}
+                                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
+                            >
+                                <Wallet size={14} /> Alléger le budget
+                            </button>
+                        )}
+                        {apiTrip && (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (duplicating) return;
+                                    setDuplicating(true);
+                                    setDuplicateError(null);
+                                    try {
+                                        const copy = await tripsClient.duplicate(apiTrip.id);
+                                        router.push(`/voyages/${copy.id}`);
+                                    } catch (err) {
+                                        setDuplicateError(
+                                            err instanceof Error ? err.message : 'Duplication impossible.',
+                                        );
+                                    } finally {
+                                        setDuplicating(false);
+                                    }
+                                }}
+                                disabled={duplicating}
+                                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2 disabled:opacity-60"
+                            >
+                                <Copy size={14} /> {duplicating ? 'Duplication…' : 'Dupliquer'}
+                            </button>
+                        )}
                         <Link
                             href={`/recap-voyage?tripId=${tripId}`}
                             className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
                         >
                             <FileText size={14} /> Récap
                         </Link>
+                        {duplicateError && (
+                            <span role="alert" className="text-xs text-error self-center">
+                                {duplicateError}
+                            </span>
+                        )}
                         <button
                             type="button"
-                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2 text-red-600 hover:bg-red-50"
+                            aria-disabled="true"
+                            title="Archivage bientôt disponible"
+                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2 text-red-600 opacity-60 cursor-not-allowed"
+                            onClick={(e) => e.preventDefault()}
                         >
                             <Archive size={14} /> Archiver
                         </button>
@@ -497,15 +576,36 @@ export function TripDetailView() {
                                 {hasRealActivities ? (
                                     activitiesByDay
                                         .filter((day) => day.activities.length > 0)
-                                        .map((day) => (
-                                            <DayTimeline
-                                                key={day.day_id}
-                                                tripId={tripId ?? ''}
-                                                day={day}
-                                                onLikedChange={(activityId, state) => setActivityLiked(activityId, state)}
-                                                onDelete={handleDeleteActivity}
-                                            />
-                                        ))
+                                        .map((day) => {
+                                            const dayNumber = (day.index ?? 0) + 1;
+                                            return (
+                                                <div key={day.day_id} className="space-y-4">
+                                                    <DayTimeline
+                                                        tripId={tripId ?? ''}
+                                                        day={day}
+                                                        onLikedChange={(activityId, state) =>
+                                                            setActivityLiked(activityId, state)
+                                                        }
+                                                        onDelete={handleDeleteActivity}
+                                                    />
+                                                    {apiTrip && (
+                                                        <FreeTimeWidget
+                                                            trip={apiTrip}
+                                                            day={dayNumber}
+                                                            onInserted={async () => {
+                                                                try {
+                                                                    const fresh = await tripsClient.get(apiTrip.id);
+                                                                    if (fresh) setApiTrip(fresh);
+                                                                } catch {
+                                                                    /* ignore */
+                                                                }
+                                                                void reloadActivities();
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })
                                 ) : (
                                     !activitiesLoading && (
                                         <div className="space-y-6">
@@ -699,8 +799,7 @@ export function TripDetailView() {
                                         <h3 className="text-lg font-bold text-light-foreground">Notes & documents</h3>
                                     </div>
                                     <p className="text-sm text-light-muted font-bold leading-relaxed">
-                                        Zone réservée aux PDF de réservation, confirmations et notes libres. Branchement
-                                        stockage / pièces jointes prévu côté API.
+                                        Rangez ici vos confirmations, billets et notes de voyage. Le téléversement de documents arrive bientôt.
                                     </p>
                                 </div>
                             </div>
@@ -730,8 +829,8 @@ export function TripDetailView() {
                         </h4>
                         <ul className="space-y-4">
                             {[
-                                { t: 'Billets & réservations', d: 'À connecter à l’API', icon: ExternalLink },
-                                { t: 'Hébergement', d: 'Placeholder', icon: ExternalLink },
+                                { t: 'Billets & réservations', d: 'Bientôt disponible', icon: ExternalLink },
+                                { t: 'Hébergement', d: 'Bientôt disponible', icon: ExternalLink },
                             ].map((res, i) => (
                                 <li
                                     key={i}
@@ -825,6 +924,34 @@ export function TripDetailView() {
                         </div>
                     </motion.div>
                 </div>
+            )}
+
+            {apiTrip && budgetOpen && (
+                <BudgetReshuffleModal
+                    open={budgetOpen}
+                    onClose={() => setBudgetOpen(false)}
+                    tripId={apiTrip.id}
+                    currentBudgetEur={apiTrip.budget_total ?? 0}
+                />
+            )}
+
+            {apiTrip && replanOpen && (
+                <ReplanModal
+                    open={replanOpen}
+                    onClose={() => setReplanOpen(false)}
+                    tripId={apiTrip.id}
+                    trip={apiTrip}
+                    currentActivities={currentActivitiesForReplan}
+                    onApplied={async () => {
+                        try {
+                            const fresh = await tripsClient.get(apiTrip.id);
+                            if (fresh) setApiTrip(fresh);
+                        } catch {
+                            /* ignore — modal already closes */
+                        }
+                        void reloadActivities();
+                    }}
+                />
             )}
         </div>
     );

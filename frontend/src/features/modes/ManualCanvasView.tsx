@@ -196,12 +196,9 @@ export function ManualCanvasView() {
                     </p>
                   )}
 
-                  <div className="pt-6 space-y-3">
+                  <div className="pt-6">
                      <button onClick={handleRefineInWizard} className="w-full btn-primary flex items-center justify-center gap-2">
                         Affiner dans le wizard <ChevronRight size={16} />
-                     </button>
-                     <button onClick={() => router.push("/itineraire")} className="w-full py-4 text-brand font-bold text-sm bg-card border border-brand/20 rounded-2xl hover:bg-light-bg">
-                        Voir le brouillon d'itinéraire
                      </button>
                   </div>
                </motion.div>

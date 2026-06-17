@@ -20,10 +20,13 @@ use App\Http\Controllers\Api\V1\RestaurantController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TripActivityController;
 use App\Http\Controllers\Api\V1\TripBookingController;
+use App\Http\Controllers\Api\V1\TripBudgetController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripDayController;
 use App\Http\Controllers\Api\V1\TripExportController;
+use App\Http\Controllers\Api\V1\TripFreeTimeController;
 use App\Http\Controllers\Api\V1\TripRecapController;
+use App\Http\Controllers\Api\V1\TripReplanController;
 use App\Http\Controllers\Api\V1\TripRouteController;
 use App\Http\Controllers\Api\V1\TripSharingController;
 use App\Http\Controllers\Api\V1\TripTravelController;
@@ -86,8 +89,19 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/trips/{trip}/duplicate', [TripController::class, 'duplicate']);
         Route::post('/trips/{trip}/validate', [TripController::class, 'validateTrip']);
 
+        // Constraint Replanner — IA reécrit jours affectés en respectant locked etapes (preview only).
+        Route::post('/trips/{trip}/replan', [TripReplanController::class, 'store'])->middleware('throttle:ai');
+
+        // Budget Reshuffler — propose swap deterministe pour atteindre une cible d'économie.
+        Route::post('/trips/{trip}/budget-reshuffle', [TripBudgetController::class, 'reshuffle']);
+
         Route::get('/trips/{trip}/days', [TripDayController::class, 'index']);
         Route::patch('/trips/{trip}/days/{day}', [TripDayController::class, 'update']);
+
+        // Free-time Concierge — proposes walkable POIs for unused day capacity.
+        Route::get('/trips/{trip}/days/{day}/free-time', [TripFreeTimeController::class, 'show'])
+            ->where('day', '[0-9]+')
+            ->middleware('throttle:places');
 
         Route::post('/trips/{trip}/activities', [TripActivityController::class, 'store']);
         Route::get('/trips/{trip}/activities', [TripActivityController::class, 'index']);

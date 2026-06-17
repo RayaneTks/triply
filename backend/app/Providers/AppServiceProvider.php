@@ -36,7 +36,6 @@ use App\Services\Stubs\AiServiceStub;
 use App\Services\Stubs\ConsentServiceStub;
 use App\Services\Stubs\ExportServiceStub;
 use App\Services\ObservabilityService;
-use App\Services\Stubs\ProfileServiceStub;
 use App\Services\SharingService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;

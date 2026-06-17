@@ -44,7 +44,7 @@ export function PricingView() {
       id: null,
       name: "Découverte",
       price: 0,
-      features: ["1 voyage actif", "Assistant de base", "Exports PDF"],
+      features: ["1 voyage actif", "Assistant de base", "Partage par lien"],
       cta: "Commencer gratuitement",
       highlight: false
     },

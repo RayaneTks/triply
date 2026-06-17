@@ -237,6 +237,167 @@ class ChatAssistantService
     }
 
     /**
+     * Replan sous contrainte — réécrit les jours affectés en préservant les étapes verrouillées.
+     * Le body doit contenir : destinationContext, reason, details, travelDays,
+     * currentActivities (list day/title/lat/lng/durationHours/locked), affectedDays (list<int>),
+     * userPreferences (optionnel).
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    public function replan(array $body): array
+    {
+        $apiKey = config('integrations.openai.api_key');
+        if (! is_string($apiKey) || $apiKey === '') {
+            return ['error' => 'Le service replan est indisponible (clé OpenAI manquante côté serveur).', '_httpStatus' => 503];
+        }
+
+        $destinationContext = is_string($body['destinationContext'] ?? null) ? $body['destinationContext'] : '';
+        $reason = is_string($body['reason'] ?? null) ? $body['reason'] : 'other';
+        $details = is_string($body['details'] ?? null) ? trim($body['details']) : '';
+        $travelDays = is_numeric($body['travelDays'] ?? null) ? max(1, (int) $body['travelDays']) : 1;
+        $userPreferences = is_array($body['userPreferences'] ?? null) ? $body['userPreferences'] : [];
+        $userPreferences = array_values(array_filter($userPreferences, fn ($x) => is_string($x)));
+
+        $currentActivities = $this->normalizeReplanCurrentActivities($body['currentActivities'] ?? null);
+        $affectedDays = [];
+        if (is_array($body['affectedDays'] ?? null)) {
+            foreach ($body['affectedDays'] as $d) {
+                if (is_numeric($d)) {
+                    $dInt = (int) $d;
+                    if ($dInt >= 1 && $dInt <= $travelDays) {
+                        $affectedDays[] = $dInt;
+                    }
+                }
+            }
+            $affectedDays = array_values(array_unique($affectedDays));
+        }
+
+        $systemContent = AssistantPrompts::systemPrompt()
+            .AssistantPrompts::replanInstructions(
+                $destinationContext,
+                $reason,
+                $details,
+                $travelDays,
+                $currentActivities,
+                $affectedDays,
+            )
+            .AssistantPrompts::preferencesInstructions($userPreferences);
+
+        $userInstruction = sprintf(
+            'Réécris les jours affectés en respectant les étapes verrouillées et la contrainte fournie. Réponds uniquement en JSON.'
+        );
+
+        $model = (string) config('integrations.openai.model');
+        $baseUrl = (string) config('integrations.openai.base_url');
+
+        try {
+            $res = Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(120)
+                ->post($baseUrl.'/chat/completions', [
+                    'model' => $model,
+                    'response_format' => ['type' => 'json_object'],
+                    'max_tokens' => 4000,
+                    'messages' => [
+                        ['role' => 'system', 'content' => $systemContent],
+                        ['role' => 'user', 'content' => $userInstruction],
+                    ],
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('OpenAI replan request failed', ['error' => $e->getMessage()]);
+
+            return ['error' => 'Le service replan est temporairement indisponible.', '_httpStatus' => 502];
+        }
+
+        if (! $res->successful()) {
+            Log::warning('OpenAI replan non-200', ['status' => $res->status(), 'body' => $res->body()]);
+
+            return ['error' => 'Le service replan a renvoyé une erreur.', '_httpStatus' => 502];
+        }
+
+        $rawContent = $res->json('choices.0.message.content');
+        try {
+            $parsed = is_string($rawContent) ? json_decode($rawContent, true, 512, JSON_THROW_ON_ERROR) : [];
+        } catch (\Throwable) {
+            return ['error' => 'Réponse du service replan invalide.', '_httpStatus' => 502];
+        }
+        if (! is_array($parsed)) {
+            $parsed = [];
+        }
+
+        $replannedActivities = $this->normalizeSuggestedActivities($parsed['replannedActivities'] ?? null);
+
+        $affectedDaysReturned = [];
+        if (is_array($parsed['affectedDays'] ?? null)) {
+            foreach ($parsed['affectedDays'] as $d) {
+                if (is_numeric($d)) {
+                    $dInt = (int) $d;
+                    if ($dInt >= 1 && $dInt <= $travelDays) {
+                        $affectedDaysReturned[] = $dInt;
+                    }
+                }
+            }
+            $affectedDaysReturned = array_values(array_unique($affectedDaysReturned));
+        }
+        if ($affectedDaysReturned === []) {
+            // Fallback: infer from the replannedActivities themselves.
+            foreach ($replannedActivities as $a) {
+                if (isset($a['day'])) {
+                    $affectedDaysReturned[] = (int) $a['day'];
+                }
+            }
+            $affectedDaysReturned = array_values(array_unique($affectedDaysReturned));
+            sort($affectedDaysReturned);
+        }
+
+        return [
+            'reply' => is_string($parsed['reply'] ?? null) ? $parsed['reply'] : '',
+            'summary' => is_string($parsed['summary'] ?? null) ? $parsed['summary'] : '',
+            'reason' => $reason,
+            'replannedActivities' => $replannedActivities,
+            'affectedDays' => $affectedDaysReturned,
+            'lockedCount' => count(array_filter($currentActivities, fn ($a) => ! empty($a['locked']))),
+        ];
+    }
+
+    /**
+     * @return list<array{day: int, title: string, lat: float, lng: float, durationHours?: float, locked?: bool}>
+     */
+    private function normalizeReplanCurrentActivities(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $day = isset($item['day']) && is_numeric($item['day']) ? (int) $item['day'] : 0;
+            $title = isset($item['title']) && is_string($item['title']) ? trim($item['title']) : '';
+            $lat = isset($item['lat']) ? (float) $item['lat'] : NAN;
+            $lng = isset($item['lng']) ? (float) $item['lng'] : NAN;
+            if ($day < 1 || $title === '' || ! is_finite($lat) || ! is_finite($lng)) {
+                continue;
+            }
+            $row = ['day' => $day, 'title' => $title, 'lat' => $lat, 'lng' => $lng];
+            if (isset($item['durationHours']) && is_numeric($item['durationHours']) && (float) $item['durationHours'] > 0) {
+                $row['durationHours'] = (float) $item['durationHours'];
+            }
+            if (! empty($item['locked'])) {
+                $row['locked'] = true;
+            }
+            $out[] = $row;
+            if (count($out) >= 100) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      * @param  list<string>  $userPreferences
      * @return array<string, mixed>

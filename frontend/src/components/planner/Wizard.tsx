@@ -381,8 +381,12 @@ export function Wizard() {
       await wait(450);
       setAiStage("generating");
       aiDays = await generateAiItinerary();
-    } catch {
+    } catch (err) {
       aiDays = [];
+      const message = err instanceof Error ? err.message : 'Génération IA indisponible.';
+      setSubmitError(
+        `${message} Votre voyage a été créé sans itinéraire IA — vous pourrez le relancer depuis la page du voyage.`,
+      );
     }
 
     setAiStage("saving");

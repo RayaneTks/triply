@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Mail, Lock, User, Check, ChevronRight, Github, Bot, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Check, ChevronRight, Bot, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { TriplyLogo } from "../../components/layout/TriplyLogo";
 import { authClient } from "../../lib/auth-client";
@@ -173,22 +172,6 @@ export function RegisterView() {
               </div>
            </form>
 
-           <div className="my-8 flex items-center gap-4">
-              <div className="flex-1 h-px bg-light-border" />
-              <span className="text-xs font-bold text-light-muted uppercase">Ou avec vos comptes</span>
-              <div className="flex-1 h-px bg-light-border" />
-           </div>
-
-           <div className="grid grid-cols-2 gap-4">
-             <button type="button" className="py-4 bg-card border border-light-border rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-light-bg transition-colors text-foreground">
-                <Github size={20} />
-                GitHub
-             </button>
-             <button type="button" className="py-4 bg-card border border-light-border rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-light-bg transition-colors text-foreground">
-                <Image src="https://www.google.com/favicon.ico" width={20} height={20} unoptimized className="grayscale opacity-70" alt="Google" />
-                Google
-             </button>
-           </div>
         </div>
 
         <footer className="mt-12 text-center text-sm border-t border-light-border pt-8">

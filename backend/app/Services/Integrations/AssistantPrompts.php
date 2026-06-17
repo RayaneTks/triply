@@ -215,4 +215,91 @@ Si tu ne peux pas proposer d'alternative fiable, mets "replacement": null et exp
 
 TXT;
     }
+
+    /**
+     * Instructions pour le mode "replan sous contrainte".
+     * Le modèle doit réécrire les jours affectés en préservant les étapes verrouillées
+     * et en respectant la destination, les horaires d'ouverture plausibles, et les temps
+     * de transit. Sortie = nouveau days[] complet avec activités.
+     *
+     * @param  list<array{day: int, title: string, lat: float, lng: float, durationHours?: float, locked?: bool}>  $currentActivities
+     * @param  list<int>  $affectedDays
+     */
+    public static function replanInstructions(
+        string $destinationContext,
+        string $reason,
+        string $details,
+        int $travelDays,
+        array $currentActivities,
+        array $affectedDays,
+    ): string {
+        $destination = $destinationContext !== '' ? $destinationContext : 'destination du voyage';
+        $reasonLabels = [
+            'flight_delay' => "le vol de l'utilisateur est retardé",
+            'weather' => 'la météo rend certaines activités impossibles',
+            'health' => "l'utilisateur ou un membre du groupe est souffrant",
+            'over_budget' => "l'utilisateur dépasse son budget et veut alléger",
+            'time_lost' => "l'utilisateur a perdu du temps imprévu",
+            'other' => "une contrainte imprévue est survenue",
+        ];
+        $reasonText = $reasonLabels[$reason] ?? $reasonLabels['other'];
+        $affectedList = $affectedDays === [] ? 'tous les jours du séjour' : 'jours '.implode(', ', $affectedDays);
+
+        $locked = array_values(array_filter($currentActivities, fn ($a) => ! empty($a['locked'])));
+        $unlocked = array_values(array_filter($currentActivities, fn ($a) => empty($a['locked'])));
+
+        $lockedBlock = "Aucune activité n'est verrouillée.";
+        if ($locked !== []) {
+            $lines = array_map(
+                fn ($a) => sprintf('- jour %d : "%s" (%.4f, %.4f)', (int) $a['day'], (string) $a['title'], (float) $a['lat'], (float) $a['lng']),
+                $locked
+            );
+            $lockedBlock = "Étapes VERROUILLÉES — à préserver telles quelles (même jour, même horaire approximatif) :\n".implode("\n", $lines);
+        }
+
+        $unlockedBlock = '';
+        if ($unlocked !== []) {
+            $lines = array_map(
+                fn ($a) => sprintf('- jour %d : "%s"', (int) $a['day'], (string) $a['title']),
+                $unlocked
+            );
+            $unlockedBlock = "\n\nÉtapes ré-arrangeables (à déplacer / remplacer / retirer selon la contrainte) :\n".implode("\n", $lines);
+        }
+
+        return <<<TXT
+
+
+MODE REPLAN SOUS CONTRAINTE — destination "{$destination}", durée {$travelDays} jour(s).
+
+Contrainte : {$reasonText}.
+Précision utilisateur : {$details}.
+
+Jours affectés à réécrire : {$affectedList}.
+
+{$lockedBlock}{$unlockedBlock}
+
+Règles de replan (CRITIQUES) :
+- Tu DOIS conserver toutes les étapes verrouillées telles que listées (titre, coordonnées, jour). Ne les supprime pas, ne les déplace pas.
+- Pour les autres jours affectés, propose un nouveau programme cohérent : déplace les activités, remplace celles devenues impossibles, comprime ou étale selon le temps disponible.
+- Pense géographie : regroupe par zone pour limiter les transits ; ordre logique matin → après-midi → soir.
+- Pense réalisme : horaires d'ouverture plausibles, temps de marche, météo si pertinente à la contrainte.
+- Pour over_budget : privilégie activités gratuites/peu chères, garde 1-2 expériences fortes.
+- Pour flight_delay/time_lost : compresse les jours impactés, conserve les "must-do" verrouillés.
+- Pour weather : remplace l'extérieur par de l'intérieur si météo défavorable, ou inversement.
+- Pour health : retire les activités physiques exigeantes, garde calme et flexible.
+
+Format JSON STRICT (sans markdown, sans texte autour) :
+{
+  "reply": "Phrase courte expliquant à l'utilisateur le résumé du nouveau plan (1-2 phrases).",
+  "summary": "Bullet list courte (3-5 lignes max) listant les principaux changements (déplacements, suppressions, ajouts).",
+  "replannedActivities": [
+    { "title": string, "lat": number, "lng": number, "durationHours": number optionnel, "day": number entier, "locked": bool optionnel }
+  ],
+  "affectedDays": [ entiers — jours réellement modifiés ]
+}
+
+`replannedActivities` doit contenir TOUTES les activités finales pour les jours affectés (y compris les verrouillées repositionnées si besoin). Les jours non listés dans `affectedDays` ne sont pas renvoyés.
+
+TXT;
+    }
 }
