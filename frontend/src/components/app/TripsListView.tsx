@@ -77,6 +77,8 @@ export function TripsListView() {
 
     useEffect(() => {
         let cancelled = false;
+        // Resynchronisation au changement de route : spinner avant rechargement de la liste.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(true);
 
         const t = window.setTimeout(async () => {

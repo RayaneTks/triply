@@ -14,6 +14,8 @@ export function OfflineBanner() {
   useEffect(() => {
     if (!online) {
       wasOffline.current = true;
+      // Synchronisation avec l'état réseau du navigateur (système externe).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowBackOnline(false);
       return;
     }
