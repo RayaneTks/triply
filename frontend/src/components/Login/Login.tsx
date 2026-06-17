@@ -49,7 +49,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
             saveSession(session);
             onLoginSuccess(session.user ?? { id: 0, name: normalizedName, email: normalizedEmail }, mode === 'register');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+            setError(err instanceof Error ? err.message : 'Une erreur est survenue. Réessayez dans un instant.');
         } finally {
             setLoading(false);
         }
