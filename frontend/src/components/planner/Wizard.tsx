@@ -607,19 +607,19 @@ export function Wizard() {
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 8, opacity: 0 }}
-              // Explicit slate palette so the modal reads correctly under both
-              // light and dark themes regardless of CSS variable values.
-              className="max-w-md w-full bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center space-y-5"
+              // Theme-aware tokens so the modal reads correctly under both
+              // light and dark themes via CSS variables.
+              className="max-w-md w-full bg-card text-foreground rounded-3xl border border-light-border shadow-2xl p-8 text-center space-y-5"
             >
               <div className="flex justify-center">
                 <div className="w-14 h-14 rounded-full bg-brand/10 flex items-center justify-center">
                   <Sparkles size={26} className="text-brand" />
                 </div>
               </div>
-              <h2 id="wizard-auth-title" className="text-2xl font-display font-bold text-slate-900">
+              <h2 id="wizard-auth-title" className="text-2xl font-display font-bold text-foreground">
                 Connectez-vous pour générer votre voyage
               </h2>
-              <p className="text-sm text-slate-600 font-medium leading-relaxed">
+              <p className="text-sm text-light-muted font-medium leading-relaxed">
                 Votre itinéraire personnalisé sera sauvegardé sur votre compte Triply.
                 Vous le retrouverez à tout moment dans vos voyages.
               </p>
@@ -648,7 +648,7 @@ export function Wizard() {
               <button
                 type="button"
                 onClick={() => setAuthPromptOpen(false)}
-                className="text-xs text-slate-500 font-bold hover:text-slate-900 transition-colors"
+                className="text-xs text-light-muted font-bold hover:text-foreground transition-colors"
               >
                 Revenir au récap
               </button>

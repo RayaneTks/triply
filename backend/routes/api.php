@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Integrations\GooglePlaceReviewsController;
 use App\Http\Controllers\Api\V1\PlacesController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RestaurantController;
+use App\Http\Controllers\Api\V1\StripeWebhookController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TripActivityController;
 use App\Http\Controllers\Api\V1\TripBookingController;
@@ -67,6 +68,10 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::get('/share/{token}', [TripSharingController::class, 'showPublic'])->middleware('throttle:places');
+
+    // Stripe webhook — public (signature header verifies authenticity).
+    Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
+        ->middleware('throttle:60,1');
 
     Route::get('/consent', [ConsentController::class, 'show']);
     Route::post('/consent', [ConsentController::class, 'store']);

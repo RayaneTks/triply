@@ -255,7 +255,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 </label>
             )}
             <div
-                className={`relative input-assistant w-full min-w-0 transition-colors ${selected ? 'ring-2 ring-emerald-500 border-emerald-500' : ''}`}
+                className={`relative input-assistant w-full min-w-0 transition-colors ${selected ? 'ring-2 ring-brand border-brand' : ''}`}
             >
                 <input
                     ref={inputRef}
@@ -275,7 +275,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                 />
 
                 {selected && !loading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500" aria-label="Sélection validée">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand" aria-label="Sélection validée">
                         <CheckCircle2 size={18} strokeWidth={2.5} />
                     </div>
                 )}

@@ -12,9 +12,10 @@ class SubscriptionConfirmationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_confirm_succeeds_with_mvp_fallback_when_stripe_secret_missing(): void
+    public function test_confirm_returns_503_when_stripe_secret_missing(): void
     {
         config()->set('services.stripe.secret', '');
+        putenv('STRIPE_SECRET_KEY=');
         $user = User::factory()->create([
             'email' => 'payer@example.com',
             'subscription_tier' => null,
@@ -27,18 +28,15 @@ class SubscriptionConfirmationTest extends TestCase
             'billing' => 'monthly',
         ]);
 
-        $response->assertOk();
-        $response->assertJsonPath('data.tier', 'voyageur');
-        $this->assertDatabaseHas('abonnements', [
+        $response->assertStatus(503);
+        $response->assertJsonPath('error.code', 'STRIPE_NOT_CONFIGURED');
+        $this->assertDatabaseMissing('abonnements', [
             'utilisateur_id' => $user->id,
             'abonnement_stripe_id' => 'cs_test_missing_secret',
-            'tier' => 'voyageur',
-            'plan_interval' => 'monthly',
-            'statut' => 'active',
         ]);
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'subscription_tier' => 'voyageur',
+            'subscription_tier' => null,
         ]);
     }
 

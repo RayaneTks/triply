@@ -492,7 +492,7 @@ export function TripDetailView() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
                 {[
                     { label: 'Budget total', val: `${trip.budget}€`, icon: Wallet, color: 'text-brand' },
-                    { label: 'Budget restant (estim.)', val: `${trip.remainingBudget}€`, icon: Sparkles, color: 'text-emerald-600' },
+                    { label: 'Budget restant (estim.)', val: `${trip.remainingBudget}€`, icon: Sparkles, color: 'text-brand' },
                     { label: 'Statut', val: trip.statusLabel, icon: Clock, color: 'text-amber-600' },
                     { label: 'Destination', val: trip.destination, icon: MapPin, color: 'text-brand' },
                 ].map((stat, i) => (

@@ -12,9 +12,11 @@ export function PricingView() {
   const [isAnnual, setIsAnnual] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
 
   async function handleCheckout(planId: string) {
     setError(null);
+    setUnavailable(false);
     if (!authClient.getToken()) {
       router.push('/connexion?returnTo=/tarifs');
       return;
@@ -27,8 +29,12 @@ export function PricingView() {
         body: JSON.stringify({ plan: planId, billing: isAnnual ? 'annual' : 'monthly' }),
       });
       const data = await res.json();
+      if (res.status === 503) {
+        setUnavailable(true);
+        return;
+      }
       if (!res.ok) {
-        setError(data?.error || 'Impossible de démarrer le paiement.');
+        setError(data?.message || data?.error || 'Impossible de démarrer le paiement.');
         return;
       }
       if (data.url) window.location.href = data.url;
@@ -74,6 +80,14 @@ export function PricingView() {
         {error && (
           <div className="max-w-md mx-auto mb-8 px-4 py-3 rounded-xl border border-red-300 bg-red-50 text-red-900 text-sm font-bold">
             {error}
+          </div>
+        )}
+        {unavailable && (
+          <div
+            role="status"
+            className="max-w-md mx-auto mb-8 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm font-medium"
+          >
+            Le paiement est en cours de configuration. Revenez bientôt.
           </div>
         )}
 

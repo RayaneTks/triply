@@ -21,7 +21,10 @@ const PLANS: Record<PlanKey, Record<BillingKey, { amount: number; interval: 'mon
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    return NextResponse.json({ error: 'Stripe non configuré côté serveur.' }, { status: 503 });
+    return NextResponse.json(
+      { error: 'STRIPE_UNAVAILABLE', message: 'Paiement temporairement indisponible.' },
+      { status: 503 },
+    );
   }
   const stripe = new Stripe(secretKey);
 

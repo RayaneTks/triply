@@ -53,7 +53,7 @@ function MealRegimeSelector({ value, onChange }: { value: string; onChange: (nex
                     type="button"
                     id="hotel-meal-regime"
                     onClick={() => setIsOpen((o) => !o)}
-                    className="flex w-full min-w-0 items-center justify-between rounded-xl border border-white/15 bg-white/5 py-2.5 pl-4 pr-10 text-left text-[13px] font-semibold text-slate-100 outline-none transition-colors hover:bg-white/10 focus:border-cyan-500/60 focus:bg-cyan-500/10 focus:ring-2 focus:ring-cyan-500/30"
+                    className="flex w-full min-w-0 items-center justify-between rounded-xl border border-white/15 bg-white/5 py-2.5 pl-4 pr-10 text-left text-[13px] font-semibold text-foreground outline-none transition-colors hover:bg-white/10 focus:border-cyan-500/60 focus:bg-cyan-500/10 focus:ring-2 focus:ring-cyan-500/30"
                     style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
                     aria-expanded={isOpen}
                     aria-haspopup="listbox"
@@ -61,7 +61,7 @@ function MealRegimeSelector({ value, onChange }: { value: string; onChange: (nex
                 >
                     <span className="truncate">{selectedLabel}</span>
                     <ChevronDownIcon
-                        className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 shrink-0 -translate-y-1/2 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 shrink-0 -translate-y-1/2 text-light-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
                         aria-hidden
                     />
                 </button>
@@ -89,7 +89,7 @@ function MealRegimeSelector({ value, onChange }: { value: string; onChange: (nex
                                 className={`flex w-full items-center px-4 py-3 text-left text-[13px] font-medium transition-all duration-150 hover:bg-cyan-500/15 hover:text-cyan-300 ${
                                     value === opt.value
                                         ? 'bg-cyan-500/15 text-cyan-400'
-                                        : 'bg-transparent text-slate-100'
+                                        : 'bg-transparent text-foreground'
                                 }`}
                             >
                                 {opt.label}
@@ -213,15 +213,15 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                         <div
                             className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-6 sm:py-4"
                         >
-                            <h2 id="hotel-search-title" className="text-xl font-semibold text-slate-100">
+                            <h2 id="hotel-search-title" className="text-xl font-semibold text-foreground">
                                 Recherche d&apos;hôtels
                             </h2>
                             <button
                                 onClick={onClose}
-                                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                className="rounded-lg p-2 text-light-muted transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                                 aria-label="Fermer"
                             >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-slate-100">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-foreground">
                                     <path d="M18 6L6 18M6 6l12 12" />
                                 </svg>
                             </button>
@@ -231,7 +231,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                             {!apiResponse || !('data' in apiResponse) || !apiResponse.data ? (
                                 <div className="mx-auto max-w-2xl space-y-4">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Ville / Destination
                                         </label>
                                         <CityAutocomplete
@@ -247,13 +247,13 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Nombre de voyageurs
                                         </label>
                                         <TravelerCounter
                                             count={travelerCount}
                                             onChange={setTravelerCount}
-                                            className="w-full bg-white/5 text-slate-200"
+                                            className="w-full bg-white/5 text-foreground"
                                         />
                                         {errors.travelerCount && (
                                             <p className="mt-1 text-xs text-red-400">
@@ -263,17 +263,17 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Budget maximum par nuit (€)
                                         </label>
-                                        <div className="input-assistant flex h-11 w-full items-center rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-slate-100 shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                                            <span className="mr-2 text-slate-400">€</span>
+                                        <div className="input-assistant flex h-11 w-full items-center rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-foreground shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                                            <span className="mr-2 text-light-muted">€</span>
                                             <input
                                                 type="number"
                                                 value={budget}
                                                 onChange={(e) => setBudget(e.target.value)}
                                                 placeholder="Ex. 150"
-                                                className="h-full w-full flex-grow bg-transparent text-sm text-slate-100 placeholder:text-slate-500 outline-none"
+                                                className="h-full w-full flex-grow bg-transparent text-sm text-foreground placeholder:text-light-muted outline-none"
                                                 aria-invalid={!!errors.budget}
                                                 aria-describedby={errors.budget ? 'hotel-budget-error' : undefined}
                                             />
@@ -288,18 +288,18 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                     <div>
                                         <span
                                             id="hotel-meal-regime-label"
-                                            className="mb-2 block text-sm font-medium text-slate-100"
+                                            className="mb-2 block text-sm font-medium text-foreground"
                                         >
                                             Régime alimentaire souhaité
                                         </span>
                                         <MealRegimeSelector value={mealRegime} onChange={setMealRegime} />
-                                        <p className="mt-1 text-xs text-slate-500">
+                                        <p className="mt-1 text-xs text-light-muted">
                                             Filtre les offres selon le type de pension (selon disponibilité Amadeus).
                                         </p>
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Date d&apos;arrivée / Départ
                                         </label>
                                         <DateRangePicker
@@ -319,7 +319,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Préférences de voyage
                                         </label>
                                         <MultiSelect
@@ -330,7 +330,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                             placeholder="Préférences de voyage…"
                                             className="w-full"
                                         />
-                                        <p className="mt-1 text-xs text-slate-500">
+                                        <p className="mt-1 text-xs text-light-muted">
                                             Identique au formulaire d&apos;étape 1 : les choix restent synchronisés.
                                         </p>
                                     </div>

@@ -128,15 +128,15 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                         <div
                             className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-6 sm:py-4"
                         >
-                            <h2 id="flight-search-title" className="text-xl font-semibold text-slate-100">
+                            <h2 id="flight-search-title" className="text-xl font-semibold text-foreground">
                                 Recherche de vols
                             </h2>
                             <button
                                 onClick={onClose}
-                                className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                className="rounded-lg p-2 text-light-muted transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                                 aria-label="Fermer"
                             >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-slate-100">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-foreground">
                                     <path d="M18 6L6 18M6 6l12 12" />
                                 </svg>
                             </button>
@@ -173,13 +173,13 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Nombre de voyageurs
                                         </label>
                                         <TravelerCounter
                                             count={travelerCount}
                                             onChange={setTravelerCount}
-                                            className="w-full bg-white/5 text-slate-200"
+                                            className="w-full bg-white/5 text-foreground"
                                         />
                                         {errors.travelerCount && (
                                             <p className="mt-1 text-xs text-red-400">
@@ -189,17 +189,17 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Budget maximum vol (€)
                                         </label>
-                                        <div className="input-assistant flex h-11 w-full items-center rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-slate-100 shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                                            <span className="mr-2 text-slate-400">€</span>
+                                        <div className="input-assistant flex h-11 w-full items-center rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-foreground shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                                            <span className="mr-2 text-light-muted">€</span>
                                             <input
                                                 type="number"
                                                 value={budget}
                                                 onChange={(e) => setBudget(e.target.value)}
                                                 placeholder="Ex. 500"
-                                                className="h-full w-full flex-grow bg-transparent text-sm text-slate-100 placeholder:text-slate-500 outline-none"
+                                                className="h-full w-full flex-grow bg-transparent text-sm text-foreground placeholder:text-light-muted outline-none"
                                                 aria-invalid={!!errors.budget}
                                                 aria-describedby={errors.budget ? 'flight-budget-error' : undefined}
                                             />
@@ -212,7 +212,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-100">
+                                        <label className="mb-2 block text-sm font-medium text-foreground">
                                             Date d&apos;arrivée / Départ
                                         </label>
                                         <DateRangePicker
@@ -244,7 +244,7 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
                                 </div>
                             ) : (
                                 /* Résultats */
-                                <div className="flex min-h-[400px] flex-col text-slate-100">
+                                <div className="flex min-h-[400px] flex-col text-foreground">
                                     <h3 className="mb-4 shrink-0 text-lg font-semibold">
                                         Meilleures offres trouvées
                                     </h3>

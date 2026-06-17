@@ -103,7 +103,7 @@ export function AppShell({
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                   {hasPaidPlanner && (
-                    <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
+                    <span className="absolute -top-1 -right-1 rounded-full bg-brand text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
                       V
                     </span>
                   )}

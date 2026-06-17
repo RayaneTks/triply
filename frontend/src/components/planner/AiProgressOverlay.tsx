@@ -94,7 +94,7 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                                     key={step.key}
                                     className={cn(
                                         'flex items-center gap-4 px-4 py-3 rounded-2xl border transition-colors bg-white',
-                                        isDone && 'border-emerald-200 text-emerald-900',
+                                        isDone && 'border-brand/30 text-brand',
                                         isActive && 'border-brand/30 text-slate-900 shadow-sm',
                                         !isDone && !isActive && 'border-slate-200 text-slate-500',
                                     )}
@@ -103,7 +103,7 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                                     <span
                                         className={cn(
                                             'flex w-9 h-9 items-center justify-center rounded-full shrink-0',
-                                            isDone && 'bg-emerald-500 text-white',
+                                            isDone && 'bg-brand text-white',
                                             isActive && 'bg-brand text-white',
                                             !isDone && !isActive && 'bg-slate-100 text-slate-400',
                                         )}
@@ -121,7 +121,7 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                                             size={18}
                                             className={cn(
                                                 'shrink-0',
-                                                isDone && 'text-emerald-600',
+                                                isDone && 'text-white',
                                                 isActive && 'text-brand',
                                                 !isDone && !isActive && 'text-slate-400',
                                             )}

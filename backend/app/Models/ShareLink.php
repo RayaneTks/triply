@@ -14,6 +14,11 @@ class ShareLink extends Model
         'voyage_id',
         'token',
         'expires_at',
+        'password_hash',
+    ];
+
+    protected $hidden = [
+        'password_hash',
     ];
 
     protected $casts = [

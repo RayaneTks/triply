@@ -170,7 +170,7 @@ function StatusBadge({
 }) {
   const tones = {
     neutral: 'bg-light-border/60 text-light-muted',
-    success: 'bg-emerald-500/15 text-emerald-600',
+    success: 'bg-brand/15 text-brand',
     warning: 'bg-amber-500/15 text-amber-600',
     danger: 'bg-red-500/15 text-red-600',
   };

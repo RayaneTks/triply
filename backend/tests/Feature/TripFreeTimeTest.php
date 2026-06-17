@@ -146,4 +146,17 @@ class TripFreeTimeTest extends TestCase
             ->getJson("/api/v1/trips/{$voyage->id}/days/1/free-time")
             ->assertNotFound();
     }
+
+    public function test_requires_authentication(): void
+    {
+        $owner = User::factory()->create();
+        $voyage = Voyage::factory()->for($owner, 'user')->create([
+            'plan_snapshot' => [
+                'days' => [['dayIndex' => 1, 'activities' => [['title' => 'X', 'lat' => 1.0, 'lng' => 1.0]]]],
+            ],
+        ]);
+
+        $this->getJson("/api/v1/trips/{$voyage->id}/days/1/free-time")
+            ->assertUnauthorized();
+    }
 }

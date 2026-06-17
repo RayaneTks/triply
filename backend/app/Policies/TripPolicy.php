@@ -3,24 +3,22 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Models\Voyage;
 
 class TripPolicy
 {
-    public function view(User $user, mixed $trip): bool
+    public function view(User $user, Voyage $voyage): bool
     {
-        // TODO: Implement ownership or membership checks.
-        return true;
+        return $user->id === $voyage->user_id;
     }
 
-    public function update(User $user, mixed $trip): bool
+    public function update(User $user, Voyage $voyage): bool
     {
-        // TODO: Implement write permissions.
-        return true;
+        return $user->id === $voyage->user_id;
     }
 
-    public function delete(User $user, mixed $trip): bool
+    public function delete(User $user, Voyage $voyage): bool
     {
-        // TODO: Implement delete permissions.
-        return true;
+        return $user->id === $voyage->user_id;
     }
 }
