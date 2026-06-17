@@ -74,7 +74,7 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                         <div className="space-y-2">
                             <div className="flex items-center justify-center gap-2 text-brand">
                                 <Sparkles size={18} />
-                                <span className="text-xs font-bold uppercase tracking-widest">Triply IA</span>
+                                <span className="text-xs font-bold uppercase tracking-widest">Copilote Triply</span>
                             </div>
                             <h2 className="text-2xl font-display font-bold text-slate-900">
                                 Préparation de votre voyage à {destination.trim() || 'votre destination'}

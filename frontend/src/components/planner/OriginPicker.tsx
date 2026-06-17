@@ -55,7 +55,7 @@ export const OriginPicker: FC<OriginPickerProps> = ({ value, onChange, inputValu
             const first = matches.find((m) => m.iataCode && m.iataCode.length === 3);
             if (!first) {
                 onChange(null);
-                setError(`Aucun aéroport principal trouvé pour « ${trimmed} ». Essayez un code IATA (CDG, LIS…).`);
+                setError(`Aucun aéroport trouvé pour « ${trimmed} ». Essayez un code à 3 lettres (CDG, LIS…).`);
                 return;
             }
             onChange(mapLocationToValue(first, trimmed));
@@ -98,7 +98,7 @@ export const OriginPicker: FC<OriginPickerProps> = ({ value, onChange, inputValu
             {resolving && (
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand/10 text-brand text-xs font-bold">
                     <Loader2 size={14} className="animate-spin" />
-                    Résolution de l’aéroport…
+                    Recherche de l’aéroport…
                 </div>
             )}
 

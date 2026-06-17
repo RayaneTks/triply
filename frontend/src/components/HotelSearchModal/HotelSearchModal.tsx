@@ -294,7 +294,7 @@ export const HotelSearchModal: React.FC<HotelSearchModalProps> = ({
                                         </span>
                                         <MealRegimeSelector value={mealRegime} onChange={setMealRegime} />
                                         <p className="mt-1 text-xs text-light-muted">
-                                            Filtre les offres selon le type de pension (selon disponibilité Amadeus).
+                                            Filtre les offres par type de pension, selon les disponibilités.
                                         </p>
                                     </div>
 
