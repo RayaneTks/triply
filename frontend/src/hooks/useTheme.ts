@@ -1,72 +1,72 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 export type Theme = 'dark' | 'light';
 
 const THEME_EVENT = 'triply-theme-changed';
 const STORAGE_KEY = 'triply-theme';
 
-function getInitialTheme(): Theme {
+function readDomTheme(): Theme {
     if (typeof document === 'undefined') return 'dark';
     return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
 }
 
-function applyTheme(next: Theme) {
+function setDomTheme(next: Theme) {
     if (typeof document === 'undefined') return;
     if (next === 'light') {
         document.documentElement.setAttribute('data-theme', 'light');
     } else {
         document.documentElement.removeAttribute('data-theme');
     }
+}
+
+function applyTheme(next: Theme) {
+    setDomTheme(next);
     try {
         localStorage.setItem(STORAGE_KEY, next);
     } catch {
         /* ignore quota / private mode */
     }
-    window.dispatchEvent(new CustomEvent<Theme>(THEME_EVENT, { detail: next }));
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent<Theme>(THEME_EVENT, { detail: next }));
+    }
 }
 
+// Source de vérité côté client : l'attribut data-theme posé sur <html> par le
+// script inline du layout (avant hydratation) et mis à jour par applyTheme.
+function subscribe(onChange: () => void) {
+    if (typeof window === 'undefined') return () => {};
+
+    const onStorage = (event: StorageEvent) => {
+        if (event.key !== STORAGE_KEY) return;
+        // Synchronisation inter-onglets : reflète le nouveau thème sur ce DOM.
+        setDomTheme(event.newValue === 'light' ? 'light' : 'dark');
+        onChange();
+    };
+
+    window.addEventListener(THEME_EVENT, onChange);
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+        window.removeEventListener(THEME_EVENT, onChange);
+        window.removeEventListener('storage', onStorage);
+    };
+}
+
+// getServerSnapshot renvoie toujours 'dark' : c'est ce que rend le SSR (pas de
+// document côté serveur). useSyncExternalStore garantit que le premier rendu
+// client utilise cette même valeur puis se resynchronise sur le thème réel sans
+// déclencher d'avertissement de mismatch d'hydratation.
 export function useTheme() {
-    const [theme, setThemeState] = useState<Theme>(getInitialTheme);
-
-    useEffect(() => {
-        if (typeof document === 'undefined') return;
-
-        const onThemeChange = (event: Event) => {
-            const detail = (event as CustomEvent<Theme>).detail;
-            if (detail === 'light' || detail === 'dark') {
-                setThemeState(detail);
-            }
-        };
-
-        const onStorage = (event: StorageEvent) => {
-            if (event.key !== STORAGE_KEY) return;
-            const next: Theme = event.newValue === 'light' ? 'light' : 'dark';
-            applyTheme(next);
-            setThemeState(next);
-        };
-
-        window.addEventListener(THEME_EVENT, onThemeChange);
-        window.addEventListener('storage', onStorage);
-
-        return () => {
-            window.removeEventListener(THEME_EVENT, onThemeChange);
-            window.removeEventListener('storage', onStorage);
-        };
-    }, []);
+    const theme = useSyncExternalStore<Theme>(subscribe, readDomTheme, () => 'dark');
 
     const toggle = useCallback(() => {
-        setThemeState((prev) => {
-            const next: Theme = prev === 'dark' ? 'light' : 'dark';
-            applyTheme(next);
-            return next;
-        });
+        applyTheme(readDomTheme() === 'dark' ? 'light' : 'dark');
     }, []);
 
     const setTheme = useCallback((next: Theme) => {
         applyTheme(next);
-        setThemeState(next);
     }, []);
 
     return { theme, toggle, setTheme };
