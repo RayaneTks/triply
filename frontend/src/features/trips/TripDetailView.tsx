@@ -15,15 +15,16 @@ import {
     FileText,
     Map as MapIcon,
     MapPin,
-    RotateCcw,
     Sparkles,
     Trash2,
     Users,
     Wallet,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 import { PageHeader } from '../../components/ui/PageHeader';
+import { ActivitiesSkeleton } from '../../components/ui/Skeleton';
+import { useToast } from '../../components/ui/Toast';
 import { WorldMap } from '../../components/Map/Map';
 import { LocalTransportsSection } from '../../components/trips/LocalTransportsSection';
 import { FlightsSection } from '../../components/trips/FlightsSection';
@@ -48,16 +49,11 @@ import { tripDetailFromApi, tripDetailFromStored, type TripDetailDisplay } from 
 import { useAuthSession } from '../../hooks/useAuthSession';
 import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
-interface UndoneActivity {
-    id: string;
-    tripId: string;
-    timer: number;
-}
-
 export function TripDetailView() {
     const { tripId } = useParams<{ tripId: string }>();
     const router = useRouter();
     const { isConnected, isLoading: authLoading } = useAuthSession();
+    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<'itinerary' | 'flights' | 'hotels' | 'map' | 'docs'>('itinerary');
     const [isLoading, setIsLoading] = useState(true);
     const [apiTrip, setApiTrip] = useState<TripApi | null | undefined>(undefined);
@@ -72,11 +68,9 @@ export function TripDetailView() {
 
     const [pendingCityDelete, setPendingCityDelete] = useState<string | null>(null);
     const [deletingCity, setDeletingCity] = useState(false);
-    const [undoStack, setUndoStack] = useState<UndoneActivity[]>([]);
     const [replanOpen, setReplanOpen] = useState(false);
     const [budgetOpen, setBudgetOpen] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
-    const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
     const reloadActivities = useCallback(async () => {
         if (!tripId || !authClient.getToken()) return;
@@ -138,14 +132,6 @@ export function TripDetailView() {
         setSelectedMapDayIds([]);
         setMapRouteMode('full');
     }, [tripId]);
-
-    useEffect(() => {
-        // Cleanup pending undo timers on unmount
-        return () => {
-            undoStack.forEach((u) => window.clearTimeout(u.timer));
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const trip: TripDetailDisplay | null = useMemo(() => {
         if (apiTrip) return tripDetailFromApi(apiTrip);
@@ -317,6 +303,20 @@ export function TripDetailView() {
         );
     };
 
+    const restoreActivity = async (activityId: string) => {
+        if (!tripId) return;
+        try {
+            await activitiesClient.restore(tripId, activityId);
+            await reloadActivities();
+        } catch (err) {
+            toast({
+                variant: 'error',
+                title: 'Restauration impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
+        }
+    };
+
     const handleDeleteActivity = async (activity: ActivityResource) => {
         if (!tripId) return;
         const activityId = activity.id;
@@ -328,27 +328,18 @@ export function TripDetailView() {
                     activities: day.activities.filter((a) => a.id !== activityId),
                 })),
             );
-            const timer = window.setTimeout(() => {
-                setUndoStack((stack) => stack.filter((u) => u.id !== activityId));
-            }, 5000);
-            setUndoStack((stack) => [...stack, { id: activityId, tripId, timer }]);
+            toast({
+                variant: 'info',
+                title: 'Activité supprimée',
+                duration: 5000,
+                action: { label: 'Annuler', onClick: () => void restoreActivity(activityId) },
+            });
         } catch (err) {
-            setActivitiesError(err instanceof Error ? err.message : 'Suppression impossible.');
-        }
-    };
-
-    const handleRestoreActivity = async (activityId: string) => {
-        if (!tripId) return;
-        const entry = undoStack.find((u) => u.id === activityId);
-        if (entry) {
-            window.clearTimeout(entry.timer);
-        }
-        setUndoStack((stack) => stack.filter((u) => u.id !== activityId));
-        try {
-            await activitiesClient.restore(tripId, activityId);
-            await reloadActivities();
-        } catch (err) {
-            setActivitiesError(err instanceof Error ? err.message : 'Restauration impossible.');
+            toast({
+                variant: 'error',
+                title: 'Suppression impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
         }
     };
 
@@ -360,7 +351,11 @@ export function TripDetailView() {
             setPendingCityDelete(null);
             await reloadActivities();
         } catch (err) {
-            setActivitiesError(err instanceof Error ? err.message : 'Suppression de la ville impossible.');
+            toast({
+                variant: 'error',
+                title: 'Suppression de la ville impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
         } finally {
             setDeletingCity(false);
         }
@@ -445,14 +440,15 @@ export function TripDetailView() {
                                 onClick={async () => {
                                     if (duplicating) return;
                                     setDuplicating(true);
-                                    setDuplicateError(null);
                                     try {
                                         const copy = await tripsClient.duplicate(apiTrip.id);
                                         router.push(`/voyages/${copy.id}`);
                                     } catch (err) {
-                                        setDuplicateError(
-                                            err instanceof Error ? err.message : 'Duplication impossible.',
-                                        );
+                                        toast({
+                                            variant: 'error',
+                                            title: 'Duplication impossible',
+                                            description: err instanceof Error ? err.message : undefined,
+                                        });
                                     } finally {
                                         setDuplicating(false);
                                     }
@@ -469,11 +465,6 @@ export function TripDetailView() {
                         >
                             <FileText size={14} /> Récap
                         </Link>
-                        {duplicateError && (
-                            <span role="alert" className="text-xs text-error self-center">
-                                {duplicateError}
-                            </span>
-                        )}
                         <button
                             type="button"
                             aria-disabled="true"
@@ -540,9 +531,7 @@ export function TripDetailView() {
                                     </p>
                                 )}
 
-                                {activitiesLoading && (
-                                    <p className="text-sm text-light-muted">Chargement des activités…</p>
-                                )}
+                                {activitiesLoading && <ActivitiesSkeleton count={3} />}
 
                                 {hasRealActivities && cityGroups.size > 0 && (
                                     <div className="space-y-4">
@@ -626,7 +615,7 @@ export function TripDetailView() {
                                                                     className={cn(
                                                                         'px-3 py-0.5 rounded-full text-xs font-bold uppercase',
                                                                         day.status === 'Cadré'
-                                                                            ? 'bg-emerald-50 text-emerald-600'
+                                                                            ? 'bg-brand/10 text-brand'
                                                                             : 'bg-amber-50 text-amber-600',
                                                                     )}
                                                                 >
@@ -854,32 +843,6 @@ export function TripDetailView() {
                     </div>
                 </aside>
             </div>
-
-            {/* Undo toasts pour activités supprimées */}
-            <AnimatePresence>
-                {undoStack.length > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center">
-                        {undoStack.map((u) => (
-                            <motion.div
-                                key={u.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 20 }}
-                                className="bg-light-foreground text-white px-5 py-3 rounded-full text-sm font-bold flex items-center gap-3 shadow-xl"
-                            >
-                                Activité supprimée
-                                <button
-                                    type="button"
-                                    onClick={() => void handleRestoreActivity(u.id)}
-                                    className="flex items-center gap-1 text-brand hover:underline"
-                                >
-                                    <RotateCcw size={14} /> Annuler
-                                </button>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-            </AnimatePresence>
 
             {/* Modale suppression ville */}
             {pendingCityDelete && (

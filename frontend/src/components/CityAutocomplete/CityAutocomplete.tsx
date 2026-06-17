@@ -3,6 +3,7 @@
 import { FC, useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2 } from 'lucide-react';
+import { useToast } from '../ui/Toast';
 
 // Interface pour la réponse d'Amadeus
 interface AmadeusLocation {
@@ -53,6 +54,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                                                                 className = '',
                                                                 containerStyle,
                                                             }) => {
+    const { toast } = useToast();
     const [displayValue, setDisplayValue] = useState('');
     const [suggestions, setSuggestions] = useState<AmadeusLocation[]>([]);
     const [isOpen, setIsOpen] = useState(false);
@@ -62,6 +64,8 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const requestRef = useRef(0);
     const abortRef = useRef<AbortController | null>(null);
+    /** Évite de spammer un toast à chaque frappe pendant une panne ; reset au prochain succès. */
+    const errorNotifiedRef = useRef(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -174,6 +178,7 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     const filtered = results.filter((r: AmadeusLocation) => r && (r.name || r.address?.cityName));
                     setSuggestions(filtered);
                     setActiveIndex(filtered.length > 0 ? 0 : -1);
+                    errorNotifiedRef.current = false;
                 })
                 .catch((e) => {
                     if (controller.signal.aborted) return;
@@ -181,6 +186,16 @@ export const CityAutocomplete: FC<CityAutocompleteProps> = ({
                     console.warn('[CityAutocomplete]', e instanceof Error ? e.message : e);
                     setSuggestions([]);
                     setActiveIndex(-1);
+                    setIsOpen(false);
+                    if (!errorNotifiedRef.current) {
+                        errorNotifiedRef.current = true;
+                        toast({
+                            variant: 'error',
+                            title: 'Recherche de ville indisponible',
+                            description:
+                                'Le service de localisation ne répond pas. Réessayez ou saisissez la ville manuellement.',
+                        });
+                    }
                 })
                 .finally(() => {
                     if (requestId === requestRef.current) setLoading(false);

@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Bell,
     Calendar,
-    CheckCircle2,
     Clock,
     CreditCard,
     Globe,
@@ -24,6 +23,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { cn } from '../../lib/utils';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { ProfilePanelSkeleton } from '../../components/ui/Skeleton';
+import { useToast } from '../../components/ui/Toast';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import {
     authClient,
@@ -36,11 +37,6 @@ import {
 import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
 type TabId = 'compte' | 'preferences' | 'notifications' | 'securite';
-
-interface Feedback {
-    kind: 'success' | 'error';
-    message: string;
-}
 
 const PACE_OPTIONS: Array<{ value: NonNullable<UserPreferences['pace']>; label: string }> = [
     { value: 'slow', label: 'Tranquille' },
@@ -72,6 +68,7 @@ function initials(name: string): string {
 export function ProfileView() {
     const router = useRouter();
     const { currentUser, isConnected, isLoading: authLoading } = useAuthSession();
+    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<TabId>('compte');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -81,11 +78,9 @@ export function ProfileView() {
 
     const [accountForm, setAccountForm] = useState({ name: '', timezone: '', photo_url: '' });
     const [accountSaving, setAccountSaving] = useState(false);
-    const [accountFeedback, setAccountFeedback] = useState<Feedback | null>(null);
 
     const [prefsForm, setPrefsForm] = useState<UserPreferences>({});
     const [prefsSaving, setPrefsSaving] = useState(false);
-    const [prefsFeedback, setPrefsFeedback] = useState<Feedback | null>(null);
 
     const [newInterest, setNewInterest] = useState('');
     const [newDiet, setNewDiet] = useState('');
@@ -135,12 +130,11 @@ export function ProfileView() {
         event.preventDefault();
         const token = authClient.getToken();
         if (!token) {
-            setAccountFeedback({ kind: 'error', message: 'Session expirée, reconnectez-vous.' });
+            toast({ variant: 'error', title: 'Session expirée', description: 'Reconnectez-vous pour continuer.' });
             return;
         }
 
         setAccountSaving(true);
-        setAccountFeedback(null);
         try {
             const updated = await updateProfile(token, {
                 name: accountForm.name.trim() || undefined,
@@ -148,34 +142,35 @@ export function ProfileView() {
                 photo_url: accountForm.photo_url.trim() || null,
             });
             setProfile(updated.attributes);
-            setAccountFeedback({ kind: 'success', message: 'Profil mis à jour.' });
+            toast({ variant: 'success', title: 'Profil mis à jour' });
         } catch (err) {
-            setAccountFeedback({
-                kind: 'error',
-                message: err instanceof Error ? err.message : 'Mise à jour impossible.',
+            toast({
+                variant: 'error',
+                title: 'Mise à jour impossible',
+                description: err instanceof Error ? err.message : undefined,
             });
         } finally {
             setAccountSaving(false);
         }
     };
 
-    const persistPreferences = async (next: UserPreferences, successMessage = 'Préférences enregistrées.') => {
+    const persistPreferences = async (next: UserPreferences, successMessage = 'Préférences enregistrées') => {
         const token = authClient.getToken();
         if (!token) {
-            setPrefsFeedback({ kind: 'error', message: 'Session expirée, reconnectez-vous.' });
+            toast({ variant: 'error', title: 'Session expirée', description: 'Reconnectez-vous pour continuer.' });
             return;
         }
 
         setPrefsSaving(true);
-        setPrefsFeedback(null);
         try {
             await updatePreferences(token, next);
             setPrefsForm(next);
-            setPrefsFeedback({ kind: 'success', message: successMessage });
+            toast({ variant: 'success', title: successMessage });
         } catch (err) {
-            setPrefsFeedback({
-                kind: 'error',
-                message: err instanceof Error ? err.message : 'Mise à jour des préférences impossible.',
+            toast({
+                variant: 'error',
+                title: 'Préférences non enregistrées',
+                description: err instanceof Error ? err.message : undefined,
             });
         } finally {
             setPrefsSaving(false);
@@ -279,9 +274,7 @@ export function ProfileView() {
 
                     <main className="flex-1 triply-card p-8 lg:p-12 min-h-[600px]">
                         {loading ? (
-                            <div className="flex items-center justify-center min-h-[400px] text-light-muted">
-                                Chargement de votre profil…
-                            </div>
+                            <ProfilePanelSkeleton />
                         ) : (
                             <AnimatePresence mode="wait">
                                 <motion.div
@@ -320,7 +313,7 @@ export function ProfileView() {
                                                         <span className={cn(
                                                             'px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border',
                                                             subscriptionTier
-                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                                                ? 'bg-brand/10 border-brand/30 text-brand'
                                                                 : 'bg-light-bg border-light-border text-light-muted',
                                                         )}>
                                                             <CreditCard size={12} />
@@ -403,21 +396,7 @@ export function ProfileView() {
                                                         }
                                                     />
                                                 </div>
-                                                <div className="md:col-span-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                                                    {accountFeedback ? (
-                                                        <span
-                                                            className={cn(
-                                                                'flex items-center gap-2 text-sm font-medium',
-                                                                accountFeedback.kind === 'success'
-                                                                    ? 'text-emerald-600'
-                                                                    : 'text-error',
-                                                            )}
-                                                        >
-                                                            <CheckCircle2 size={16} /> {accountFeedback.message}
-                                                        </span>
-                                                    ) : (
-                                                        <span />
-                                                    )}
+                                                <div className="md:col-span-2 flex items-center justify-end gap-4">
                                                     <button
                                                         type="submit"
                                                         disabled={accountSaving}
@@ -574,18 +553,6 @@ export function ProfileView() {
                                                 }
                                             />
 
-                                            {prefsFeedback && (
-                                                <span
-                                                    className={cn(
-                                                        'flex items-center gap-2 text-sm font-medium',
-                                                        prefsFeedback.kind === 'success'
-                                                            ? 'text-emerald-600'
-                                                            : 'text-error',
-                                                    )}
-                                                >
-                                                    <CheckCircle2 size={16} /> {prefsFeedback.message}
-                                                </span>
-                                            )}
                                             {prefsSaving && (
                                                 <p className="text-sm text-light-muted">Enregistrement…</p>
                                             )}
@@ -622,18 +589,6 @@ export function ProfileView() {
                                                         }))
                                                     }
                                                 />
-                                                {prefsFeedback && (
-                                                    <span
-                                                        className={cn(
-                                                            'flex items-center gap-2 text-sm font-medium',
-                                                            prefsFeedback.kind === 'success'
-                                                                ? 'text-emerald-600'
-                                                                : 'text-error',
-                                                        )}
-                                                    >
-                                                        <CheckCircle2 size={16} /> {prefsFeedback.message}
-                                                    </span>
-                                                )}
                                             </div>
                                         </div>
                                     )}

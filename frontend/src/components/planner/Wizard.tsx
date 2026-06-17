@@ -696,7 +696,7 @@ export function Wizard() {
         </div>
 
         {/* Sticky Actions Bar */}
-        <div className="fixed bottom-[64px] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex flex-col gap-2 z-40">
+        <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom))] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex flex-col gap-2 z-40">
            {submitError && (
              <p className="text-xs font-medium text-error" role="alert">
                {submitError}
