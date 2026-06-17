@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, MotionConfig, type Variants } from 'framer-motion';
 import { Button } from '@/src/components/Button/Button';
@@ -104,9 +105,10 @@ export default function HomePage() {
                             <TriplyLogo size={56} priority />
                         </div>
                         <nav className="hidden items-center gap-8 text-sm text-foreground/80 md:flex">
-                            <a href="#etapes" className="transition-colors hover:text-primary">Comment ça marche</a>
-                            <a href="#aides" className="transition-colors hover:text-primary">Ce que vous pouvez faire</a>
-                            <a href="#apercu" className="transition-colors hover:text-primary">Aperçu</a>
+                            <Link href="/planifier" className="transition-colors hover:text-primary">Planifier</Link>
+                            <Link href="/voyages" className="transition-colors hover:text-primary">Voyages</Link>
+                            <Link href="/tarifs" className="transition-colors hover:text-primary">Tarifs</Link>
+                            <Link href="/a-propos" className="transition-colors hover:text-primary">À propos</Link>
                         </nav>
                         <div className="flex items-center gap-3">
                             <ThemeToggle className="h-9 w-9" />
