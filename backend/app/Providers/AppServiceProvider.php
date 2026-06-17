@@ -21,7 +21,9 @@ use App\Services\Contracts\TripRecapServiceInterface;
 use App\Services\Contracts\TripServiceInterface;
 use App\Services\ActivityService;
 use App\Services\AuthService;
+use App\Services\ConsentService;
 use App\Services\CurrencyConverterService;
+use App\Services\ExportService;
 use App\Services\Geo\AmadeusCityCountryResolver;
 use App\Services\Geo\CityCountryResolverInterface;
 use App\Services\BookingService;
@@ -33,8 +35,6 @@ use App\Services\TravelService;
 use App\Services\TripRecapService;
 use App\Services\TripService;
 use App\Services\Stubs\AiServiceStub;
-use App\Services\Stubs\ConsentServiceStub;
-use App\Services\Stubs\ExportServiceStub;
 use App\Services\ObservabilityService;
 use App\Services\SharingService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -60,10 +60,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AiServiceInterface::class, AiServiceStub::class);
         $this->app->bind(TravelServiceInterface::class, TravelService::class);
         $this->app->bind(SharingServiceInterface::class, SharingService::class);
-        // WIP — export PDF/ICS pas encore implémenté
-        $this->app->bind(ExportServiceInterface::class, ExportServiceStub::class);
-        // WIP — consentement cookie pas encore persisté
-        $this->app->bind(ConsentServiceInterface::class, ConsentServiceStub::class);
+        $this->app->bind(ExportServiceInterface::class, ExportService::class);
+        $this->app->bind(ConsentServiceInterface::class, ConsentService::class);
         $this->app->bind(BookingServiceInterface::class, BookingService::class);
         $this->app->bind(ObservabilityServiceInterface::class, ObservabilityService::class);
     }
