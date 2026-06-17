@@ -48,45 +48,50 @@ export default function HomePage() {
     const enterApp = () => router.push('/planifier');
     const hasMapboxToken = MAPBOX_TOKEN.trim().length > 0;
 
-    const verbs = [
+    // Comment ça marche — 3 étapes concrètes.
+    const steps = [
         {
-            id: 'plan',
-            tag: 'Plan',
-            index: '01',
-            title: 'Un plan qui tient compte du réel',
-            lede:
-                "Pose ta destination, tes dates et ton budget. Triply construit des journées géolocalisées, rythmées et chiffrées — pas une simple liste à cocher.",
-            points: [
-                { label: 'Journées géolocalisées', text: 'Chaque étape porte ses coordonnées : trajets logiques, pas de zigzag dans la ville.' },
-                { label: 'Budget intégré', text: 'Vols, hôtel et activités agrégés en euros, visibles dès la première version du plan.' },
-                { label: 'Rythme maîtrisé', text: 'Un plafond d’heures par jour évite les itinéraires intenables.' },
-            ],
+            index: '1',
+            title: 'Créez votre voyage',
+            text: 'Indiquez votre destination, vos dates, le nombre de voyageurs et votre budget. Triply pose les bases de votre itinéraire.',
         },
         {
-            id: 'react',
-            tag: 'React',
-            index: '02',
-            title: 'Le voyage bouge. Ton plan suit.',
-            lede:
-                "C’est là que Triply se sépare des planificateurs classiques : quand une contrainte tombe, il recompose la journée au lieu de te laisser tout refaire à la main.",
-            points: [
-                { label: 'Replanification automatique', text: 'Vol de 7h35 retardé de 4h ? Triply redécoupe ta journée d’arrivée et décale les visites concernées.' },
-                { label: 'Budget réajusté', text: 'Une dépense imprévue ? Réajuste ton budget et vois quelles activités tiennent encore.' },
-                { label: 'Décisions traçables', text: 'Chaque réorganisation est explicite : tu gardes la main sur ce qui change.' },
-            ],
+            index: '2',
+            title: 'Organisez vos journées',
+            text: 'Ajoutez vos activités jour par jour, sur une carte, avec des trajets qui s’enchaînent logiquement.',
         },
         {
-            id: 'live',
-            tag: 'Live',
-            index: '03',
-            title: 'Sur place, le temps libre devient une opportunité',
-            lede:
-                "Triply suit ta journée en direct et transforme les creux en suggestions concrètes, à distance de marche de là où tu es.",
-            points: [
-                { label: 'Copilote temps libre', text: 'Deux heures de libre près du Trastevere ? Triply propose des lieux atteignables à pied dans ton temps restant.' },
-                { label: 'À distance de marche', text: 'Les suggestions sont filtrées par temps de trajet réel, aller-retour compris.' },
-                { label: 'Sans doublon', text: 'Ce que tu as déjà prévu n’est jamais reproposé.' },
-            ],
+            index: '3',
+            title: 'Ajustez budget et imprévus',
+            text: 'Suivez vos dépenses en euros et adaptez votre voyage en quelques clics quand un plan change.',
+        },
+    ];
+
+    // Aides concrètes à la planification — bénéfices utilisateur, pas des noms de feature.
+    const aides = [
+        {
+            title: 'Un itinéraire jour par jour',
+            text: 'Chaque journée est claire : activités, horaires et trajets enchaînés, sans zigzag dans la ville.',
+        },
+        {
+            title: 'Un budget suivi en euros',
+            text: 'Vols, hébergement et activités réunis au même endroit. Vous voyez ce que coûte votre voyage à tout moment.',
+        },
+        {
+            title: 'Un voyage qui s’adapte',
+            text: 'Un vol décalé, une visite fermée ? Réorganisez la journée concernée sans tout refaire à la main.',
+        },
+        {
+            title: 'Vos temps libres mis à profit',
+            text: 'Le copilote vous suggère quoi faire pendant les creux, à distance de marche de là où vous êtes.',
+        },
+        {
+            title: 'Des variantes à comparer',
+            text: 'Essayez une autre version d’une journée, gardez celle qui vous convient le mieux.',
+        },
+        {
+            title: 'Un récap à partager',
+            text: 'Partagez votre itinéraire avec vos compagnons de voyage grâce à un simple lien.',
         },
     ];
 
@@ -99,10 +104,9 @@ export default function HomePage() {
                             <TriplyLogo size={56} priority />
                         </div>
                         <nav className="hidden items-center gap-8 text-sm text-foreground/80 md:flex">
-                            <a href="#plan" className="transition-colors hover:text-primary">Plan</a>
-                            <a href="#react" className="transition-colors hover:text-primary">React</a>
-                            <a href="#live" className="transition-colors hover:text-primary">Live</a>
-                            <a href="#scenario" className="transition-colors hover:text-primary">En situation</a>
+                            <a href="#etapes" className="transition-colors hover:text-primary">Comment ça marche</a>
+                            <a href="#aides" className="transition-colors hover:text-primary">Ce que vous pouvez faire</a>
+                            <a href="#apercu" className="transition-colors hover:text-primary">Aperçu</a>
                         </nav>
                         <div className="flex items-center gap-3">
                             <ThemeToggle className="h-9 w-9" />
@@ -150,65 +154,86 @@ export default function HomePage() {
                             initial="hidden"
                             animate="visible"
                         >
-                            <motion.div variants={itemVariants} className="mb-7 flex justify-center">
-                                <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                                    Plan <span className="text-primary/50">·</span> React <span className="text-primary/50">·</span> Live
-                                </span>
-                            </motion.div>
                             <motion.h1
                                 variants={itemVariants}
                                 className="font-title text-4xl font-black leading-tight text-foreground md:text-6xl"
                             >
-                                Planifie ton voyage.<br className="hidden sm:block" /> Réagis quand il change.
+                                Organisez votre voyage,<br className="hidden sm:block" /> jour par jour.
                             </motion.h1>
                             <motion.p
                                 variants={itemVariants}
                                 className="mx-auto mt-6 max-w-2xl text-base text-foreground/85 md:text-lg"
                             >
-                                La plupart des apps s’arrêtent au planning. Triply continue : quand un vol glisse,
-                                qu’une visite ferme ou qu’il te reste deux heures, il recompose ta journée — pas seulement ta liste.
+                                Triply vous aide à construire un itinéraire clair, à suivre votre budget
+                                et à adapter votre voyage quand les choses changent. Sans prise de tête.
                             </motion.p>
                             <motion.div
                                 variants={itemVariants}
                                 className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
                             >
-                                <Button label="Planifier mon voyage" onClick={enterApp} variant="dark" tone="tone1" />
+                                <Button label="Créer un voyage" onClick={enterApp} variant="dark" tone="tone1" />
                                 <a
-                                    href="#react"
+                                    href="#etapes"
                                     className="text-sm font-semibold text-primary underline-offset-4 transition-opacity hover:opacity-80"
                                 >
-                                    Voir comment ça réagit →
+                                    Voir comment ça marche →
                                 </a>
                             </motion.div>
                         </motion.div>
                     </section>
 
-                    {/* VERBES : Plan / React / Live */}
-                    {verbs.map((verb) => (
-                        <section
-                            key={verb.id}
-                            id={verb.id}
-                            className="mx-auto w-full max-w-7xl scroll-mt-28 px-6 py-20"
+                    {/* COMMENT ÇA MARCHE */}
+                    <section id="etapes" className="mx-auto w-full max-w-7xl scroll-mt-28 px-6 py-20">
+                        <Reveal className="flex flex-col gap-3">
+                            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">Comment ça marche</span>
+                            <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Votre voyage prend forme en trois étapes</h2>
+                            <p className="max-w-2xl text-foreground/75">
+                                De la première idée à l’itinéraire complet, vous gardez la main du début à la fin.
+                            </p>
+                        </Reveal>
+
+                        <motion.ol
+                            className="mt-10 grid gap-5 md:grid-cols-3"
+                            variants={containerVariants}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, amount: 0.2 }}
                         >
+                            {steps.map((step) => (
+                                <motion.li
+                                    key={step.index}
+                                    variants={itemVariants}
+                                    className="triply-card p-6"
+                                >
+                                    <span className="font-title text-2xl font-black text-primary">{step.index}</span>
+                                    <h3 className="mt-3 font-title text-lg font-bold text-foreground">{step.title}</h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-foreground/75">{step.text}</p>
+                                </motion.li>
+                            ))}
+                        </motion.ol>
+                    </section>
+
+                    {/* CE QUE VOUS POUVEZ FAIRE */}
+                    <section id="aides" className="scroll-mt-28 bg-secondary/15 py-20">
+                        <div className="mx-auto w-full max-w-7xl px-6">
                             <Reveal className="flex flex-col gap-3">
-                                <div className="flex items-baseline gap-3">
-                                    <span className="font-title text-sm font-bold tracking-[0.3em] text-primary">{verb.index}</span>
-                                    <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">{verb.tag}</span>
-                                </div>
-                                <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">{verb.title}</h2>
-                                <p className="max-w-2xl text-foreground/75">{verb.lede}</p>
+                                <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">Ce que Triply fait pour vous</span>
+                                <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Tout pour planifier, simplement mais en profondeur</h2>
+                                <p className="max-w-2xl text-foreground/75">
+                                    Des outils concrets pour construire un voyage clair, maîtriser le budget et rester flexible.
+                                </p>
                             </Reveal>
 
                             <motion.ul
-                                className="mt-10 grid gap-5 md:grid-cols-3"
+                                className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
                                 variants={containerVariants}
                                 initial="hidden"
                                 whileInView="visible"
-                                viewport={{ once: true, amount: 0.2 }}
+                                viewport={{ once: true, amount: 0.15 }}
                             >
-                                {verb.points.map((point) => (
+                                {aides.map((aide) => (
                                     <motion.li
-                                        key={point.label}
+                                        key={aide.title}
                                         variants={itemVariants}
                                         className="triply-card p-6"
                                     >
@@ -217,41 +242,41 @@ export default function HomePage() {
                                                 <path d="m5 12 5 5L20 7" />
                                             </svg>
                                         </div>
-                                        <h3 className="font-title text-lg font-bold text-foreground">{point.label}</h3>
-                                        <p className="mt-2 text-sm leading-relaxed text-foreground/75">{point.text}</p>
+                                        <h3 className="font-title text-lg font-bold text-foreground">{aide.title}</h3>
+                                        <p className="mt-2 text-sm leading-relaxed text-foreground/75">{aide.text}</p>
                                     </motion.li>
                                 ))}
                             </motion.ul>
-                        </section>
-                    ))}
+                        </div>
+                    </section>
 
-                    {/* SCÉNARIO RÉEL (remplace le témoignage) */}
-                    <section id="scenario" className="scroll-mt-28 bg-secondary/15 py-20">
+                    {/* APERÇU */}
+                    <section id="apercu" className="scroll-mt-28 py-20">
                         <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 lg:grid-cols-[1.05fr_1fr] lg:items-center">
                             <Reveal className="relative overflow-hidden rounded-3xl border border-secondary/40 bg-secondary/25 p-8 shadow-xl shadow-secondary/20">
                                 <div className="relative h-[280px] overflow-hidden rounded-2xl border border-secondary/50 bg-background/45 backdrop-blur-sm">
                                     <Image
                                         src="/Triplypres.png"
-                                        alt="Itinéraire Triply sur tablette"
+                                        alt="Aperçu d’un itinéraire Triply"
                                         fill
                                         className="object-cover"
                                         sizes="(max-width: 1024px) 100vw, 50vw"
                                     />
                                 </div>
                                 <div className="absolute bottom-6 right-6 max-w-[26rem] rounded-2xl border border-primary/40 bg-background/65 p-5 shadow-lg shadow-secondary/25 backdrop-blur-md">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-micro-design">Scénario</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-micro-design">Exemple</p>
                                     <p className="mt-1 text-sm font-semibold text-foreground">
-                                        Vol Paris → Rome retardé de 4 h. Triply décale l’arrivée, libère la matinée et garde la visite du Colisée l’après-midi.
+                                        Vol Paris → Rome décalé&nbsp;? Triply replanifie votre journée d’arrivée et garde la visite du Colisée l’après-midi.
                                     </p>
                                 </div>
                             </Reveal>
 
                             <div>
                                 <Reveal>
-                                    <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Planifier, ce n’est pas réagir</h2>
+                                    <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Votre itinéraire, d’un coup d’œil</h2>
                                     <p className="mt-3 max-w-xl text-foreground/75">
-                                        Un bon plan suppose que tout se passe comme prévu. Un voyage, non.
-                                        Triply est pensé pour l’écart entre les deux.
+                                        Les journées, les activités, la carte et le budget réunis sur un seul écran.
+                                        Vous gardez la vue d’ensemble du début à la fin du voyage.
                                     </p>
                                 </Reveal>
                                 <motion.ul
@@ -262,9 +287,9 @@ export default function HomePage() {
                                     viewport={{ once: true, amount: 0.2 }}
                                 >
                                     {[
-                                        'Une contrainte tombe → la journée se recompose, pas seulement la liste.',
-                                        'Le budget reste lisible à chaque arbitrage, en euros.',
-                                        'Sur place, les temps morts deviennent des suggestions atteignables à pied.',
+                                        'Chaque journée détaillée : activités, horaires et trajets.',
+                                        'Le budget total visible en euros, mis à jour à chaque ajout.',
+                                        'Un imprévu ? Vous adaptez la journée concernée, le reste tient.',
                                     ].map((line) => (
                                         <motion.li key={line} variants={itemVariants} className="triply-card p-4">
                                             {line}
@@ -284,18 +309,18 @@ export default function HomePage() {
                             whileInView="visible"
                             viewport={{ once: true, amount: 0.3 }}
                         >
-                            <h2 className="font-title text-4xl font-bold text-foreground md:text-5xl">Prêt quand le voyage l’est ?</h2>
+                            <h2 className="font-title text-4xl font-bold text-foreground md:text-5xl">Prêt à organiser votre prochain voyage&nbsp;?</h2>
                             <p className="mx-auto mt-4 max-w-2xl text-foreground/85">
-                                Construis un premier itinéraire, puis laisse Triply réagir avec toi quand les choses changent.
+                                Créez votre premier voyage et construisez un itinéraire clair en quelques minutes.
                             </p>
                             <Button
-                                label="Créer mon itinéraire"
+                                label="Créer un voyage"
                                 onClick={enterApp}
                                 variant="light"
                                 tone="tone2"
                                 className="mt-8 inline-flex"
                             />
-                            <p className="mt-4 text-xs text-primary/90">Gratuit pour votre premier voyage — Aucune carte requise</p>
+                            <p className="mt-4 text-xs text-primary/90">Gratuit pour votre premier voyage — aucune carte requise</p>
                         </motion.article>
                     </section>
                 </main>
