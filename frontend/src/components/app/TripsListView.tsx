@@ -197,7 +197,7 @@ export function TripsListView() {
         <div className="max-w-5xl mx-auto px-6 py-12 lg:py-20">
             <PageHeader
                 title="Mes voyages"
-                subtitle="Retrouvez vos itinéraires cadrés et vos brouillons de planification."
+                subtitle="Retrouvez vos itinéraires prêts et vos voyages en préparation."
                 actions={
                     <button
                         type="button"
@@ -212,9 +212,9 @@ export function TripsListView() {
             {trips.length === 0 ? (
                 <EmptyState
                     icon={Inbox}
-                    title="Le cockpit est vide"
-                    description="Aucun voyage côté serveur (connecté) ou en brouillon local. Terminez le wizard ou créez un voyage depuis l’API."
-                    action={<Link href="/planifier" className="btn-primary">Commencer le cadrage</Link>}
+                    title="Aucun voyage pour l’instant"
+                    description="Créez votre premier voyage : Triply vous aide à le préparer de A à Z, jour par jour."
+                    action={<Link href="/planifier" className="btn-primary">Créer un voyage</Link>}
                 />
             ) : (
                 <div className="grid gap-6 mt-12">
@@ -304,7 +304,7 @@ export function TripsListView() {
                                             className="w-full px-4 py-3 text-left text-sm font-bold text-error hover:bg-red-50 flex items-center gap-2"
                                         >
                                             <Trash2 size={16} />
-                                            Supprimer ce séjour
+                                            Supprimer ce voyage
                                         </button>
                                     </div>
                                 )}

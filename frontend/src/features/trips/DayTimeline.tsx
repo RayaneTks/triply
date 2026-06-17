@@ -50,7 +50,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     monument: 'Monument',
     nature: 'Nature',
     shopping: 'Shopping',
-    nightlife: 'Nightlife',
+    nightlife: 'Vie nocturne',
     photo: 'Panorama',
     walk: 'Balade',
     default: 'Activité',

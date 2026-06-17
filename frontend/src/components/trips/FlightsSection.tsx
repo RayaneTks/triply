@@ -100,13 +100,13 @@ function buildFlightsErrorMessage(err: unknown): string {
         const backendMsg = extractErrorMessage(err.body);
         if (backendMsg) return backendMsg;
         if (err.status === 405) {
-            return 'La methode HTTP de recherche de vols est refusee par le serveur. Rechargez l\'application puis reessayez.';
+            return 'La recherche de vols est momentanément indisponible. Rechargez la page puis réessayez.';
         }
         if (err.status === 422) {
-            return 'La recherche de vols a ete refusee (parametres invalides ou proxy API). Verifiez les villes et les dates.';
+            return 'La recherche de vols n’a pas abouti. Vérifiez les villes et les dates, puis réessayez.';
         }
         if (err.status >= 500) {
-            return 'Le service de vols est temporairement indisponible. Reessayez dans quelques instants.';
+            return 'Le service de vols est temporairement indisponible. Réessayez dans quelques instants.';
         }
         return err.message;
     }
@@ -218,7 +218,7 @@ export function FlightsSection({
             }
             const destCode = await resolveIata(arrivalCity);
             if (!originCode || !destCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun aéroport IATA trouvé pour "${!originCode ? departureCity : arrivalCity}". Essayez un code 3 lettres (CDG, BCN...).` } as unknown as AmadeusResponse);
+                setApiResponse({ ...emptyEnv, error: `Aéroport introuvable pour "${!originCode ? departureCity : arrivalCity}". Essayez un code à 3 lettres (CDG, BCN...).` } as unknown as AmadeusResponse);
                 return;
             }
             const body = {
@@ -233,7 +233,7 @@ export function FlightsSection({
             const res = await searchFlights(body);
             if (res && typeof res === 'object' && 'errors' in res) {
                 const errArr = (res as { errors?: Array<{ title?: string; detail?: string }> }).errors ?? [];
-                const msg = errArr[0]?.detail || errArr[0]?.title || 'Erreur Amadeus.';
+                const msg = errArr[0]?.detail || errArr[0]?.title || 'Recherche impossible pour le moment.';
                 setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusResponse);
                 return;
             }

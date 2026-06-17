@@ -380,8 +380,8 @@ export function TripDetailView() {
     if (!isConnected) {
         return (
             <AuthRequiredCard
-                title="Connexion requise"
-                description="Le détail d’un voyage est disponible uniquement pour les comptes connectés."
+                title="Connectez-vous pour voir ce voyage"
+                description="Le détail de vos voyages est réservé aux comptes connectés. Connectez-vous pour le retrouver."
             />
         );
     }
@@ -391,9 +391,9 @@ export function TripDetailView() {
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <ErrorState
                     title="Voyage introuvable"
-                    description="Aucun voyage avec cet identifiant sur le serveur (si vous êtes connecté) ni en brouillon local sur cet appareil."
+                    description="Ce voyage n’existe pas ou n’est pas accessible depuis cet appareil. Retrouvez vos voyages ou créez-en un nouveau."
                     primaryAction={{ label: 'Mes voyages', to: '/voyages' }}
-                    secondaryAction={{ label: 'Planifier', to: '/planifier' }}
+                    secondaryAction={{ label: 'Créer un voyage', to: '/planifier' }}
                 />
             </div>
         );
@@ -614,7 +614,7 @@ export function TripDetailView() {
                                                                 <span
                                                                     className={cn(
                                                                         'px-3 py-0.5 rounded-full text-xs font-bold uppercase',
-                                                                        day.status === 'Cadré'
+                                                                        day.status === 'Prêt'
                                                                             ? 'bg-brand/10 text-brand'
                                                                             : 'bg-amber-50 text-amber-600',
                                                                     )}
@@ -628,8 +628,8 @@ export function TripDetailView() {
                                                 </div>
                                             ))}
                                             <p className="text-xs text-light-muted font-bold">
-                                                Aucune activité côté serveur pour ce voyage. Une fois des activités
-                                                ajoutées, vous pourrez les liker, les supprimer ou regrouper les villes.
+                                                Pas encore d’activités dans cet itinéraire. Dès que vous en ajoutez,
+                                                vous pourrez les aimer, les retirer ou les regrouper par ville.
                                             </p>
                                         </div>
                                     )
