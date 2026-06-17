@@ -32,8 +32,8 @@ export function PlannerManualUpsell() {
             <li className="flex gap-3 rounded-xl border border-light-border/60 bg-background/60 px-4 py-3 dark:bg-background/30">
               <PenLine className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden />
               <span>
-                <span className="font-semibold">Saisie libre</span> — brief, étapes et ajustements
-                comme vous le souhaitez.
+                <span className="font-semibold">Saisie libre</span> — décrivez votre projet, ajoutez vos
+                étapes et ajustez comme vous le souhaitez.
               </span>
             </li>
             <li className="flex gap-3 rounded-xl border border-light-border/60 bg-background/60 px-4 py-3 dark:bg-background/30">

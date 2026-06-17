@@ -39,7 +39,7 @@ export function PricingView() {
       }
       if (data.url) window.location.href = data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau ou serveur.');
+      setError(err instanceof Error ? err.message : 'Connexion interrompue. Vérifiez votre réseau et réessayez.');
     } finally {
       setLoadingPlan(null);
     }
@@ -50,7 +50,7 @@ export function PricingView() {
       id: null,
       name: "Découverte",
       price: 0,
-      features: ["1 voyage actif", "Assistant de base", "Partage par lien"],
+      features: ["1 voyage actif", "Copilote de base", "Partage par lien"],
       cta: "Commencer gratuitement",
       highlight: false
     },
@@ -58,7 +58,7 @@ export function PricingView() {
       id: "voyageur",
       name: "Voyageur",
       price: isAnnual ? 9 : 12,
-      features: ["3 voyages actifs", "Assistant contextuel", "Budget en temps réel", "Synchronisation calendrier"],
+      features: ["3 voyages actifs", "Copilote contextuel", "Budget en temps réel", "Synchronisation calendrier"],
       cta: "Choisir Voyageur",
       highlight: true
     },
@@ -66,7 +66,7 @@ export function PricingView() {
       id: "pilote",
       name: "Pilote",
       price: isAnnual ? 19 : 24,
-      features: ["Voyages illimités", "Assistant Pro", "Gestion de groupe", "Support prioritaire"],
+      features: ["Voyages illimités", "Copilote avancé", "Gestion de groupe", "Support prioritaire"],
       cta: "Passer en Pilote",
       highlight: false
     }
@@ -167,7 +167,7 @@ export function PricingView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 py-16 border-t border-light-border">
         {[
           { icon: Map, title: "Cartographie", desc: "Données précises" },
-          { icon: Sparkles, title: "Accompagnement", desc: "Assistant dédié" },
+          { icon: Sparkles, title: "Accompagnement", desc: "Copilote dédié" },
           { icon: Plane, title: "Logistique", desc: "Sync transports" },
           { icon: ListChecks, title: "Organisation", desc: "Checklists riches" }
         ].map((f, i) => (
