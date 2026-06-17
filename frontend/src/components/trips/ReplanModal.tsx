@@ -538,7 +538,7 @@ export function ReplanModal({
                                         onClick={submit}
                                         className="btn-primary py-2 px-5 text-sm flex items-center gap-2"
                                     >
-                                        <Sparkles size={14} /> Lancer le replan
+                                        <Sparkles size={14} /> Lancer la replanification
                                     </button>
                                 )}
                                 {step === 'preview' && (

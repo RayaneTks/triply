@@ -25,7 +25,7 @@ export default function GlobalError({
         <div style={{ maxWidth: 480, textAlign: 'center' }}>
           <h1 style={{ fontSize: 28, marginBottom: 12 }}>Une erreur est survenue</h1>
           <p style={{ opacity: 0.7, marginBottom: 24 }}>
-            Quelque chose a mal tourné côté serveur. Réessayez ou rechargez la page.
+            Un problème est survenu de notre côté. Réessayez ou rechargez la page.
           </p>
           {error?.digest ? (
             <p style={{ opacity: 0.5, fontSize: 12, marginBottom: 24 }}>

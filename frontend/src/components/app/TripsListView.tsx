@@ -269,7 +269,7 @@ export function TripsListView() {
                                         ) : (
                                             <span
                                                 className="flex items-center gap-1.5 px-3 py-0.5 bg-light-bg text-light-muted rounded-full text-xs border border-light-border"
-                                                title="Stocké uniquement sur cet appareil (brouillon local non synchronisé)"
+                                                title="Enregistré sur cet appareil uniquement, pas encore synchronisé sur votre compte"
                                             >
                                                 <HardDrive size={13} /> Local
                                             </span>
