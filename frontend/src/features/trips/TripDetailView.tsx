@@ -13,6 +13,7 @@ import {
     Copy,
     ExternalLink,
     FileText,
+    GitBranch,
     Map as MapIcon,
     MapPin,
     Sparkles,
@@ -32,6 +33,8 @@ import { HotelsSection } from '../../components/trips/HotelsSection';
 import { ReplanModal, type CurrentActivityForReplan } from '../../components/trips/ReplanModal';
 import { FreeTimeWidget } from '../../components/trips/FreeTimeWidget';
 import { BudgetReshuffleModal } from '../../components/trips/BudgetReshuffleModal';
+import { VariantsModal } from '../../components/trips/VariantsModal';
+import { getForkableDays } from '../../lib/trip-variants';
 import { DayTimeline } from './DayTimeline';
 import { cn } from '../../lib/utils';
 import { getStoredTrip } from '../../lib/local-trips-store';
@@ -70,6 +73,7 @@ export function TripDetailView() {
     const [deletingCity, setDeletingCity] = useState(false);
     const [replanOpen, setReplanOpen] = useState(false);
     const [budgetOpen, setBudgetOpen] = useState(false);
+    const [variantsOpen, setVariantsOpen] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
 
     const reloadActivities = useCallback(async () => {
@@ -401,6 +405,7 @@ export function TripDetailView() {
 
     const hasRealActivities = activitiesByDay.some((d) => d.activities.length > 0);
     const canReplan = Boolean(apiTrip) && currentActivitiesForReplan.length > 0;
+    const canVariants = Boolean(apiTrip) && getForkableDays(apiTrip?.plan_snapshot).length > 0;
 
     return (
         <div className="max-w-7xl mx-auto px-6 py-12 lg:py-20">
@@ -432,6 +437,15 @@ export function TripDetailView() {
                                 className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
                             >
                                 <Wallet size={14} /> Alléger le budget
+                            </button>
+                        )}
+                        {canVariants && (
+                            <button
+                                type="button"
+                                onClick={() => setVariantsOpen(true)}
+                                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
+                            >
+                                <GitBranch size={14} /> Comparer des variantes
                             </button>
                         )}
                         {apiTrip && (
@@ -895,6 +909,24 @@ export function TripDetailView() {
                     onClose={() => setBudgetOpen(false)}
                     tripId={apiTrip.id}
                     currentBudgetEur={apiTrip.budget_total ?? 0}
+                />
+            )}
+
+            {apiTrip && variantsOpen && (
+                <VariantsModal
+                    open={variantsOpen}
+                    onClose={() => setVariantsOpen(false)}
+                    tripId={apiTrip.id}
+                    trip={apiTrip}
+                    onApplied={async () => {
+                        try {
+                            const fresh = await tripsClient.get(apiTrip.id);
+                            if (fresh) setApiTrip(fresh);
+                        } catch {
+                            /* ignore — modal already closes */
+                        }
+                        void reloadActivities();
+                    }}
                 />
             )}
 
