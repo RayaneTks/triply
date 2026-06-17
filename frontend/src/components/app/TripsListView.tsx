@@ -4,9 +4,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-    AlertTriangle,
     Calendar,
     ChevronRight,
+    Cloud,
+    HardDrive,
     Inbox,
     MapPin,
     MoreVertical,
@@ -14,10 +15,11 @@ import {
     Trash2,
     Wallet,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 import { EmptyState } from '../ui/EmptyState';
 import { PageHeader } from '../ui/PageHeader';
+import { TripListSkeleton } from '../ui/Skeleton';
+import { useToast } from '../ui/Toast';
 import { listStoredTrips, type StoredTrip } from '../../lib/local-trips-store';
 import { formatTripDateRange } from '../../lib/format-trip-dates';
 import { authClient } from '../../lib/auth-client';
@@ -51,12 +53,9 @@ export function TripsListView() {
     const router = useRouter();
     const pathname = usePathname();
     const { isConnected, isLoading: authLoading } = useAuthSession();
+    const { toast } = useToast();
     const [trips, setTrips] = useState<TripListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    const [pendingDelete, setPendingDelete] = useState<TripListItem | null>(null);
-    const [deleting, setDeleting] = useState(false);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement | null>(null);
@@ -113,35 +112,72 @@ export function TripsListView() {
         return () => window.removeEventListener('mousedown', handler);
     }, [openMenuId]);
 
-    const handleConfirmDelete = async () => {
-        if (!pendingDelete) return;
-        setDeleting(true);
-        setDeleteError(null);
+    const reinsertTrip = (trip: TripListItem, index: number) => {
+        setTrips((current) => {
+            if (current.some((t) => t.id === trip.id)) return current;
+            const next = [...current];
+            next.splice(Math.min(index, next.length), 0, trip);
+            return next;
+        });
+    };
 
+    const commitDelete = async (trip: TripListItem, index: number) => {
         try {
-            if (pendingDelete.source === 'api') {
-                await tripsClient.delete(pendingDelete.id);
+            if (trip.source === 'api') {
+                await tripsClient.delete(trip.id);
             } else {
-                deleteLocalTrip(pendingDelete.id);
+                deleteLocalTrip(trip.id);
             }
-            setTrips((current) => current.filter((t) => t.id !== pendingDelete.id));
-            setPendingDelete(null);
         } catch (err) {
-            setDeleteError(err instanceof Error ? err.message : 'Suppression impossible.');
-        } finally {
-            setDeleting(false);
+            // Échec de la suppression réelle → on réaffiche le voyage et on alerte.
+            reinsertTrip(trip, index);
+            toast({
+                variant: 'error',
+                title: 'Suppression impossible',
+                description: err instanceof Error ? err.message : 'Réessayez dans un instant.',
+                duration: 0,
+            });
         }
+    };
+
+    /**
+     * Suppression optimiste : on retire la carte immédiatement et on laisse 5s
+     * pour annuler via le toast. La suppression réelle (API ou localStorage)
+     * n'est déclenchée qu'à l'expiration du toast (rollback si "Annuler").
+     */
+    const handleRequestDelete = (trip: TripListItem) => {
+        setOpenMenuId(null);
+        const index = trips.findIndex((t) => t.id === trip.id);
+        setTrips((current) => current.filter((t) => t.id !== trip.id));
+
+        let undone = false;
+        toast({
+            variant: 'info',
+            title: 'Voyage supprimé',
+            description: trip.destination,
+            duration: 5000,
+            action: {
+                label: 'Annuler',
+                onClick: () => {
+                    undone = true;
+                    reinsertTrip(trip, index);
+                },
+            },
+            onDismiss: (reason) => {
+                if (reason === 'action' || undone) return;
+                void commitDelete(trip, index);
+            },
+        });
     };
 
     if (authLoading || isLoading) {
         return (
-            <div className="max-w-4xl mx-auto px-6 py-20 animate-pulse space-y-12">
-                <div className="h-12 bg-slate-200 w-1/3 rounded-lg" />
-                <div className="space-y-6">
-                    {[1, 2].map((i) => (
-                        <div key={i} className="h-40 bg-slate-100 rounded-[32px] w-full" />
-                    ))}
+            <div className="max-w-5xl mx-auto px-6 py-12 lg:py-20 space-y-12">
+                <div className="space-y-3">
+                    <div className="h-10 w-1/3 animate-pulse rounded-lg bg-light-border/70" />
+                    <div className="h-4 w-2/3 animate-pulse rounded bg-light-border/50" />
                 </div>
+                <TripListSkeleton count={3} />
             </div>
         );
     }
@@ -215,12 +251,27 @@ export function TripsListView() {
                                         <span
                                             className={
                                                 trip.status === 'planned'
-                                                    ? 'px-3 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-xs uppercase border border-emerald-100'
+                                                    ? 'px-3 py-0.5 bg-brand/10 text-brand rounded-full text-xs uppercase border border-brand/30'
                                                     : 'px-3 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs uppercase border border-amber-100'
                                             }
                                         >
                                             {trip.status === 'planned' ? 'Enregistré' : 'Brouillon'}
                                         </span>
+                                        {trip.source === 'api' ? (
+                                            <span
+                                                className="flex items-center gap-1.5 px-3 py-0.5 bg-brand/5 text-brand rounded-full text-xs border border-brand/20"
+                                                title="Synchronisé sur votre compte Triply"
+                                            >
+                                                <Cloud size={13} /> Cloud
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className="flex items-center gap-1.5 px-3 py-0.5 bg-light-bg text-light-muted rounded-full text-xs border border-light-border"
+                                                title="Stocké uniquement sur cet appareil (brouillon local non synchronisé)"
+                                            >
+                                                <HardDrive size={13} /> Local
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -247,11 +298,7 @@ export function TripsListView() {
                                     >
                                         <button
                                             type="button"
-                                            onClick={() => {
-                                                setOpenMenuId(null);
-                                                setPendingDelete(trip);
-                                                setDeleteError(null);
-                                            }}
+                                            onClick={() => handleRequestDelete(trip)}
                                             className="w-full px-4 py-3 text-left text-sm font-bold text-error hover:bg-red-50 flex items-center gap-2"
                                         >
                                             <Trash2 size={16} />
@@ -262,56 +309,6 @@ export function TripsListView() {
                             </div>
                         </div>
                     ))}
-                </div>
-            )}
-
-            {pendingDelete && (
-                <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-sm"
-                    style={{ backgroundColor: 'var(--overlay, rgba(15,23,42,0.6))' }}
-                    onClick={() => (deleting ? undefined : setPendingDelete(null))}
-                >
-                    <motion.div
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="max-w-md w-full bg-card rounded-[32px] p-8 space-y-6 shadow-2xl border border-light-border"
-                    >
-                        <div className="w-14 h-14 bg-red-50 text-error rounded-2xl flex items-center justify-center">
-                            <AlertTriangle size={28} />
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="text-xl font-display font-bold">Supprimer ce séjour ?</h3>
-                            <p className="text-sm text-light-muted leading-relaxed">
-                                Vous êtes sur le point de supprimer définitivement{' '}
-                                <strong>{pendingDelete.destination}</strong>. Cette action est irréversible et
-                                effacera l'itinéraire associé, les activités et les transports rattachés.
-                            </p>
-                        </div>
-                        {deleteError && (
-                            <p className="text-sm font-medium text-error" role="alert">
-                                {deleteError}
-                            </p>
-                        )}
-                        <div className="flex flex-col gap-2">
-                            <button
-                                type="button"
-                                onClick={handleConfirmDelete}
-                                disabled={deleting}
-                                className="bg-error text-white font-bold py-3 rounded-2xl shadow-lg shadow-error/20 disabled:opacity-60"
-                            >
-                                {deleting ? 'Suppression…' : 'Oui, supprimer ce séjour'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPendingDelete(null)}
-                                disabled={deleting}
-                                className="text-light-muted font-bold py-3 rounded-2xl hover:bg-light-bg disabled:opacity-60"
-                            >
-                                Annuler
-                            </button>
-                        </div>
-                    </motion.div>
                 </div>
             )}
         </div>

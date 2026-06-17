@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ToastProvider } from "@/src/components/ui/Toast";
 
 export const metadata: Metadata = {
   title: "Triply - Planification de voyage",
@@ -28,9 +29,11 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
       </head>
       <body className="antialiased overflow-x-hidden min-h-dvh">
-        <main className="flex min-h-dvh flex-col">
-          {children}
-        </main>
+        <ToastProvider>
+          <main className="flex min-h-dvh flex-col">
+            {children}
+          </main>
+        </ToastProvider>
       </body>
     </html>
   );
