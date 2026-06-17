@@ -249,7 +249,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                 const authRequired: ChatMessage = {
                     id: uuid(),
                     role: 'assistant',
-                    content: "Connexion requise pour utiliser l'assistant.",
+                    content: "Connectez-vous pour utiliser le copilote Triply.",
                 };
                 setMessages((prev) => [...prev, authRequired]);
                 return;
@@ -323,7 +323,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     const errorText =
                         payload?.error ||
                         payload?.message ||
-                        'Désolé, une erreur est survenue. Réessaie dans un instant.';
+                        'Désolé, une erreur est survenue. Réessayez dans un instant.';
                     throw new Error(errorText);
                 }
 
@@ -368,7 +368,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
                     content:
                         error instanceof Error
                             ? error.message
-                            : 'Désolé, une erreur est survenue. Réessaie dans un instant.',
+                            : 'Désolé, une erreur est survenue. Réessayez dans un instant.',
                 };
                 setMessages((prev) => [...prev, errorMessage]);
             } finally {
@@ -506,7 +506,7 @@ const Assistant = forwardRef<AssistantHandle, AssistantProps>(function Assistant
             <div
                 ref={scrollContainerRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
-                aria-label="Historique de la conversation avec Triply Assistant"
+                aria-label="Historique de la conversation avec le copilote Triply"
             >
                 <MessageList messages={messages} loading={loading} />
                 {pendingAssistantMessage && (

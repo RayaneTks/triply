@@ -45,7 +45,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
             const fresh = await tripBudgetClient.reshuffle(tripId, savingsTarget);
             setResult(fresh);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur réseau.');
+            setError(err instanceof Error ? err.message : 'Connexion interrompue. Réessayez dans un instant.');
         } finally {
             setLoading(false);
         }
