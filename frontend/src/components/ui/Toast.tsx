@@ -8,6 +8,7 @@ import React, {
     useMemo,
     useRef,
     useState,
+    useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -153,7 +154,19 @@ function Toaster({
     toasts: ToastItem[];
     onDismiss: (id: string, reason?: ToastDismissReason) => void;
 }) {
-    if (typeof document === 'undefined') return null;
+    // Mount-gate : le portail n'existe que côté client. On rend `null` au SSR
+    // ET au premier rendu client (hydratation) pour garantir un markup identique
+    // serveur/client. Activer le portail dès le render client (via `typeof document`)
+    // provoquait un mismatch d'hydratation qui corrompait le contexte App Router.
+    // `useSyncExternalStore` renvoie `false` au SSR/hydratation puis `true` côté client
+    // (même pattern que Sidebar) sans setState-dans-effet.
+    const hasHydrated = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false,
+    );
+
+    if (!hasHydrated || typeof document === 'undefined') return null;
 
     return createPortal(
         <div
