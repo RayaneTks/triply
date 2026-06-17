@@ -129,7 +129,7 @@ export function ReplanModal({
             setPreview(result);
             setStep('preview');
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Erreur réseau.';
+            const message = err instanceof Error ? err.message : 'Connexion interrompue. Réessayez dans un instant.';
             setError(message);
             setStep('error');
         }
@@ -147,7 +147,7 @@ export function ReplanModal({
             // Auto-close after brief success state.
             setTimeout(() => onClose(), 1200);
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Échec de l’application du nouveau plan.";
+            const message = err instanceof Error ? err.message : "Impossible d’appliquer le nouvel itinéraire. Réessayez.";
             setError(message);
             setStep('error');
         }
@@ -538,7 +538,7 @@ export function ReplanModal({
                                         onClick={submit}
                                         className="btn-primary py-2 px-5 text-sm flex items-center gap-2"
                                     >
-                                        <Sparkles size={14} /> Lancer le replan
+                                        <Sparkles size={14} /> Lancer la replanification
                                     </button>
                                 )}
                                 {step === 'preview' && (

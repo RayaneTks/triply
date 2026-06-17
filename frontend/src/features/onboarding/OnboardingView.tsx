@@ -52,7 +52,7 @@ export function OnboardingView() {
           disabled={selectedStyles.length === 0}
           className="btn-primary w-full disabled:opacity-50 disabled:grayscale transition-all"
         >
-          Continuer vers le cadrage
+          Continuer
         </button>
       </motion.div>
     </div>

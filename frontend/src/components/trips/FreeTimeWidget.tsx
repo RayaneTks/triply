@@ -87,7 +87,7 @@ export function FreeTimeWidget({ trip, day, onInserted }: FreeTimeWidgetProps) {
                         </span>
                         <div>
                             <p className="text-xs uppercase tracking-widest text-brand font-bold flex items-center gap-2">
-                                <Clock size={11} /> Concierge — temps libre détecté
+                                <Clock size={11} /> Copilote — temps libre repéré
                             </p>
                             {data && (
                                 <p className="text-sm text-light-foreground mt-1 font-bold">
@@ -96,7 +96,7 @@ export function FreeTimeWidget({ trip, day, onInserted }: FreeTimeWidgetProps) {
                                 </p>
                             )}
                             {!data && loading && (
-                                <p className="text-sm text-light-muted mt-1">Analyse de votre journée…</p>
+                                <p className="text-sm text-light-muted mt-1">Analyse de votre journée en cours…</p>
                             )}
                             {error && <p className="text-xs text-error mt-1">{error}</p>}
                         </div>
@@ -165,7 +165,7 @@ export function FreeTimeWidget({ trip, day, onInserted }: FreeTimeWidgetProps) {
 
                 {data && data.has_free_time && data.suggestions.length === 0 && !loading && !error && (
                     <p className="text-xs text-light-muted mt-2">
-                        Aucune suggestion à proximité — réessayez plus tard ou ajoutez manuellement une étape.
+                        Aucune suggestion à proximité pour l’instant — réessayez plus tard ou ajoutez une activité vous-même.
                     </p>
                 )}
             </motion.div>

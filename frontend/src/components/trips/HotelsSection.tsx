@@ -89,13 +89,13 @@ function buildHotelsErrorMessage(err: unknown): string {
         const backendMsg = extractErrorMessage(err.body);
         if (backendMsg) return backendMsg;
         if (err.status === 405) {
-            return 'La methode HTTP de recherche d\'hotels est refusee par le serveur. Rechargez l\'application puis reessayez.';
+            return 'La recherche d’hôtels est momentanément indisponible. Rechargez la page puis réessayez.';
         }
         if (err.status === 422) {
-            return 'La recherche d\'hotels a ete refusee (parametres invalides ou proxy API). Verifiez la ville et les dates.';
+            return 'La recherche d’hôtels n’a pas abouti. Vérifiez la ville et les dates, puis réessayez.';
         }
         if (err.status >= 500) {
-            return 'Le service hotels est temporairement indisponible. Reessayez dans quelques instants.';
+            return 'Le service d’hôtels est temporairement indisponible. Réessayez dans quelques instants.';
         }
         return err.message;
     }
@@ -169,13 +169,13 @@ export function HotelsSection({
             if (!inD || !isoDate.test(inD) || !outD || !isoDate.test(outD)) {
                 setApiResponse({
                     ...emptyEnv,
-                    error: 'Indiquez des dates d-arrivée et de départ au format AAAA-MM-JJ.',
+                    error: 'Indiquez des dates d’arrivée et de départ au format AAAA-MM-JJ.',
                 } as unknown as AmadeusHotelResponse);
                 return;
             }
             const resolvedCode = await resolveCityCode(cityCode);
             if (!resolvedCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN...).` } as unknown as AmadeusHotelResponse);
+                setApiResponse({ ...emptyEnv, error: `Ville introuvable pour "${cityCode}". Essayez un code à 3 lettres (PAR, BCN...).` } as unknown as AmadeusHotelResponse);
                 return;
             }
             const body: HotelSearchBody = {
@@ -192,7 +192,7 @@ export function HotelsSection({
             const res = await searchHotels(body);
             if (res && typeof res === 'object' && 'errors' in res) {
                 const errArr = (res as { errors?: Array<{ title?: string; detail?: string }> }).errors ?? [];
-                const msg = errArr[0]?.detail || errArr[0]?.title || 'Erreur Amadeus.';
+                const msg = errArr[0]?.detail || errArr[0]?.title || 'Recherche impossible pour le moment.';
                 setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusHotelResponse);
                 return;
             }

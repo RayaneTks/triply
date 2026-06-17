@@ -78,16 +78,16 @@ export const FlightSearchModal: React.FC<FlightSearchModalProps> = ({
         const nextErrors: FlightFormErrors = {};
 
         if (!departureCity.trim()) {
-            nextErrors.departureCity = 'Veuillez renseigner une ville de départ.';
+            nextErrors.departureCity = 'Indiquez une ville de départ.';
         }
         if (!arrivalCity.trim()) {
-            nextErrors.arrivalCity = "Veuillez renseigner une ville d'arrivée.";
+            nextErrors.arrivalCity = "Indiquez une ville d'arrivée.";
         }
         if (!arrivalDate || !departureDate) {
-            nextErrors.dates = 'Veuillez sélectionner des dates aller et retour.';
+            nextErrors.dates = 'Choisissez vos dates aller et retour.';
         }
         if (!Number.isFinite(travelerCount) || travelerCount <= 0) {
-            nextErrors.travelerCount = 'Veuillez indiquer au moins un voyageur.';
+            nextErrors.travelerCount = 'Indiquez au moins un voyageur.';
         }
         if (budget && Number(budget) < 0) {
             nextErrors.budget = 'Le budget ne peut pas être négatif.';

@@ -45,7 +45,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
             const fresh = await tripBudgetClient.reshuffle(tripId, savingsTarget);
             setResult(fresh);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur réseau.');
+            setError(err instanceof Error ? err.message : 'Connexion interrompue. Réessayez dans un instant.');
         } finally {
             setLoading(false);
         }
@@ -100,7 +100,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
                                     Alléger le budget
                                 </h2>
                                 <p className="text-sm text-light-muted mt-1">
-                                    Triply classe vos postes par impact et propose des swaps pour atteindre votre cible.
+                                    Triply classe vos dépenses par impact et propose des alternatives pour atteindre votre objectif.
                                 </p>
                             </div>
                         </div>
@@ -159,7 +159,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
                                 <ResultSummary result={result} />
                                 {result.swaps.length === 0 ? (
                                     <p className="text-sm text-light-muted text-center py-8">
-                                        Aucun poste payant à optimiser dans ce voyage pour l’instant.
+                                        Aucune dépense à alléger dans ce voyage pour l’instant.
                                     </p>
                                 ) : (
                                     <ul className="space-y-2">
@@ -174,7 +174,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
                         {loading && (
                             <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                                 <Loader2 size={32} className="animate-spin text-brand" />
-                                <p className="text-sm font-bold text-light-foreground">Calcul des swaps…</p>
+                                <p className="text-sm font-bold text-light-foreground">Recherche d’économies en cours…</p>
                             </div>
                         )}
                     </div>
@@ -200,7 +200,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
                         ) : (
                             <>
                                 <span className="text-xs text-light-muted">
-                                    Suggestions estimatives — chaque swap reste à confirmer côté détail.
+                                    Estimations indicatives — chaque suggestion reste à confirmer dans le détail.
                                 </span>
                                 <button
                                     type="button"
@@ -208,7 +208,7 @@ export function BudgetReshuffleModal({ open, onClose, tripId, currentBudgetEur }
                                     disabled={loading}
                                     className="btn-primary py-2 px-5 text-sm flex items-center gap-2"
                                 >
-                                    <Sparkles size={14} /> Proposer des swaps
+                                    <Sparkles size={14} /> Proposer des économies
                                 </button>
                             </>
                         )}
@@ -268,7 +268,7 @@ function SwapRow({ swap }: { swap: BudgetSwap }) {
                 <p className="text-sm font-bold text-light-foreground truncate">{swap.title}</p>
                 <p className="text-xs text-light-muted mt-0.5 leading-relaxed">{swap.description}</p>
                 <p className="text-[11px] text-light-muted/80 mt-1 uppercase tracking-wider">
-                    {swapKindLabel(swap.kind)} · impact {swap.impact_level}
+                    {swapKindLabel(swap.kind)} · impact {{ low: 'faible', medium: 'moyen', high: 'fort' }[swap.impact_level]}
                 </p>
             </div>
             <div className="text-right shrink-0">

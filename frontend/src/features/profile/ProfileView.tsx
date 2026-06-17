@@ -331,8 +331,8 @@ export function ProfileView() {
                                             {isAdmin && (
                                                 <div className="rounded-2xl border border-brand/20 bg-brand/5 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                                     <div>
-                                                        <p className="font-bold text-brand">Back-office administrateur</p>
-                                                        <p className="text-sm text-light-muted">Accédez aux métriques et à la gestion des utilisateurs Triply.</p>
+                                                        <p className="font-bold text-brand">Espace administrateur</p>
+                                                        <p className="text-sm text-light-muted">Accédez aux statistiques et à la gestion des utilisateurs Triply.</p>
                                                     </div>
                                                     <button
                                                         type="button"
@@ -635,10 +635,10 @@ export function ProfileView() {
                             <AlertTriangle size={32} />
                         </div>
                         <div className="space-y-4 text-left">
-                            <h3 className="text-2xl font-display font-bold">Êtes-vous certain ?</h3>
+                            <h3 className="text-2xl font-display font-bold">Supprimer votre compte</h3>
                             <p className="text-light-muted leading-relaxed">
-                                Cette action sera disponible dans une prochaine itération. Pour le moment, contactez
-                                le support pour supprimer votre compte.
+                                La suppression depuis l’application arrive bientôt. En attendant, contactez
+                                notre support pour supprimer votre compte.
                             </p>
                         </div>
                         <div className="flex flex-col gap-3">

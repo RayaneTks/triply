@@ -119,7 +119,7 @@ export function AppShell({
                   className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-light-border bg-card px-3 py-1.5 text-xs font-bold text-light-muted transition-colors hover:border-brand hover:text-brand"
                 >
                   <LogOut size={14} />
-                  Logout
+                  Déconnexion
                 </button>
               </>
             ) : (

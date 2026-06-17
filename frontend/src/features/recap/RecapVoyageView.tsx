@@ -231,8 +231,8 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
     if (!isPublic && !isConnected) {
         return (
             <AuthRequiredCard
-                title="Connexion requise"
-                description="Connectez-vous pour accéder au récapitulatif de votre voyage."
+                title="Connectez-vous pour voir ce récap"
+                description="Le récapitulatif de vos voyages est réservé aux comptes connectés."
             />
         );
     }
@@ -415,7 +415,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
                             />
                         ) : (
                             <div className="h-full w-full flex items-center justify-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                Mapbox token manquant
+                                Carte indisponible pour le moment
                             </div>
                         )}
                     </div>

@@ -383,9 +383,9 @@ export function Wizard() {
       aiDays = await generateAiItinerary();
     } catch (err) {
       aiDays = [];
-      const message = err instanceof Error ? err.message : 'Génération IA indisponible.';
+      const message = err instanceof Error ? err.message : 'La génération de l’itinéraire est momentanément indisponible.';
       setSubmitError(
-        `${message} Votre voyage a été créé sans itinéraire IA — vous pourrez le relancer depuis la page du voyage.`,
+        `${message} Votre voyage a bien été créé, mais sans itinéraire généré — vous pourrez le relancer depuis la page du voyage.`,
       );
     }
 
@@ -452,7 +452,7 @@ export function Wizard() {
     },
     origin: {
       ok: Boolean(origin?.iataCode),
-      hint: "Sélectionnez une ville de départ pour résoudre l’aéroport.",
+      hint: "Sélectionnez votre ville de départ pour trouver l’aéroport le plus proche.",
     },
     travelers: {
       ok: travelers >= 1,
@@ -881,14 +881,14 @@ function StepRenderer({
                 onChange={(e) => actions.setBudget(parseInt(e.target.value))}
               />
               <div className="flex justify-between items-end border-b border-light-border pb-4">
-                 <span className="text-light-muted font-bold">Enveloppe globale</span>
+                 <span className="text-light-muted font-bold">Budget total</span>
                  <span className="text-4xl font-display font-bold text-brand">{state.budget.toLocaleString()}€</span>
               </div>
             </div>
             <div className="p-6 bg-brand/5 rounded-2xl border border-brand/10 flex gap-4">
                <Bot size={24} className="text-brand shrink-0" />
                <p className="text-xs text-brand leading-relaxed font-bold">
-                 Selon nos données, ce budget est suffisant pour {state.budget > 3000 ? "un séjour grand confort" : "une expérience équilibrée"} en Europe.
+                 Selon nos données, ce budget permet {state.budget > 3000 ? "un voyage grand confort" : "un voyage équilibré"} en Europe.
                </p>
             </div>
           </div>

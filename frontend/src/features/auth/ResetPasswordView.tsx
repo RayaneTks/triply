@@ -53,7 +53,7 @@ export function ResetPasswordView() {
       >
         <header className="space-y-4">
           <h1 className="text-3xl font-display font-bold">Nouveau mot de passe</h1>
-          <p className="text-light-muted">Choisissez un mot de passe robuste pour sécuriser vos accès de pilotage.</p>
+          <p className="text-light-muted">Choisissez un mot de passe solide pour sécuriser votre compte.</p>
         </header>
 
         {sent ? (
@@ -80,7 +80,7 @@ export function ResetPasswordView() {
                />
             </div>
             <div className="space-y-2">
-               <label className="text-xs font-bold text-light-muted uppercase tracking-wider" htmlFor="reset-token">Jeton (lien reçu par email)</label>
+               <label className="text-xs font-bold text-light-muted uppercase tracking-wider" htmlFor="reset-token">Code reçu par email</label>
                <input
                  id="reset-token"
                  type="text"

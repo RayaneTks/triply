@@ -52,7 +52,7 @@ export function PrivacyView() {
       <h2>Protection de vos données</h2>
       <p>Chez Triply, nous savons que vos projets de voyage sont personnels. Nous collectons uniquement les données nécessaires à l'optimisation de votre itinéraire : destination, budget, préférences de rythme.</p>
       <h3>Cookies</h3>
-      <p>Nous utilisons des cookies pour maintenir votre session active et mémoriser votre mode de navigation préféré (Cockpit vs Standard).</p>
+      <p>Nous utilisons des cookies pour garder votre session active et mémoriser vos préférences d’affichage.</p>
     </div>
   );
 }
