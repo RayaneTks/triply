@@ -38,7 +38,7 @@ export function SiteFooter() {
         <div>
           <h4 className="font-bold text-sm uppercase tracking-widest text-light-foreground mb-6">Contact</h4>
           <ul className="space-y-4">
-            <li><a href="mailto:hello@triply.io" className="text-light-muted text-sm hover:text-brand transition-colors">Support</a></li>
+            <li><a href="mailto:support@triply.ovh" className="text-light-muted text-sm hover:text-brand transition-colors">Support</a></li>
           </ul>
         </div>
       </div>

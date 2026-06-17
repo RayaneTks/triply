@@ -309,7 +309,7 @@ export default function HomePage() {
                         <nav aria-label="Liens légaux" className="flex flex-wrap items-center justify-center gap-6 text-sm text-foreground/75">
                             <a href="/legal/confidentialite" className="transition-colors hover:text-primary">Confidentialité</a>
                             <a href="/legal/cgu" className="transition-colors hover:text-primary">Conditions d&apos;utilisation</a>
-                            <a href="mailto:hello@triply.io" className="transition-colors hover:text-primary">Support</a>
+                            <a href="mailto:support@triply.ovh" className="transition-colors hover:text-primary">Support</a>
                             <a href="/a-propos" className="transition-colors hover:text-primary">À propos</a>
                         </nav>
                     </div>
