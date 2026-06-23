@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Plane, Trash2, ExternalLink, Search } from 'lucide-react';
-import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
+import type { FlightSearchModal as FlightSearchModalType } from '@/src/components/FlightSearchModal/FlightSearchModal';
+const FlightSearchModal = dynamic(
+  () => import('@/src/components/FlightSearchModal/FlightSearchModal').then((m) => m.FlightSearchModal),
+  { ssr: false },
+) as typeof FlightSearchModalType;
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 import { searchFlights, searchPlaces, lookupIata, type AmadeusLocation } from '@/src/lib/integrations/amadeus';
@@ -338,13 +343,26 @@ export function FlightsSection({
                     <div className="h-3 w-1/2 rounded bg-light-bg animate-pulse" />
                 </div>
             ) : flights.length === 0 ? (
-                <div className="triply-card p-8 text-center space-y-3">
-                    <p className="text-sm text-light-muted font-bold">
-                        Aucun vol enregistré pour ce voyage.
-                    </p>
-                    <p className="text-xs text-light-muted">
-                        Lancez une recherche pour comparer les meilleures offres selon votre budget.
-                    </p>
+                <div className="triply-card relative overflow-hidden p-8">
+                    <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
+                    <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-2">
+                            <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand">
+                                Aucun vol sélectionné
+                            </span>
+                            <h4 className="text-xl font-display font-bold text-light-foreground">Trouvez le vol le moins cher selon vos dates</h4>
+                            <p className="max-w-md text-sm leading-relaxed text-light-muted">
+                                Triply compare les offres aux meilleures dates et accroche le résultat à votre budget en un clic.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={openModal}
+                            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-90"
+                        >
+                            <Search size={16} /> Sélectionner un vol
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <ul className="space-y-3">

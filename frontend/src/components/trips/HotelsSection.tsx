@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Bed, Trash2, ExternalLink, Search } from 'lucide-react';
-import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
+import type { HotelSearchModal as HotelSearchModalType } from '@/src/components/HotelSearchModal/HotelSearchModal';
+const HotelSearchModal = dynamic(
+  () => import('@/src/components/HotelSearchModal/HotelSearchModal').then((m) => m.HotelSearchModal),
+  { ssr: false },
+) as typeof HotelSearchModalType;
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import { searchHotels, searchPlaces, lookupIata, type AmadeusLocation, type HotelSearchBody } from '@/src/lib/integrations/amadeus';
@@ -296,13 +301,26 @@ export function HotelsSection({
                     <div className="h-3 w-1/2 rounded bg-light-bg animate-pulse" />
                 </div>
             ) : hotels.length === 0 ? (
-                <div className="triply-card p-8 text-center space-y-3">
-                    <p className="text-sm text-light-muted font-bold">
-                        Aucun hôtel enregistré pour ce voyage.
-                    </p>
-                    <p className="text-xs text-light-muted">
-                        Lancez une recherche pour comparer les meilleures offres selon votre budget.
-                    </p>
+                <div className="triply-card relative overflow-hidden p-8">
+                    <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
+                    <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-2">
+                            <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand">
+                                Aucun hôtel sélectionné
+                            </span>
+                            <h4 className="text-xl font-display font-bold text-light-foreground">Trouvez l’hôtel le moins cher selon vos dates</h4>
+                            <p className="max-w-md text-sm leading-relaxed text-light-muted">
+                                Triply compare les offres et accroche celle qui rentre dans votre budget en un clic.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={openModal}
+                            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-90"
+                        >
+                            <Search size={16} /> Sélectionner un hôtel
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <ul className="space-y-3">

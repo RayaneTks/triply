@@ -48,7 +48,7 @@ export function RegisterView() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="min-h-dvh bg-background flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -70,7 +70,7 @@ export function RegisterView() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row overflow-hidden">
+    <div className="min-h-dvh bg-background flex flex-col lg:flex-row overflow-hidden">
       <div className="hidden lg:flex lg:flex-1 relative bg-[#0f172a] items-center justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand/20 via-transparent to-transparent opacity-50" />
         <div className="relative z-10 text-center space-y-8 p-12 max-w-xl">

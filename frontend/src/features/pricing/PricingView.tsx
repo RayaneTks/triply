@@ -45,11 +45,14 @@ export function PricingView() {
     }
   }
 
+  // Prix mensuels de référence (équivalent mensuel quand on souscrit à l'année).
+  // Annuel = (prix annuel équivalent) × 12, payé en une fois.
   const tiers = [
     {
       id: null,
       name: "Découverte",
-      price: 0,
+      monthlyPrice: 0,
+      annualMonthlyEq: 0,
       features: ["1 voyage actif", "Copilote de base", "Partage par lien"],
       cta: "Commencer gratuitement",
       highlight: false
@@ -57,7 +60,8 @@ export function PricingView() {
     {
       id: "voyageur",
       name: "Voyageur",
-      price: isAnnual ? 9 : 12,
+      monthlyPrice: 12,
+      annualMonthlyEq: 9,
       features: ["3 voyages actifs", "Copilote contextuel", "Budget en temps réel", "Synchronisation calendrier"],
       cta: "Choisir Voyageur",
       highlight: true
@@ -65,7 +69,8 @@ export function PricingView() {
     {
       id: "pilote",
       name: "Pilote",
-      price: isAnnual ? 19 : 24,
+      monthlyPrice: 24,
+      annualMonthlyEq: 19,
       features: ["Voyages illimités", "Copilote avancé", "Gestion de groupe", "Support prioritaire"],
       cta: "Passer en Pilote",
       highlight: false
@@ -124,9 +129,35 @@ export function PricingView() {
               </span>
             )}
             <h2 className="text-xl font-bold mb-2">{tier.name}</h2>
-            <div className="mb-8">
-              <span className="text-4xl font-display font-bold">{tier.price}€</span>
-              <span className="text-light-muted text-sm font-bold"> / mois</span>
+            <div className="mb-8 space-y-1">
+              {tier.monthlyPrice === 0 ? (
+                <>
+                  <div>
+                    <span className="text-4xl font-display font-bold">0€</span>
+                  </div>
+                  <p className="text-light-muted text-xs font-semibold">Gratuit, sans carte bancaire</p>
+                </>
+              ) : isAnnual ? (
+                <>
+                  <div>
+                    <span className="text-4xl font-display font-bold">{tier.annualMonthlyEq * 12}€</span>
+                    <span className="text-light-muted text-sm font-bold"> / an</span>
+                  </div>
+                  <p className="text-light-muted text-xs font-semibold">
+                    Soit {tier.annualMonthlyEq}€/mois · payé en une fois
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="text-4xl font-display font-bold">{tier.monthlyPrice}€</span>
+                    <span className="text-light-muted text-sm font-bold"> / mois</span>
+                  </div>
+                  <p className="text-light-muted text-xs font-semibold">
+                    Sans engagement · annulation à tout moment
+                  </p>
+                </>
+              )}
             </div>
             
             <ul className="space-y-4 mb-12 flex-1">

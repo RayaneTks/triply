@@ -7,6 +7,7 @@ use App\Models\Voyage;
 use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\RouteServiceInterface;
 use App\Services\Contracts\SnapshotSyncServiceInterface;
+use App\Services\Contracts\TripAutoSelectionServiceInterface;
 use App\Services\Contracts\TripRecapServiceInterface;
 use App\Services\Contracts\TripServiceInterface;
 use Carbon\Carbon;
@@ -21,6 +22,7 @@ class TripService implements TripServiceInterface
         private readonly SnapshotSyncServiceInterface $snapshotSync,
         private readonly TripRecapServiceInterface $tripRecap,
         private readonly RouteServiceInterface $routeService,
+        private readonly TripAutoSelectionServiceInterface $autoSelection,
     ) {
     }
 
@@ -51,6 +53,10 @@ class TripService implements TripServiceInterface
         if (is_array($planSnapshot)) {
             $this->snapshotSync->syncFromSnapshot($voyage, $planSnapshot);
         }
+
+        // Sélection automatique vol + hôtel le moins cher selon les besoins
+        // déclarés au wizard. Best-effort : exceptions avalées en interne.
+        $this->autoSelection->runForTrip($voyage);
 
         return $this->serializeTrip($voyage->fresh(['transports', 'hebergements', 'journees.etapes']));
     }

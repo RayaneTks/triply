@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { WorldMap as Map, type RouteMapSegment } from '../../components/Map/Map';
+import { WorldMap as Map, type RouteMapSegment } from '../../components/Map/WorldMapDynamic';
 import { recapClient, type RecapSection, type RouteSegment, type TripRecap } from '../../lib/recap-client';
 import { bookingClient } from '../../lib/booking-client';
 import { authClient } from '../../lib/auth-client';

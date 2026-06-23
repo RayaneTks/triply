@@ -58,6 +58,19 @@ export interface PlanSnapshot {
         lat?: number;
         lng?: number;
     };
+    /** Besoins déclarés au wizard — pour signaler les sélections manquantes côté fiche voyage. */
+    plannerNeeds?: {
+        flights?: boolean;
+        hotels?: boolean;
+        activities?: boolean;
+        restaurants?: boolean;
+    };
+    /** Préférences affinant la sélection automatique vol/hôtel. */
+    plannerPreferences?: {
+        flightNonStop?: boolean;
+        flightTravelClass?: 'ECONOMY' | 'PREMIUM_ECONOMY' | 'BUSINESS' | 'FIRST';
+        hotelMinStars?: 1 | 2 | 3 | 4 | 5;
+    };
 }
 
 const sanitizeWaypoints = (waypoints: Array<{ lat: number; lng: number }>): Array<{ lat: number; lng: number }> =>

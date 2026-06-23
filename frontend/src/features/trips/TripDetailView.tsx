@@ -4,11 +4,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-    Archive,
     ArrowLeft,
     Bot,
     Calendar,
-    ChevronRight,
     Clock,
     Copy,
     ExternalLink,
@@ -23,17 +21,31 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import { PageHeader } from '../../components/ui/PageHeader';
 import { ActivitiesSkeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../components/ui/Toast';
-import { WorldMap } from '../../components/Map/Map';
+import { WorldMap } from '../../components/Map/WorldMapDynamic';
 import { LocalTransportsSection } from '../../components/trips/LocalTransportsSection';
 import { FlightsSection } from '../../components/trips/FlightsSection';
 import { HotelsSection } from '../../components/trips/HotelsSection';
-import { ReplanModal, type CurrentActivityForReplan } from '../../components/trips/ReplanModal';
+import { DayCarousel } from '../../components/trips/DayCarousel';
+import dynamic from 'next/dynamic';
+import { type CurrentActivityForReplan, type ReplanModal as ReplanModalType } from '../../components/trips/ReplanModal';
 import { FreeTimeWidget } from '../../components/trips/FreeTimeWidget';
-import { BudgetReshuffleModal } from '../../components/trips/BudgetReshuffleModal';
-import { VariantsModal } from '../../components/trips/VariantsModal';
+import type { BudgetReshuffleModal as BudgetReshuffleModalType } from '../../components/trips/BudgetReshuffleModal';
+import type { VariantsModal as VariantsModalType } from '../../components/trips/VariantsModal';
+
+const ReplanModal = dynamic(
+  () => import('../../components/trips/ReplanModal').then((m) => m.ReplanModal),
+  { ssr: false },
+) as typeof ReplanModalType;
+const BudgetReshuffleModal = dynamic(
+  () => import('../../components/trips/BudgetReshuffleModal').then((m) => m.BudgetReshuffleModal),
+  { ssr: false },
+) as typeof BudgetReshuffleModalType;
+const VariantsModal = dynamic(
+  () => import('../../components/trips/VariantsModal').then((m) => m.VariantsModal),
+  { ssr: false },
+) as typeof VariantsModalType;
 import { getForkableDays } from '../../lib/trip-variants';
 import { DayTimeline } from './DayTimeline';
 import { cn } from '../../lib/utils';
@@ -416,99 +428,235 @@ export function TripDetailView() {
                 <ArrowLeft size={14} /> Retour à mes voyages
             </Link>
 
-            <PageHeader
-                title={`Voyage — ${trip.destination}`}
-                subtitle={`${trip.dates} • ${trip.travelers} voyageur${trip.travelers > 1 ? 's' : ''}`}
-                actions={
-                    <div className="flex flex-wrap gap-3">
-                        {canReplan && (
-                            <button
-                                type="button"
-                                onClick={() => setReplanOpen(true)}
-                                className="btn-primary py-2 px-4 text-xs flex items-center gap-2"
+            {/* Hero header — destination en grand, métadonnées en pills, actions secondaires en icônes. */}
+            <header className="mb-8 overflow-hidden rounded-3xl border border-light-border bg-gradient-to-br from-brand/10 via-card to-card p-6 sm:p-8">
+                <div className="flex flex-col gap-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 space-y-3">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-brand/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-brand">
+                                <MapPin size={12} /> Destination
+                            </div>
+                            <h1 className="text-balance font-display text-4xl font-bold leading-tight text-light-foreground sm:text-5xl">
+                                {trip.destination}
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-light-border bg-card px-3 py-1 font-bold text-light-foreground">
+                                    <Calendar size={12} className="text-brand" /> {trip.dates}
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-light-border bg-card px-3 py-1 font-bold text-light-foreground">
+                                    <Users size={12} className="text-brand" /> {trip.travelers} voyageur{trip.travelers > 1 ? 's' : ''}
+                                </span>
+                                <span
+                                    className={cn(
+                                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide',
+                                        trip.statusLabel === 'En cours'
+                                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                            : trip.statusLabel === 'A venir' || trip.statusLabel === 'À venir'
+                                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                                : 'bg-slate-500/15 text-slate-600 dark:text-slate-300',
+                                    )}
+                                >
+                                    {trip.statusLabel}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Action principale large + actions secondaires icon-only. */}
+                        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+                            {canReplan && (
+                                <button
+                                    type="button"
+                                    onClick={() => setReplanOpen(true)}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-90"
+                                >
+                                    <Sparkles size={14} /> Quelque chose a changé ?
+                                </button>
+                            )}
+                            <Link
+                                href={`/recap-voyage?tripId=${tripId}`}
+                                title="Voir le récap"
+                                aria-label="Récap voyage"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-light-border bg-card text-light-foreground transition-colors hover:border-brand hover:text-brand"
                             >
-                                <Sparkles size={14} /> Quelque chose a changé ?
-                            </button>
-                        )}
-                        {apiTrip && (
-                            <button
-                                type="button"
-                                onClick={() => setBudgetOpen(true)}
-                                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
-                            >
-                                <Wallet size={14} /> Alléger le budget
-                            </button>
-                        )}
-                        {canVariants && (
-                            <button
-                                type="button"
-                                onClick={() => setVariantsOpen(true)}
-                                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
-                            >
-                                <GitBranch size={14} /> Comparer des variantes
-                            </button>
-                        )}
-                        {apiTrip && (
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    if (duplicating) return;
-                                    setDuplicating(true);
-                                    try {
-                                        const copy = await tripsClient.duplicate(apiTrip.id);
-                                        router.push(`/voyages/${copy.id}`);
-                                    } catch (err) {
-                                        toast({
-                                            variant: 'error',
-                                            title: 'Duplication impossible',
-                                            description: err instanceof Error ? err.message : undefined,
-                                        });
-                                    } finally {
-                                        setDuplicating(false);
-                                    }
-                                }}
-                                disabled={duplicating}
-                                className="btn-secondary py-2 px-4 text-xs flex items-center gap-2 disabled:opacity-60"
-                            >
-                                <Copy size={14} /> {duplicating ? 'Duplication…' : 'Dupliquer'}
-                            </button>
-                        )}
-                        <Link
-                            href={`/recap-voyage?tripId=${tripId}`}
-                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
-                        >
-                            <FileText size={14} /> Récap
-                        </Link>
+                                <FileText size={16} />
+                            </Link>
+                            {apiTrip && (
+                                <button
+                                    type="button"
+                                    onClick={() => setBudgetOpen(true)}
+                                    title="Alléger le budget"
+                                    aria-label="Alléger le budget"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-light-border bg-card text-light-foreground transition-colors hover:border-brand hover:text-brand"
+                                >
+                                    <Wallet size={16} />
+                                </button>
+                            )}
+                            {canVariants && (
+                                <button
+                                    type="button"
+                                    onClick={() => setVariantsOpen(true)}
+                                    title="Comparer des variantes"
+                                    aria-label="Comparer des variantes"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-light-border bg-card text-light-foreground transition-colors hover:border-brand hover:text-brand"
+                                >
+                                    <GitBranch size={16} />
+                                </button>
+                            )}
+                            {apiTrip && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (duplicating) return;
+                                        setDuplicating(true);
+                                        try {
+                                            const copy = await tripsClient.duplicate(apiTrip.id);
+                                            router.push(`/voyages/${copy.id}`);
+                                        } catch (err) {
+                                            toast({
+                                                variant: 'error',
+                                                title: 'Duplication impossible',
+                                                description: err instanceof Error ? err.message : undefined,
+                                            });
+                                        } finally {
+                                            setDuplicating(false);
+                                        }
+                                    }}
+                                    disabled={duplicating}
+                                    title="Dupliquer ce voyage"
+                                    aria-label="Dupliquer"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-light-border bg-card text-light-foreground transition-colors hover:border-brand hover:text-brand disabled:opacity-60"
+                                >
+                                    <Copy size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {trip.fullLabel && trip.fullLabel !== trip.destination && (
+                        <p className="text-sm leading-relaxed text-light-muted">{trip.fullLabel}</p>
+                    )}
+                </div>
+            </header>
+
+            {/* Bandeau dépassement budget — visible dès que les estimations dépassent l'enveloppe. */}
+            {typeof trip.remainingBudget === 'number' && trip.remainingBudget < 0 && (
+                <div
+                    role="alert"
+                    className="mb-8 flex flex-col gap-3 rounded-2xl border border-amber-300/70 bg-amber-50/95 p-5 text-amber-950 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-100"
+                >
+                    <div className="flex items-start gap-3">
+                        <Wallet size={20} className="mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold">
+                                Dépassement budget&nbsp;: +{Math.abs(trip.remainingBudget)}€
+                            </p>
+                            <p className="text-xs leading-relaxed opacity-90">
+                                Les estimations actuelles dépassent l’enveloppe de {trip.budget}€. Triply a sélectionné les options les moins chères disponibles selon vos dates et besoins — vous pouvez alléger pour rester dans le budget.
+                            </p>
+                        </div>
+                    </div>
+                    {apiTrip && (
                         <button
                             type="button"
-                            aria-disabled="true"
-                            title="Archivage bientôt disponible"
-                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2 text-red-600 opacity-60 cursor-not-allowed"
-                            onClick={(e) => e.preventDefault()}
+                            onClick={() => setBudgetOpen(true)}
+                            className="btn-secondary shrink-0 self-start px-4 py-2 text-xs sm:self-auto"
                         >
-                            <Archive size={14} /> Archiver
+                            Alléger le budget
                         </button>
-                    </div>
-                }
-            />
+                    )}
+                </div>
+            )}
 
-            <p className="text-sm text-light-muted font-bold mb-10 max-w-2xl">{trip.fullLabel}</p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-                {[
-                    { label: 'Budget total', val: `${trip.budget}€`, icon: Wallet, color: 'text-brand' },
-                    { label: 'Budget restant (estim.)', val: `${trip.remainingBudget}€`, icon: Sparkles, color: 'text-brand' },
-                    { label: 'Statut', val: trip.statusLabel, icon: Clock, color: 'text-amber-600' },
-                    { label: 'Destination', val: trip.destination, icon: MapPin, color: 'text-brand' },
-                ].map((stat, i) => (
-                    <div key={i} className="bg-card border border-light-border p-6 rounded-3xl space-y-1">
-                        <p className="text-xs font-bold text-light-muted uppercase tracking-widest flex items-center gap-2">
-                            <stat.icon size={12} className={stat.color} /> {stat.label}
-                        </p>
-                        <p className={cn('text-xl font-display font-bold', stat.color)}>{stat.val}</p>
+            {/* Stats compactes : budget + barre de progression visuelle. Destination/statut
+                déjà dans le hero, plus besoin de les répéter. */}
+            {(() => {
+                const total = Number(trip.budget) || 0;
+                const remaining = typeof trip.remainingBudget === 'number' ? trip.remainingBudget : total;
+                const spent = Math.max(0, total - remaining);
+                const pctSpent = total > 0 ? Math.min(100, Math.max(0, (spent / total) * 100)) : 0;
+                const overrun = remaining < 0;
+                return (
+                    <div className="mb-10 grid gap-4 sm:grid-cols-3">
+                        <div className="rounded-3xl border border-light-border bg-card p-5">
+                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-light-muted">
+                                <Wallet size={12} className="text-brand" /> Budget total
+                            </div>
+                            <p className="mt-2 font-display text-3xl font-bold text-brand">{total}€</p>
+                        </div>
+                        <div
+                            className={cn(
+                                'rounded-3xl border p-5',
+                                overrun
+                                    ? 'border-amber-300/70 bg-amber-50/40 dark:border-amber-800/70 dark:bg-amber-950/30'
+                                    : 'border-light-border bg-card',
+                            )}
+                        >
+                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-light-muted">
+                                <Sparkles size={12} className={overrun ? 'text-amber-600' : 'text-brand'} />{' '}
+                                {overrun ? 'Dépassement' : 'Reste à dépenser'}
+                            </div>
+                            <p className={cn('mt-2 font-display text-3xl font-bold', overrun ? 'text-amber-600' : 'text-brand')}>
+                                {overrun ? `+${Math.abs(remaining)}€` : `${remaining}€`}
+                            </p>
+                        </div>
+                        <div className="rounded-3xl border border-light-border bg-card p-5">
+                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-light-muted">
+                                <Clock size={12} className="text-brand" /> Dépensé
+                            </div>
+                            <p className="mt-2 font-display text-3xl font-bold text-light-foreground">{spent}€</p>
+                            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-light-bg">
+                                <div
+                                    className={cn(
+                                        'h-full rounded-full transition-all',
+                                        overrun ? 'bg-amber-500' : 'bg-brand',
+                                    )}
+                                    style={{ width: `${overrun ? 100 : pctSpent}%` }}
+                                />
+                            </div>
+                        </div>
                     </div>
-                ))}
-            </div>
+                );
+            })()}
+
+            {/* Bandeau sélections manquantes — basé sur ce que l'utilisateur a demandé au wizard. */}
+            {(() => {
+                const needs = apiTrip?.plan_snapshot?.plannerNeeds;
+                const flightDeclared = needs?.flights === true;
+                const hotelDeclared = needs?.hotels === true;
+                const hasFlightSummary = Boolean(apiTrip?.plan_snapshot?.flightSummary?.price);
+                const hasHotelSummary = Boolean(apiTrip?.plan_snapshot?.hotelSummary?.totalPrice);
+                const items: Array<{ key: 'flights' | 'hotels'; label: string }> = [];
+                if (flightDeclared && !hasFlightSummary) items.push({ key: 'flights', label: 'Vol' });
+                if (hotelDeclared && !hasHotelSummary) items.push({ key: 'hotels', label: 'Hôtel' });
+                if (items.length === 0) return null;
+                return (
+                    <div className="mb-8 flex flex-col gap-3 rounded-2xl border border-brand/30 bg-brand/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <Sparkles size={18} className="mt-0.5 shrink-0 text-brand" />
+                            <div>
+                                <p className="text-sm font-bold text-light-foreground">
+                                    Sélection{items.length > 1 ? 's' : ''} en attente : {items.map((i) => i.label).join(' + ')}
+                                </p>
+                                <p className="text-xs leading-relaxed text-light-muted">
+                                    Vous avez demandé ces options au wizard. Sélectionnez le moins cher selon vos dates pour ajuster automatiquement le budget.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                            {items.map((i) => (
+                                <button
+                                    key={i.key}
+                                    type="button"
+                                    onClick={() => setActiveTab(i.key)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-bold text-white hover:opacity-90"
+                                >
+                                    Choisir {i.label.toLowerCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })()}
 
             <div className="grid lg:grid-cols-3 gap-12">
                 <div className="lg:col-span-2 space-y-8">
@@ -577,75 +725,80 @@ export function TripDetailView() {
                                 )}
 
                                 {hasRealActivities ? (
-                                    activitiesByDay
-                                        .filter((day) => day.activities.length > 0)
-                                        .map((day) => {
-                                            const dayNumber = (day.index ?? 0) + 1;
-                                            return (
-                                                <div key={day.day_id} className="space-y-4">
-                                                    <DayTimeline
-                                                        tripId={tripId ?? ''}
-                                                        day={day}
-                                                        onLikedChange={(activityId, state) =>
-                                                            setActivityLiked(activityId, state)
-                                                        }
-                                                        onDelete={handleDeleteActivity}
-                                                    />
-                                                    {apiTrip && (
-                                                        <FreeTimeWidget
-                                                            trip={apiTrip}
-                                                            day={dayNumber}
-                                                            onInserted={async () => {
-                                                                try {
-                                                                    const fresh = await tripsClient.get(apiTrip.id);
-                                                                    if (fresh) setApiTrip(fresh);
-                                                                } catch {
-                                                                    /* ignore */
+                                    <DayCarousel
+                                        slides={activitiesByDay
+                                            .filter((day) => day.activities.length > 0)
+                                            .map((day) => {
+                                                const dayNumber = (day.index ?? 0) + 1;
+                                                return {
+                                                    id: day.day_id,
+                                                    dayNumber,
+                                                    hasContent: true,
+                                                    status: `${day.activities.length} étape${day.activities.length > 1 ? 's' : ''}`,
+                                                    content: (
+                                                        <div className="space-y-4">
+                                                            <DayTimeline
+                                                                tripId={tripId ?? ''}
+                                                                day={day}
+                                                                onLikedChange={(activityId, state) =>
+                                                                    setActivityLiked(activityId, state)
                                                                 }
-                                                                void reloadActivities();
-                                                            }}
-                                                        />
-                                                    )}
-                                                </div>
-                                            );
-                                        })
+                                                                onDelete={handleDeleteActivity}
+                                                            />
+                                                            {apiTrip && (
+                                                                <FreeTimeWidget
+                                                                    trip={apiTrip}
+                                                                    day={dayNumber}
+                                                                    onInserted={async () => {
+                                                                        try {
+                                                                            const fresh = await tripsClient.get(apiTrip.id);
+                                                                            if (fresh) setApiTrip(fresh);
+                                                                        } catch {
+                                                                            /* ignore */
+                                                                        }
+                                                                        void reloadActivities();
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    ),
+                                                };
+                                            })}
+                                    />
                                 ) : (
                                     !activitiesLoading && (
-                                        <div className="space-y-6">
-                                            {trip.days.map((day) => (
-                                                <div key={day.id} className="triply-card p-8 group relative overflow-hidden">
-                                                    <div className="absolute top-0 left-0 w-2 h-full bg-brand/10 transition-colors group-hover:bg-brand" />
-                                                    <div className="flex justify-between items-start gap-4">
-                                                        <div className="space-y-4">
-                                                            <span className="text-xs font-bold text-brand bg-brand/5 px-2 py-1 rounded">
-                                                                JOUR 0{day.id}
+                                        <DayCarousel
+                                            emptyHint="Pas encore de journées planifiées."
+                                            slides={trip.days.map((day) => ({
+                                                id: `placeholder-${day.id}`,
+                                                dayNumber: day.id,
+                                                hasContent: false,
+                                                status: day.status,
+                                                content: (
+                                                    <div className="space-y-4">
+                                                        <h3 className="text-xl font-bold text-light-foreground">{day.title}</h3>
+                                                        <div className="flex items-center gap-3 text-xs text-light-muted">
+                                                            <span className="inline-flex items-center gap-1.5">
+                                                                <Clock size={12} /> 09:00 – 18:30
                                                             </span>
-                                                            <h3 className="text-2xl font-bold">{day.title}</h3>
-                                                            <div className="flex items-center gap-6 text-sm text-light-muted">
-                                                                <span className="flex items-center gap-2">
-                                                                    <Clock size={14} /> 09:00 – 18:30
-                                                                </span>
-                                                                <span
-                                                                    className={cn(
-                                                                        'px-3 py-0.5 rounded-full text-xs font-bold uppercase',
-                                                                        day.status === 'Prêt'
-                                                                            ? 'bg-brand/10 text-brand'
-                                                                            : 'bg-amber-50 text-amber-600',
-                                                                    )}
-                                                                >
-                                                                    {day.status}
-                                                                </span>
-                                                            </div>
+                                                            <span
+                                                                className={cn(
+                                                                    'rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase',
+                                                                    day.status === 'Prêt'
+                                                                        ? 'bg-brand/10 text-brand'
+                                                                        : 'bg-amber-50 text-amber-700',
+                                                                )}
+                                                            >
+                                                                {day.status}
+                                                            </span>
                                                         </div>
-                                                        <ChevronRight className="text-light-border group-hover:text-brand group-hover:translate-x-2 transition-all shrink-0" />
+                                                        <p className="text-sm leading-relaxed text-light-muted">
+                                                            Aucune activité pour ce jour. Ajoutez-en depuis le copilote ou la carte.
+                                                        </p>
                                                     </div>
-                                                </div>
-                                            ))}
-                                            <p className="text-xs text-light-muted font-bold">
-                                                Pas encore d’activités dans cet itinéraire. Dès que vous en ajoutez,
-                                                vous pourrez les aimer, les retirer ou les regrouper par ville.
-                                            </p>
-                                        </div>
+                                                ),
+                                            }))}
+                                        />
                                     )
                                 )}
                             </div>

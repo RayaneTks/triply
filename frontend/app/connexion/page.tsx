@@ -18,7 +18,7 @@ function ConnexionInner() {
   const returnTo = isSafeReturnTo(rawReturnTo) ? rawReturnTo : '/voyages';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-dvh flex items-center justify-center bg-background px-4 py-8">
       <Login
         onLoginSuccess={() => router.push(returnTo)}
         onBack={() => router.push('/')}
