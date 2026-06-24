@@ -8,7 +8,9 @@ import {
     Bot,
     Calendar,
     Clock,
+    CalendarPlus,
     Copy,
+    Download,
     ExternalLink,
     FileText,
     GitBranch,
@@ -53,6 +55,7 @@ import { getStoredTrip } from '../../lib/local-trips-store';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { authClient } from '../../lib/auth-client';
 import { tripsClient, type TripApi } from '../../lib/trips-client';
+import { exportTripPdf, exportTripIcs } from '../../lib/trip-export-client';
 import {
     activitiesClient,
     type ActivityDayBucket,
@@ -87,6 +90,30 @@ export function TripDetailView() {
     const [budgetOpen, setBudgetOpen] = useState(false);
     const [variantsOpen, setVariantsOpen] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
+    const [exporting, setExporting] = useState<'pdf' | 'ics' | null>(null);
+
+    const handleExport = useCallback(async (format: 'pdf' | 'ics') => {
+        if (!tripId || exporting) return;
+        setExporting(format);
+        try {
+            await (format === 'pdf' ? exportTripPdf(tripId) : exportTripIcs(tripId));
+            toast({
+                variant: 'success',
+                title: format === 'pdf' ? 'PDF généré' : 'Agenda exporté',
+                description: format === 'pdf'
+                    ? 'Le téléchargement de votre itinéraire a démarré.'
+                    : 'Importez le fichier .ics dans votre agenda.',
+            });
+        } catch (err) {
+            toast({
+                variant: 'error',
+                title: 'Export impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
+        } finally {
+            setExporting(null);
+        }
+    }, [tripId, exporting, toast]);
 
     const reloadActivities = useCallback(async () => {
         if (!tripId || !authClient.getToken()) return;
@@ -480,6 +507,26 @@ export function TripDetailView() {
                             >
                                 <FileText size={16} />
                             </Link>
+                            <button
+                                type="button"
+                                onClick={() => void handleExport('pdf')}
+                                disabled={exporting !== null}
+                                title="Télécharger en PDF"
+                                aria-label="Télécharger l'itinéraire en PDF"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-light-border bg-card text-light-foreground transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+                            >
+                                <Download size={16} className={exporting === 'pdf' ? 'animate-pulse' : undefined} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleExport('ics')}
+                                disabled={exporting !== null}
+                                title="Ajouter à mon agenda (.ics)"
+                                aria-label="Exporter vers l'agenda au format ICS"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-light-border bg-card text-light-foreground transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+                            >
+                                <CalendarPlus size={16} className={exporting === 'ics' ? 'animate-pulse' : undefined} />
+                            </button>
                             {apiTrip && (
                                 <button
                                     type="button"
