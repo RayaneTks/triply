@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Bed, Trash2, ExternalLink, Search } from 'lucide-react';
+import { Bed, Trash2, ExternalLink, Search, PencilLine } from 'lucide-react';
 import type { HotelSearchModal as HotelSearchModalType } from '@/src/components/HotelSearchModal/HotelSearchModal';
 const HotelSearchModal = dynamic(
   () => import('@/src/components/HotelSearchModal/HotelSearchModal').then((m) => m.HotelSearchModal),
@@ -52,6 +52,16 @@ async function resolveCityCode(keyword: string): Promise<string | null> {
         return null;
     }
 }
+
+const EMPTY_MANUAL_HOTEL = {
+    nom: '',
+    adresse: '',
+    ville: '',
+    arrivee_le: '',
+    depart_le: '',
+    prix: '',
+    devise: 'EUR',
+};
 
 function offerToHotelPayload(offer: HotelOffer, fallbackCity: string): Omit<HotelRecord, 'id'> {
     const totalEur = Math.round(parseFloat(offer.price.total || '0'));
@@ -136,6 +146,11 @@ export function HotelsSection({
     const [apiResponse, setApiResponse] = useState<AmadeusHotelResponse | { error?: string; details?: string } | null>(null);
     const [persisting, setPersisting] = useState(false);
     const [opMessage, setOpMessage] = useState<string | null>(null);
+
+    // Saisie manuelle d'un hôtel déjà réservé hors Triply (centralisation).
+    const [manualOpen, setManualOpen] = useState(false);
+    const [manualSaving, setManualSaving] = useState(false);
+    const [manual, setManual] = useState(EMPTY_MANUAL_HOTEL);
 
     useEffect(() => { setCityCode(destination); }, [destination]);
     useEffect(() => {
@@ -256,6 +271,49 @@ export function HotelsSection({
         }
     }, [tripId, destination, travelerCount]);
 
+    const handleManualSave = useCallback(async () => {
+        if (manualSaving) return;
+        const nom = manual.nom.trim();
+        if (!nom) {
+            setOpMessage('Renseignez au moins le nom de l’hôtel.');
+            return;
+        }
+        if (!manual.arrivee_le || !manual.depart_le) {
+            setOpMessage('Indiquez les dates d’arrivée et de départ.');
+            return;
+        }
+        if (manual.depart_le < manual.arrivee_le) {
+            setOpMessage('Le départ doit être postérieur (ou égal) à l’arrivée.');
+            return;
+        }
+        setManualSaving(true);
+        setOpMessage(null);
+        try {
+            await tripTravelClient.createHotel(tripId, {
+                type: 'hotel',
+                nom,
+                adresse: manual.adresse.trim() || manual.ville.trim() || destination,
+                code_postal: null,
+                ville: manual.ville.trim() || destination,
+                latitude: null,
+                longitude: null,
+                arrivee_le: manual.arrivee_le,
+                depart_le: manual.depart_le,
+                prix: manual.prix ? Math.max(0, Math.round(Number(manual.prix))) : 0,
+                devise: manual.devise || 'EUR',
+                informations_supplementaire: JSON.stringify({ source: 'manual' }),
+            });
+            setOpMessage('Hôtel ajouté au voyage.');
+            setManual(EMPTY_MANUAL_HOTEL);
+            setManualOpen(false);
+            await reload();
+        } catch (err) {
+            setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
+        } finally {
+            setManualSaving(false);
+        }
+    }, [manual, manualSaving, tripId, destination, reload]);
+
     const openModal = () => {
         setApiResponse(null);
         setModalOpen(true);
@@ -279,14 +337,119 @@ export function HotelsSection({
                         <p className="text-xs text-light-muted font-bold">{headerSubtitle}</p>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={openModal}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                >
-                    <Search size={14} /> Rechercher un hôtel
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setManualOpen((v) => !v)}
+                        aria-expanded={manualOpen}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-light-border bg-card text-light-foreground font-bold text-sm hover:border-brand hover:text-brand transition-colors"
+                    >
+                        <PencilLine size={14} /> J&apos;ai déjà réservé
+                    </button>
+                    <button
+                        type="button"
+                        onClick={openModal}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white font-bold text-sm hover:opacity-90 transition-opacity"
+                    >
+                        <Search size={14} /> Rechercher un hôtel
+                    </button>
+                </div>
             </div>
+
+            {manualOpen && (
+                <div className="triply-card space-y-4 p-5">
+                    <p className="text-sm font-bold text-light-foreground">Ajouter un hôtel déjà réservé</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="space-y-1 text-xs font-bold text-light-muted sm:col-span-2">
+                            Nom de l&apos;hôtel
+                            <input
+                                type="text"
+                                value={manual.nom}
+                                onChange={(e) => setManual((m) => ({ ...m, nom: e.target.value }))}
+                                placeholder="Hôtel Belvédère"
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Adresse
+                            <input
+                                type="text"
+                                value={manual.adresse}
+                                onChange={(e) => setManual((m) => ({ ...m, adresse: e.target.value }))}
+                                placeholder="12 rue des Voyageurs"
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Ville
+                            <input
+                                type="text"
+                                value={manual.ville}
+                                onChange={(e) => setManual((m) => ({ ...m, ville: e.target.value }))}
+                                placeholder={destination}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Arrivée
+                            <input
+                                type="date"
+                                value={manual.arrivee_le}
+                                onChange={(e) => setManual((m) => ({ ...m, arrivee_le: e.target.value }))}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Départ
+                            <input
+                                type="date"
+                                value={manual.depart_le}
+                                onChange={(e) => setManual((m) => ({ ...m, depart_le: e.target.value }))}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Prix
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={manual.prix}
+                                    onChange={(e) => setManual((m) => ({ ...m, prix: e.target.value }))}
+                                    placeholder="0"
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Devise
+                                <input
+                                    type="text"
+                                    value={manual.devise}
+                                    onChange={(e) => setManual((m) => ({ ...m, devise: e.target.value.toUpperCase().slice(0, 3) }))}
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => void handleManualSave()}
+                            disabled={manualSaving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                        >
+                            {manualSaving ? 'Ajout…' : 'Ajouter l’hôtel'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setManualOpen(false); setManual(EMPTY_MANUAL_HOTEL); }}
+                            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-light-muted transition-colors hover:text-light-foreground"
+                        >
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {opMessage && (
                 <p className="text-xs text-light-muted font-bold" role="status">{opMessage}</p>
