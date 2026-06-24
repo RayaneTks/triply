@@ -2,12 +2,15 @@
 
 import { FC, useMemo, useState } from 'react';
 import {
+    ArrowDown,
+    ArrowUp,
     Building,
     Camera,
     ChevronDown,
     Clock,
     Coffee,
     Compass,
+    GripVertical,
     Landmark,
     Leaf,
     MapPin,
@@ -28,6 +31,9 @@ interface DayTimelineProps {
     day: ActivityDayBucket;
     onLikedChange: (activityId: string, state: LikedState) => void;
     onDelete: (activity: ActivityResource) => void;
+    /** Réordonne les activités du jour (nouvel ordre d'ids). Optionnel : sans
+     *  callback, le drag & drop est désactivé. */
+    onReorder?: (orderedActivityIds: string[]) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -127,8 +133,28 @@ function formatDurationLabel(hours: number): string {
     return `${h} h ${m}`;
 }
 
-export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, onDelete }) => {
+export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, onDelete, onReorder }) => {
     const [expanded, setExpanded] = useState(day.index === 1);
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+    const [overIndex, setOverIndex] = useState<number | null>(null);
+    const reorderable = typeof onReorder === 'function' && day.activities.length > 1;
+
+    /** Applique un déplacement de `from` vers `to` et émet le nouvel ordre. */
+    const move = (from: number, to: number) => {
+        if (!onReorder) return;
+        const ids = day.activities.map((a) => a.id);
+        if (from < 0 || to < 0 || from >= ids.length || to >= ids.length || from === to) return;
+        const next = [...ids];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        onReorder(next);
+    };
+
+    const handleDrop = (to: number) => {
+        if (dragIndex !== null) move(dragIndex, to);
+        setDragIndex(null);
+        setOverIndex(null);
+    };
 
     const categorized = useMemo<CategorizedActivity[]>(() => {
         const startOfDay = 9 * 60; // 09:00
@@ -204,7 +230,12 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                     className="absolute left-3 top-1 bottom-1 w-px bg-gradient-to-b from-brand/40 via-brand/20 to-transparent"
                 />
                 {categorized.map(({ activity, category, Icon, startTime, endTime, durationLabel }, index) => (
-                    <li key={activity.id} className="relative group">
+                    <li
+                        key={activity.id}
+                        className="relative group"
+                        onDragOver={reorderable ? (e) => { e.preventDefault(); setOverIndex(index); } : undefined}
+                        onDrop={reorderable ? (e) => { e.preventDefault(); handleDrop(index); } : undefined}
+                    >
                         <span
                             aria-hidden
                             className={cn(
@@ -212,7 +243,13 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                                 index === 0 ? 'bg-brand' : 'bg-brand/80',
                             )}
                         />
-                        <div className="flex flex-col gap-3 rounded-2xl border border-light-border bg-light-bg/40 p-4 transition-colors group-hover:bg-light-bg">
+                        <div
+                            className={cn(
+                                'flex flex-col gap-3 rounded-2xl border border-light-border bg-light-bg/40 p-4 transition-colors group-hover:bg-light-bg',
+                                dragIndex === index && 'opacity-50',
+                                reorderable && overIndex === index && dragIndex !== null && dragIndex !== index && 'ring-2 ring-brand/50',
+                            )}
+                        >
                             <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                                 <span className="inline-flex items-center gap-1 text-brand">
                                     <Clock size={12} /> {startTime} – {endTime}
@@ -263,6 +300,41 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                                         )}
                                 </div>
                                 <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                                    {reorderable && (
+                                        <>
+                                            <span
+                                                draggable
+                                                onDragStart={() => setDragIndex(index)}
+                                                onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
+                                                role="button"
+                                                aria-label={`Glisser pour déplacer ${activity.attributes.title}`}
+                                                title="Glisser pour réordonner"
+                                                className="hidden h-8 w-8 cursor-grab items-center justify-center rounded-full text-light-muted hover:bg-light-bg hover:text-brand active:cursor-grabbing sm:flex"
+                                            >
+                                                <GripVertical size={14} />
+                                            </span>
+                                            <div className="flex flex-col sm:hidden">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => move(index, index - 1)}
+                                                    disabled={index === 0}
+                                                    aria-label="Monter l'activité"
+                                                    className="flex h-5 w-7 items-center justify-center rounded text-light-muted hover:text-brand disabled:opacity-30"
+                                                >
+                                                    <ArrowUp size={13} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => move(index, index + 1)}
+                                                    disabled={index === day.activities.length - 1}
+                                                    aria-label="Descendre l'activité"
+                                                    className="flex h-5 w-7 items-center justify-center rounded text-light-muted hover:text-brand disabled:opacity-30"
+                                                >
+                                                    <ArrowDown size={13} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                     <LikeButtons
                                         tripId={tripId}
                                         activityId={activity.id}

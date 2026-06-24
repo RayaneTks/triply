@@ -137,6 +137,23 @@ export const activitiesClient = {
         }
     },
 
+    async reorder(tripId: string, order: string[]): Promise<void> {
+        const token = requireToken();
+        await request(
+            apiUrl(`/trips/${tripId}/activities/reorder`),
+            {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ order }),
+            },
+            'Réordonnancement impossible.',
+        );
+    },
+
     async restore(tripId: string, activityId: string): Promise<void> {
         const token = requireToken();
         const response = await fetch(apiUrl(`/trips/${tripId}/activities/${activityId}/restore`), {

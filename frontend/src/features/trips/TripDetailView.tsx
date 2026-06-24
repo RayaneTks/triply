@@ -360,6 +360,34 @@ export function TripDetailView() {
         }
     };
 
+    const handleReorderDay = async (dayId: string, orderedIds: string[]) => {
+        if (!tripId) return;
+        let previous: ActivityDayBucket[] = [];
+        setActivitiesByDay((current) => {
+            previous = current;
+            return current.map((day) => {
+                if (day.day_id !== dayId) return day;
+                const byId = new Map(day.activities.map((a) => [a.id, a]));
+                const reordered = orderedIds
+                    .map((id) => byId.get(id))
+                    .filter((a): a is ActivityResource => Boolean(a));
+                // Filet de sécurité : conserve d'éventuelles activités absentes de la liste.
+                const missing = day.activities.filter((a) => !orderedIds.includes(a.id));
+                return { ...day, activities: [...reordered, ...missing] };
+            });
+        });
+        try {
+            await activitiesClient.reorder(tripId, orderedIds);
+        } catch (err) {
+            setActivitiesByDay(previous); // rollback
+            toast({
+                variant: 'error',
+                title: 'Réordonnancement impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
+        }
+    };
+
     const handleDeleteActivity = async (activity: ActivityResource) => {
         if (!tripId) return;
         const activityId = activity.id;
@@ -791,6 +819,9 @@ export function TripDetailView() {
                                                                     setActivityLiked(activityId, state)
                                                                 }
                                                                 onDelete={handleDeleteActivity}
+                                                                onReorder={(orderedIds) =>
+                                                                    void handleReorderDay(day.day_id, orderedIds)
+                                                                }
                                                             />
                                                             {apiTrip && (
                                                                 <FreeTimeWidget
