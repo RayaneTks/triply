@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/src/components/ui/Toast";
 import { PwaProvider } from "@/src/components/pwa/PwaProvider";
+import { ConsentBanner } from "@/src/components/legal/ConsentBanner";
 
 export const metadata: Metadata = {
   title: "Triply - Planification de voyage",
@@ -46,6 +47,7 @@ export default function RootLayout({
           <main className="flex min-h-dvh flex-col">
             {children}
           </main>
+          <ConsentBanner />
         </ToastProvider>
       </body>
     </html>
