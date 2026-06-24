@@ -41,6 +41,14 @@ function wait(ms: number): Promise<void> {
 /** Sessionstorage key used to round-trip the wizard state across a forced login. */
 const WIZARD_PENDING_KEY = "triply_wizard_pending_v1";
 
+/** Libellés lisibles des styles de voyage (ids alignés sur l'étape « styles »). */
+const STYLE_LABELS: Record<string, string> = {
+  relax: "Détente & Slow",
+  active: "Actif & Découverte",
+  luxury: "Premium & Confort",
+  adventure: "Aventure & Nature",
+};
+
 interface WizardPendingState {
   destination: string;
   destinationSelected: boolean;
@@ -1172,7 +1180,9 @@ function StepRenderer({
                   <div className="space-y-2 md:col-span-2">
                     <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Rythme</p>
                     <p className="text-sm font-bold text-light-foreground">
-                      {state.selectedStyles.join(" · ")}
+                      {state.selectedStyles
+                        .map((id) => STYLE_LABELS[id] ?? id)
+                        .join(" · ")}
                     </p>
                   </div>
                 ) : null}
