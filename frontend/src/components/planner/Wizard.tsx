@@ -755,7 +755,9 @@ export function Wizard() {
                {currentValidation.hint}
              </p>
            )}
-           <div className="flex items-center justify-between">
+           {/* pr-24 : réserve la place du copilote flottant (AssistantBubble, w-14 @ right-6)
+               pour que « Continuer » ne passe pas sous la bulle en bas à droite. */}
+           <div className="flex items-center justify-between pr-24">
              <button
               onClick={prev}
               disabled={currentIndex === 0 || submitting}
