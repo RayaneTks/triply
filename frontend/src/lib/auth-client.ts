@@ -335,6 +335,16 @@ export const authClient = {
         }
         return user;
     },
+    /** Met à jour le user en cache local (ex. après activation abonnement). */
+    patchUser(patch: Partial<AuthUser>): void {
+        const current = getStoredSession();
+        if (!current?.token || !current.user) return;
+        saveSession({
+            token: current.token,
+            user: { ...current.user, ...patch },
+        });
+        notifyAuthChanged();
+    },
     async logout(): Promise<void> {
         const token = this.getToken();
         try {

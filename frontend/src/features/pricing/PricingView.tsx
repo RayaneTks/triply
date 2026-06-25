@@ -25,12 +25,19 @@ export function PricingView() {
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authClient.getToken()}`,
+        },
         body: JSON.stringify({ plan: planId, billing: isAnnual ? 'annual' : 'monthly' }),
       });
       const data = await res.json();
       if (res.status === 503) {
         setUnavailable(true);
+        return;
+      }
+      if (res.status === 401) {
+        router.push('/connexion?returnTo=/tarifs');
         return;
       }
       if (!res.ok) {

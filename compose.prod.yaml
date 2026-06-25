@@ -66,6 +66,8 @@ services:
       - tri-storage-production:/var/www/storage  # Mount the storage volume
     env_file:
       - ./backend/.env
+      # Stripe : même clé que tri-app pour confirmer les abonnements côté Laravel.
+      - ./frontend/.env
     environment:
       DB_CONNECTION: pgsql
       DB_HOST: tri-postgres

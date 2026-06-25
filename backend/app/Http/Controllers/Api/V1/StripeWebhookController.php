@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Abonnement;
-use App\Models\User;
+use App\Services\SubscriptionActivationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Log;
  */
 class StripeWebhookController extends ApiController
 {
+    public function __construct(
+        private readonly SubscriptionActivationService $activationService,
+    ) {}
+
     public function handle(Request $request): JsonResponse
     {
         $payload = $request->getContent();
@@ -78,52 +82,36 @@ class StripeWebhookController extends ApiController
         }
 
         $sessionId = (string) ($session->id ?? '');
-        $subscriptionId = (string) ($session->subscription ?? '');
-        $metadata = $session->metadata ?? null;
-        $plan = '';
-        $billing = '';
-        if ($metadata) {
-            $plan = (string) ($metadata->plan ?? '');
-            $billing = (string) ($metadata->billing ?? '');
-        }
-        $customerEmail = (string) ($session->customer_email
-            ?? ($session->customer_details->email ?? ''));
-
-        if ($customerEmail === '') {
-            Log::info('stripe.webhook.checkout.no_email', ['session_id' => $sessionId]);
-
+        if ($sessionId === '') {
             return;
         }
 
-        $user = User::query()->where('email', $customerEmail)->first();
+        $sessionData = json_decode(json_encode($session), true);
+        if (! is_array($sessionData)) {
+            return;
+        }
+
+        $user = $this->activationService->resolveUserFromSession($sessionData);
         if (! $user) {
             Log::info('stripe.webhook.checkout.user_not_found', [
                 'session_id' => $sessionId,
-                'email' => $customerEmail,
+                'client_reference_id' => $sessionData['client_reference_id'] ?? null,
+                'metadata_user_id' => $sessionData['metadata']['user_id'] ?? null,
             ]);
 
             return;
         }
 
-        $duration = $billing === 'annual' ? now()->addYear() : now()->addMonth();
-
-        Abonnement::updateOrCreate(
-            [
-                'utilisateur_id' => $user->id,
-                'abonnement_stripe_id' => $sessionId !== '' ? $sessionId : ($subscriptionId ?: 'sess_unknown'),
-            ],
-            [
-                'tier' => $plan !== '' ? $plan : ($user->subscription_tier ?? 'voyageur'),
-                'plan_interval' => $billing !== '' ? $billing : 'monthly',
-                'statut' => 'active',
-                'date_debut' => now(),
-                'date_fin' => $duration,
-            ]
-        );
-
-        if ($plan !== '') {
-            $user->update(['subscription_tier' => $plan]);
+        $plan = (string) ($sessionData['metadata']['plan'] ?? 'voyageur');
+        if (! in_array($plan, ['voyageur', 'pilote'], true)) {
+            $plan = 'voyageur';
         }
+        $billing = (string) ($sessionData['metadata']['billing'] ?? 'monthly');
+        if (! in_array($billing, ['monthly', 'annual'], true)) {
+            $billing = 'monthly';
+        }
+
+        $this->activationService->activate($user, $sessionId, $plan, $billing, $sessionData);
     }
 
     private function handlePaymentFailed(\Stripe\Event $event): void

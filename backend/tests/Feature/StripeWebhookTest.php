@@ -74,6 +74,7 @@ class StripeWebhookTest extends TestCase
                     'metadata' => [
                         'plan' => 'voyageur',
                         'billing' => 'monthly',
+                        'user_id' => (string) $user->id,
                     ],
                 ],
             ],

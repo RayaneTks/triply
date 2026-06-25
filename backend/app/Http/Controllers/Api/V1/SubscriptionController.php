@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Abonnement;
+use App\Services\SubscriptionActivationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class SubscriptionController extends ApiController
 {
+    public function __construct(
+        private readonly SubscriptionActivationService $activationService,
+    ) {}
+
     public function confirm(Request $request): JsonResponse
     {
         $user = Auth::user();
@@ -41,8 +45,16 @@ class SubscriptionController extends ApiController
             return $this->errorResponse('FORBIDDEN', 'Cette session Stripe est deja associee a un autre utilisateur.', [], 403);
         }
 
-        $stripeSecret = (string) config('services.stripe.secret', env('STRIPE_SECRET_KEY', ''));
-        if ($stripeSecret === '') {
+        if ($this->activationService->isAlreadyActivatedForUser($user, $payload['session_id'])) {
+            $user->refresh();
+
+            return $this->successResponse([
+                'tier' => $user->subscription_tier ?? $payload['plan'],
+                'billing' => $payload['billing'],
+            ]);
+        }
+
+        if (! $this->activationService->isStripeSecretConfigured()) {
             Log::warning('subscription.confirm.stripe_secret_missing', [
                 'user_id' => $user->id,
                 'session_id' => $payload['session_id'],
@@ -56,69 +68,42 @@ class SubscriptionController extends ApiController
             );
         }
 
-        $stripeSession = Http::asForm()
-            ->withBasicAuth($stripeSecret, '')
-            ->acceptJson()
-            ->timeout(8)
-            ->get('https://api.stripe.com/v1/checkout/sessions/'.$payload['session_id']);
-
-        if (! $stripeSession->successful()) {
+        $sessionData = $this->activationService->fetchStripeSession($payload['session_id']);
+        if ($sessionData === null) {
             Log::warning('subscription.confirm.stripe_lookup_failed', [
                 'user_id' => $user->id,
                 'session_id' => $payload['session_id'],
-                'status' => $stripeSession->status(),
             ]);
 
             return $this->errorResponse('PAYMENT_VERIFICATION_FAILED', 'Verification du paiement impossible.', [], 422);
         }
 
-        $sessionData = $stripeSession->json();
-        $sessionStatus = (string) ($sessionData['status'] ?? '');
-        $paymentStatus = (string) ($sessionData['payment_status'] ?? '');
-        $sessionMode = (string) ($sessionData['mode'] ?? '');
-        if ($sessionStatus !== 'complete' || ! in_array($paymentStatus, ['paid', 'no_payment_required'], true)) {
-            return $this->errorResponse('PAYMENT_NOT_COMPLETED', 'Le paiement Stripe n est pas valide.', [], 422);
+        $validation = $this->activationService->validatePaidSession(
+            $sessionData,
+            $payload['plan'],
+            $payload['billing'],
+        );
+        if (! $validation['ok']) {
+            return $this->errorResponse(
+                (string) ($validation['code'] ?? 'PAYMENT_VERIFICATION_FAILED'),
+                (string) ($validation['message'] ?? 'Verification du paiement impossible.'),
+                [],
+                422,
+            );
         }
 
-        if (! in_array($sessionMode, ['subscription', 'payment'], true)) {
-            return $this->errorResponse('PAYMENT_VERIFICATION_FAILED', 'Mode de session Stripe invalide.', [], 422);
-        }
-
-        $metadataPlan = (string) ($sessionData['metadata']['plan'] ?? '');
-        $metadataBilling = (string) ($sessionData['metadata']['billing'] ?? '');
-        if ($metadataPlan !== '' && $metadataPlan !== $payload['plan']) {
-            return $this->errorResponse('PAYMENT_VERIFICATION_FAILED', 'Plan Stripe non coherent.', [], 422);
-        }
-        if ($metadataBilling !== '' && $metadataBilling !== $payload['billing']) {
-            return $this->errorResponse('PAYMENT_VERIFICATION_FAILED', 'Facturation Stripe non coherente.', [], 422);
-        }
-
-        $customerEmail = (string) ($sessionData['customer_details']['email'] ?? '');
-        if ($customerEmail !== '' && strcasecmp($customerEmail, (string) $user->email) !== 0) {
+        if (! $this->activationService->sessionBelongsToUser($user, $sessionData)) {
             return $this->errorResponse('PAYMENT_VERIFICATION_FAILED', 'Session Stripe non associee a cet utilisateur.', [], 422);
         }
 
-        $duration = $payload['billing'] === 'annual' ? now()->addYear() : now()->addMonth();
-
-        Abonnement::updateOrCreate(
-            [
-                'utilisateur_id' => $user->id,
-                'abonnement_stripe_id' => $payload['session_id'],
-            ],
-            [
-                'tier' => $payload['plan'],
-                'plan_interval' => $payload['billing'],
-                'statut' => 'active',
-                'date_debut' => now(),
-                'date_fin' => $duration,
-            ]
+        $result = $this->activationService->activate(
+            $user,
+            $payload['session_id'],
+            $payload['plan'],
+            $payload['billing'],
+            $sessionData,
         );
 
-        $user->update(['subscription_tier' => $payload['plan']]);
-
-        return $this->successResponse([
-            'tier' => $payload['plan'],
-            'billing' => $payload['billing'],
-        ]);
+        return $this->successResponse($result);
     }
 }
