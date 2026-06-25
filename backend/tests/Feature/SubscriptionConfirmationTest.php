@@ -75,4 +75,74 @@ class SubscriptionConfirmationTest extends TestCase
         $response->assertJsonPath('data.tier', 'pilote');
         $response->assertJsonPath('data.billing', 'annual');
     }
+
+    public function test_confirm_accepts_session_linked_by_user_id_when_email_differs(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+        $user = User::factory()->create([
+            'email' => 'compte@example.com',
+            'subscription_tier' => null,
+        ]);
+        Sanctum::actingAs($user);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions/cs_test_user_id' => Http::response([
+                'id' => 'cs_test_user_id',
+                'status' => 'complete',
+                'payment_status' => 'paid',
+                'mode' => 'subscription',
+                'client_reference_id' => (string) $user->id,
+                'metadata' => [
+                    'plan' => 'voyageur',
+                    'billing' => 'monthly',
+                    'user_id' => (string) $user->id,
+                ],
+                'customer_details' => [
+                    'email' => 'autre-email@stripe.test',
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->postJson('/api/v1/subscriptions/confirm', [
+            'session_id' => 'cs_test_user_id',
+            'plan' => 'voyageur',
+            'billing' => 'monthly',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.tier', 'voyageur');
+        $this->assertSame('voyageur', $user->fresh()->subscription_tier);
+    }
+
+    public function test_confirm_is_idempotent_for_same_user_and_session(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+        $user = User::factory()->create([
+            'email' => 'idem@example.com',
+            'subscription_tier' => 'voyageur',
+        ]);
+        Sanctum::actingAs($user);
+
+        \App\Models\Abonnement::query()->create([
+            'utilisateur_id' => $user->id,
+            'abonnement_stripe_id' => 'cs_test_idempotent',
+            'tier' => 'voyageur',
+            'plan_interval' => 'monthly',
+            'statut' => 'active',
+            'date_debut' => now(),
+            'date_fin' => now()->addMonth(),
+        ]);
+
+        Http::fake();
+
+        $response = $this->postJson('/api/v1/subscriptions/confirm', [
+            'session_id' => 'cs_test_idempotent',
+            'plan' => 'voyageur',
+            'billing' => 'monthly',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.tier', 'voyageur');
+        Http::assertNothingSent();
+    }
 }

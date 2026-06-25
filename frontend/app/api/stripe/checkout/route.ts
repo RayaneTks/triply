@@ -18,6 +18,44 @@ const PLANS: Record<PlanKey, Record<BillingKey, { amount: number; interval: 'mon
   },
 };
 
+function backendApiBase(): string {
+  return (process.env.BACKEND_API_BASE_URL || 'http://tri-api:80/api/v1').replace(/\/$/, '');
+}
+
+async function resolveAuthenticatedUser(
+  req: NextRequest,
+): Promise<{ id: number | string; email: string } | null> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const response = await fetch(`${backendApiBase()}/auth/me`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: authHeader,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const body = await response.json().catch(() => null) as {
+    success?: boolean;
+    data?: { user?: { id?: number | string; email?: string } };
+  } | null;
+
+  const user = body?.data?.user;
+  if (!user?.id || !user.email) {
+    return null;
+  }
+
+  return { id: user.id, email: user.email };
+}
+
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -26,6 +64,15 @@ export async function POST(req: NextRequest) {
       { status: 503 },
     );
   }
+
+  const user = await resolveAuthenticatedUser(req);
+  if (!user) {
+    return NextResponse.json(
+      { error: 'UNAUTHORIZED', message: 'Connexion requise pour souscrire.' },
+      { status: 401 },
+    );
+  }
+
   const stripe = new Stripe(secretKey);
 
   const { plan, billing } = await req.json() as { plan: PlanKey; billing: BillingKey };
@@ -36,9 +83,12 @@ export async function POST(req: NextRequest) {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin;
+  const userId = String(user.id);
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
+    customer_email: user.email,
+    client_reference_id: userId,
     line_items: [
       {
         quantity: 1,
@@ -50,7 +100,7 @@ export async function POST(req: NextRequest) {
         },
       },
     ],
-    metadata: { plan, billing },
+    metadata: { plan, billing, user_id: userId },
     success_url: `${baseUrl}/tarifs/success?session_id={CHECKOUT_SESSION_ID}&plan=${plan}&billing=${billing}`,
     cancel_url:  `${baseUrl}/tarifs`,
   });

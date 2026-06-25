@@ -77,8 +77,9 @@ services:
         XDEBUG_LOG: /dev/stdout
         XDEBUG_LOG_LEVEL: 0
     env_file:
-      # Load the environment variables from the Laravel application
       - ./backend/.env
+      # Stripe : même clé que tri-app (sk_test_* ou live) pour /subscriptions/confirm.
+      - ./frontend/.env
     ## user: "${UID:-1000}:${GID:-1000}"
     environment:
       DOCKER_UID: "${UID:-1000}"

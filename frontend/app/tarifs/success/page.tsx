@@ -1,56 +1,108 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { authClient } from '../../../src/lib/auth-client';
 
+const CONFIRM_MAX_ATTEMPTS = 4;
+const CONFIRM_RETRY_MS = 2000;
+
+async function confirmSubscription(
+  sessionId: string,
+  plan: string,
+  billing: string,
+  token: string,
+): Promise<{ tier: string; billing: string }> {
+  const response = await fetch('/api/v1/subscriptions/confirm', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ session_id: sessionId, plan, billing }),
+  });
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const code = body?.error?.code as string | undefined;
+    const backendMessage = body?.error?.message || code || 'confirm failed';
+    const err = new Error(backendMessage) as Error & { code?: string; retryable?: boolean };
+    err.code = code;
+    err.retryable = code === 'PAYMENT_NOT_COMPLETED';
+    throw err;
+  }
+
+  return {
+    tier: body?.data?.tier ?? plan,
+    billing: body?.data?.billing ?? billing,
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function CheckoutSuccessInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const sessionId = params.get('session_id');
   const plan = params.get('plan');
   const billing = params.get('billing');
-  // If any of the required params is missing, skip the confirm call and render success directly.
   const shouldConfirm = Boolean(sessionId && plan && billing);
   const [state, setState] = useState<'pending' | 'ok' | 'error'>(shouldConfirm ? 'pending' : 'ok');
   const [tier, setTier] = useState<string | null>(null);
+  const confirmStarted = useRef(false);
 
   useEffect(() => {
-    if (!shouldConfirm) return;
+    if (!shouldConfirm || confirmStarted.current) return;
+    confirmStarted.current = true;
+
     const token = authClient.getToken();
     if (!token) {
+      const returnTo = `/tarifs/success?${params.toString()}`;
+      router.replace(`/connexion?returnTo=${encodeURIComponent(returnTo)}`);
       return;
     }
 
-    fetch('/api/v1/subscriptions/confirm', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ session_id: sessionId, plan, billing }),
-    })
-      .then(async (r) => {
-        const body = await r.json().catch(() => null);
-        if (!r.ok) {
-          const backendMessage = body?.error?.message || body?.error?.code || 'confirm failed';
-          throw new Error(backendMessage);
+    let cancelled = false;
+
+    (async () => {
+      for (let attempt = 1; attempt <= CONFIRM_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          const result = await confirmSubscription(sessionId!, plan!, billing!, token);
+          if (cancelled) return;
+
+          setTier(result.tier);
+          setState('ok');
+          authClient.patchUser({ subscription_tier: result.tier });
+          try {
+            await authClient.me();
+          } catch {
+            // Le patch local suffit pour débloquer l'UI ; /me resynchronisera plus tard.
+          }
+          window.dispatchEvent(new CustomEvent('triply-auth-changed'));
+          return;
+        } catch (err: unknown) {
+          const retryable = (err as { retryable?: boolean }).retryable === true;
+          if (retryable && attempt < CONFIRM_MAX_ATTEMPTS) {
+            await sleep(CONFIRM_RETRY_MS);
+            continue;
+          }
+          if (cancelled) return;
+          console.error('Subscription confirmation failed', err);
+          setState('error');
+          return;
         }
-        return body;
-      })
-      .then((body) => {
-        setTier(body?.data?.tier ?? plan);
-        setState('ok');
-        // Force le rafraîchissement de useAuthSession dans l'app.
-        window.dispatchEvent(new CustomEvent('triply-auth-changed'));
-      })
-      .catch((err: unknown) => {
-        console.error('Subscription confirmation failed', err);
-        setState('error');
-      });
-  }, [shouldConfirm, sessionId, plan, billing]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldConfirm, sessionId, plan, billing, params, router]);
 
   if (state === 'pending') {
     return (
@@ -71,11 +123,21 @@ function CheckoutSuccessInner() {
           <h1 className="text-2xl font-display font-bold mb-4">Paiement effectué</h1>
           <p className="text-light-muted mb-6">
             Votre paiement a bien été reçu, mais l’activation de votre abonnement n’a pas abouti.
-            Écrivez-nous à <a className="text-brand underline" href="mailto:support@triply.ovh">support@triply.ovh</a> et nous l’activons pour vous.
+            Rechargez cette page dans quelques instants, ou écrivez-nous à{' '}
+            <a className="text-brand underline" href="mailto:support@triply.ovh">support@triply.ovh</a>.
           </p>
-          <Link href="/profil" className="inline-block bg-brand text-white px-8 py-4 rounded-xl font-bold hover:bg-brand-hover transition-colors">
-            Voir mon profil
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-block bg-brand text-white px-8 py-4 rounded-xl font-bold hover:bg-brand-hover transition-colors"
+            >
+              Réessayer l’activation
+            </button>
+            <Link href="/profil" className="inline-block border border-slate-200 px-8 py-4 rounded-xl font-bold hover:bg-slate-50 transition-colors">
+              Voir mon profil
+            </Link>
+          </div>
         </div>
       </div>
     );
