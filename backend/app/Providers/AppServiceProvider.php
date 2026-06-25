@@ -17,6 +17,7 @@ use App\Services\Contracts\RouteServiceInterface;
 use App\Services\Contracts\SharingServiceInterface;
 use App\Services\Contracts\SnapshotSyncServiceInterface;
 use App\Services\Contracts\TravelServiceInterface;
+use App\Services\Contracts\TripAutoSelectionServiceInterface;
 use App\Services\Contracts\TripRecapServiceInterface;
 use App\Services\Contracts\TripServiceInterface;
 use App\Services\ActivityService;
@@ -32,6 +33,7 @@ use App\Services\ProfileService;
 use App\Services\RouteService;
 use App\Services\SnapshotSyncService;
 use App\Services\TravelService;
+use App\Services\TripAutoSelectionService;
 use App\Services\TripRecapService;
 use App\Services\TripService;
 use App\Services\Stubs\AiServiceStub;
@@ -54,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TripRecapServiceInterface::class, TripRecapService::class);
         $this->app->bind(RouteServiceInterface::class, RouteService::class);
         $this->app->bind(TripServiceInterface::class, TripService::class);
+        $this->app->bind(TripAutoSelectionServiceInterface::class, TripAutoSelectionService::class);
         $this->app->bind(ActivityServiceInterface::class, ActivityService::class);
         $this->app->bind(PlacesServiceInterface::class, PlacesService::class);
         // WIP — async AI job queue pas encore implémenté (retourne 202 stub)

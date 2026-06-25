@@ -41,6 +41,14 @@ function wait(ms: number): Promise<void> {
 /** Sessionstorage key used to round-trip the wizard state across a forced login. */
 const WIZARD_PENDING_KEY = "triply_wizard_pending_v1";
 
+/** Libellés lisibles des styles de voyage (ids alignés sur l'étape « styles »). */
+const STYLE_LABELS: Record<string, string> = {
+  relax: "Détente & Slow",
+  active: "Actif & Découverte",
+  luxury: "Premium & Confort",
+  adventure: "Aventure & Nature",
+};
+
 interface WizardPendingState {
   destination: string;
   destinationSelected: boolean;
@@ -138,6 +146,9 @@ function groupSuggestedActivitiesByDay(
 
 type WizardStep = 'destination' | 'dates' | 'origin' | 'travelers' | 'budget' | 'styles' | 'needs' | 'review';
 
+type TravelClass = 'ECONOMY' | 'PREMIUM_ECONOMY' | 'BUSINESS' | 'FIRST';
+type HotelStars = 1 | 2 | 3 | 4 | 5;
+
 interface WizardFormState {
   destination: string;
   destinationSelected: boolean;
@@ -150,6 +161,9 @@ interface WizardFormState {
   datesFlexible: boolean;
   originInput: string;
   origin: OriginValue | null;
+  flightNonStop: boolean;
+  flightTravelClass: TravelClass;
+  hotelMinStars: HotelStars;
 }
 
 interface WizardFormActions {
@@ -163,6 +177,9 @@ interface WizardFormActions {
   toggleNeed: (need: keyof PlanningNeeds) => void;
   setOriginInput: (v: string) => void;
   setOrigin: (v: OriginValue | null) => void;
+  setFlightNonStop: (v: boolean) => void;
+  setFlightTravelClass: (v: TravelClass) => void;
+  setHotelMinStars: (v: HotelStars) => void;
 }
 
 export function Wizard() {
@@ -186,6 +203,9 @@ export function Wizard() {
   const [datesFlexible, setDatesFlexible] = useState(false);
   const [originInput, setOriginInput] = useState("");
   const [origin, setOrigin] = useState<OriginValue | null>(null);
+  const [flightNonStop, setFlightNonStop] = useState(false);
+  const [flightTravelClass, setFlightTravelClass] = useState<TravelClass>('ECONOMY');
+  const [hotelMinStars, setHotelMinStars] = useState<HotelStars>(3);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [visitedCities, setVisitedCities] = useState<string[]>([]);
@@ -328,6 +348,15 @@ export function Wizard() {
           lng: origin.lng,
         }
       : undefined,
+    // Persistance des besoins déclarés au wizard pour que la fiche voyage sache
+    // si vols/hôtels/activités/restos étaient demandés et puisse signaler à
+    // l'utilisateur les sélections manquantes après création.
+    plannerNeeds: { ...needs },
+    plannerPreferences: {
+      flightNonStop,
+      flightTravelClass,
+      hotelMinStars,
+    },
   });
 
   const generateAiItinerary = async (): Promise<PlanSnapshotDay[]> => {
@@ -365,7 +394,28 @@ export function Wizard() {
   };
 
   const runFinalize = useCallback(async (): Promise<void> => {
-    const titleBase = destination.trim() || 'Mon prochain voyage';
+    // Garde dure : impossible de finaliser un voyage sans destination réellement
+    // sélectionnée dans l'autocomplete (un texte tapé sans choix n'est pas une
+    // destination valide côté backend). Renvoie l'utilisateur à l'étape concernée
+    // au lieu de créer un voyage "À préciser" fantôme.
+    const cleanedDestination = destination.trim();
+    if (!destinationSelected || cleanedDestination.length === 0) {
+      setStep('destination');
+      setSubmitError('Sélectionnez une destination dans la liste avant de finaliser le voyage.');
+      return;
+    }
+    if (!startDate || !endDate) {
+      setStep('dates');
+      setSubmitError('Choisissez vos dates de départ et de retour avant de finaliser.');
+      return;
+    }
+    if (!origin?.iataCode) {
+      setStep('origin');
+      setSubmitError('Sélectionnez votre ville de départ avant de finaliser.');
+      return;
+    }
+
+    const titleBase = cleanedDestination;
     const formattedDates = formatTripDateRange(startDate || undefined, endDate || undefined);
     const title = formattedDates ? `${titleBase} · ${formattedDates}` : titleBase;
 
@@ -393,7 +443,7 @@ export function Wizard() {
     try {
       const trip = await tripsClient.create({
         title,
-        destination: destination.trim() || 'À préciser',
+        destination: cleanedDestination,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
         travelers_count: travelers,
@@ -408,7 +458,7 @@ export function Wizard() {
       setSubmitting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination, startDate, endDate, travelers, budget, needs, origin, router]);
+  }, [destination, destinationSelected, startDate, endDate, travelers, budget, needs, origin, router]);
 
   // Keep the ref in sync so the post-login auto-finalize effect (declared
   // before runFinalize) can invoke the latest closure.
@@ -569,6 +619,9 @@ export function Wizard() {
     datesFlexible,
     originInput,
     origin,
+    flightNonStop,
+    flightTravelClass,
+    hotelMinStars,
   };
 
   const formActions: WizardFormActions = {
@@ -582,10 +635,13 @@ export function Wizard() {
     toggleNeed,
     setOriginInput,
     setOrigin,
+    setFlightNonStop,
+    setFlightTravelClass,
+    setHotelMinStars,
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] bg-light-bg overflow-hidden relative">
+    <div className="flex h-[calc(100dvh-80px)] bg-light-bg overflow-hidden relative">
       <AiProgressOverlay
         stage={aiStage}
         destination={destination}
@@ -695,8 +751,8 @@ export function Wizard() {
 
         </div>
 
-        {/* Sticky Actions Bar */}
-        <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom))] lg:bottom-0 left-0 right-0 lg:left-auto lg:w-[calc(100%-350px)] lg:right-[350px] bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex flex-col gap-2 z-40">
+        {/* Sticky Actions Bar — pleine largeur, copilote flottant n'occupe plus la colonne droite. */}
+        <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom))] lg:bottom-0 inset-x-0 bg-card lg:bg-card/80 lg:backdrop-blur-md border-t border-light-border p-6 lg:p-8 flex flex-col gap-2 z-40">
            {submitError && (
              <p className="text-xs font-medium text-error" role="alert">
                {submitError}
@@ -707,7 +763,9 @@ export function Wizard() {
                {currentValidation.hint}
              </p>
            )}
-           <div className="flex items-center justify-between">
+           {/* pr-24 : réserve la place du copilote flottant (AssistantBubble, w-14 @ right-6)
+               pour que « Continuer » ne passe pas sous la bulle en bas à droite. */}
+           <div className="flex items-center justify-between pr-24">
              <button
               onClick={prev}
               disabled={currentIndex === 0 || submitting}
@@ -924,6 +982,7 @@ function StepRenderer({
       return (
         <div className="space-y-8">
           <h1 className="text-4xl font-display font-bold">De quoi avez-vous besoin ?</h1>
+          <p className="text-light-muted">Triply sélectionnera automatiquement le moins cher selon vos préférences.</p>
           <div className="grid grid-cols-2 gap-4">
             {[
               { id: 'flights', label: 'Vols', icon: Plane },
@@ -963,6 +1022,82 @@ function StepRenderer({
               </label>
             ))}
           </div>
+
+          {/* Préférences vol — affichées uniquement si vols cochés */}
+          {state.needs.flights && (
+            <div className="triply-card space-y-5 border border-brand/20 p-6">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-brand">
+                <Plane size={14} /> Préférences vol
+              </div>
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-light-muted">Classe</span>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    { id: 'ECONOMY' as const, label: 'Éco' },
+                    { id: 'PREMIUM_ECONOMY' as const, label: 'Éco +' },
+                    { id: 'BUSINESS' as const, label: 'Affaires' },
+                    { id: 'FIRST' as const, label: 'Première' },
+                  ].map((cls) => (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => actions.setFlightTravelClass(cls.id)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors',
+                        state.flightTravelClass === cls.id
+                          ? 'border-brand bg-brand text-white'
+                          : 'border-light-border bg-card text-light-foreground hover:border-brand/40',
+                      )}
+                    >
+                      {cls.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-light-border bg-card px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-light-foreground">Vol direct uniquement</p>
+                  <p className="text-xs text-light-muted">Filtre les escales — peut être plus cher.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={state.flightNonStop}
+                  onChange={(e) => actions.setFlightNonStop(e.target.checked)}
+                  className="h-5 w-5 cursor-pointer accent-[color:var(--primary)]"
+                />
+              </label>
+            </div>
+          )}
+
+          {/* Préférences hôtel — affichées uniquement si hôtels cochés */}
+          {state.needs.hotels && (
+            <div className="triply-card space-y-4 border border-brand/20 p-6">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-brand">
+                <Hotel size={14} /> Préférences hôtel
+              </div>
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-light-muted">Étoiles minimum</span>
+                <div className="flex flex-wrap gap-2">
+                  {([1, 2, 3, 4, 5] as HotelStars[]).map((stars) => (
+                    <button
+                      key={stars}
+                      type="button"
+                      onClick={() => actions.setHotelMinStars(stars)}
+                      className={cn(
+                        'rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors',
+                        state.hotelMinStars === stars
+                          ? 'border-brand bg-brand text-white'
+                          : 'border-light-border bg-card text-light-foreground hover:border-brand/40',
+                      )}
+                    >
+                      {stars}★
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-light-muted">{state.hotelMinStars}★ et plus — l’hôtel le moins cher rentrant dans le budget sera sélectionné.</p>
+              </div>
+            </div>
+          )}
         </div>
       );
     case 'review':
@@ -1045,7 +1180,9 @@ function StepRenderer({
                   <div className="space-y-2 md:col-span-2">
                     <p className="text-xs font-bold text-light-muted uppercase tracking-widest">Rythme</p>
                     <p className="text-sm font-bold text-light-foreground">
-                      {state.selectedStyles.join(" · ")}
+                      {state.selectedStyles
+                        .map((id) => STYLE_LABELS[id] ?? id)
+                        .join(" · ")}
                     </p>
                   </div>
                 ) : null}

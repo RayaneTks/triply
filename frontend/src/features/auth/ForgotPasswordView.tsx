@@ -29,7 +29,7 @@ export function ForgotPasswordView() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-6">
       <Link href="/" className="mb-12"><TriplyLogo /></Link>
 
       <motion.div

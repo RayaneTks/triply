@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plane, Trash2, ExternalLink, Search } from 'lucide-react';
-import { FlightSearchModal } from '@/src/components/FlightSearchModal/FlightSearchModal';
+import dynamic from 'next/dynamic';
+import { Plane, Trash2, ExternalLink, Search, PencilLine } from 'lucide-react';
+import type { FlightSearchModal as FlightSearchModalType } from '@/src/components/FlightSearchModal/FlightSearchModal';
+const FlightSearchModal = dynamic(
+  () => import('@/src/components/FlightSearchModal/FlightSearchModal').then((m) => m.FlightSearchModal),
+  { ssr: false },
+) as typeof FlightSearchModalType;
 import type { FlightOffer } from '@/src/components/FlightResults/FlightOfferCard';
 import type { AmadeusResponse } from '@/src/components/FlightResults/FlightResults';
 import { searchFlights, searchPlaces, lookupIata, type AmadeusLocation } from '@/src/lib/integrations/amadeus';
@@ -21,6 +26,16 @@ interface FlightsSectionProps {
     defaultOriginCity?: string;
     defaultOriginIata?: string;
 }
+
+const EMPTY_MANUAL_FLIGHT = {
+    type: '',
+    depart_lieu: '',
+    arrivee_lieu: '',
+    depart_le: '',
+    arrivee_le: '',
+    prix: '',
+    devise: 'EUR',
+};
 
 async function resolveIata(keyword: string): Promise<string | null> {
     const term = keyword.trim();
@@ -149,6 +164,11 @@ export function FlightsSection({
     const [apiResponse, setApiResponse] = useState<AmadeusResponse | { error?: string; details?: string } | null>(null);
     const [persisting, setPersisting] = useState(false);
     const [opMessage, setOpMessage] = useState<string | null>(null);
+
+    // Saisie manuelle d'un vol déjà réservé hors Triply (centralisation).
+    const [manualOpen, setManualOpen] = useState(false);
+    const [manualSaving, setManualSaving] = useState(false);
+    const [manual, setManual] = useState(EMPTY_MANUAL_FLIGHT);
 
     useEffect(() => { setArrivalCity(destination); }, [destination]);
     useEffect(() => { setArrivalDate(startDate ?? ''); }, [startDate]);
@@ -293,6 +313,49 @@ export function FlightsSection({
         }
     }, [tripId, travelerCount]);
 
+    const handleManualSave = useCallback(async () => {
+        if (manualSaving) return;
+        const t = manual.type.trim();
+        const from = manual.depart_lieu.trim();
+        const to = manual.arrivee_lieu.trim();
+        if (!t || !from || !to) {
+            setOpMessage('Renseignez au moins la compagnie/vol, le départ et l’arrivée.');
+            return;
+        }
+        if (!manual.depart_le || !manual.arrivee_le) {
+            setOpMessage('Indiquez les dates et heures de départ et d’arrivée.');
+            return;
+        }
+        const departIso = new Date(manual.depart_le).toISOString();
+        const arriveIso = new Date(manual.arrivee_le).toISOString();
+        if (arriveIso < departIso) {
+            setOpMessage('L’arrivée doit être postérieure (ou égale) au départ.');
+            return;
+        }
+        setManualSaving(true);
+        setOpMessage(null);
+        try {
+            await tripTravelClient.createFlight(tripId, {
+                type: t,
+                depart_lieu: from,
+                arrivee_lieu: to,
+                depart_le: departIso,
+                arrivee_le: arriveIso,
+                prix: manual.prix ? Math.max(0, Math.round(Number(manual.prix))) : 0,
+                devise: manual.devise || 'EUR',
+                information_supplementaire: JSON.stringify({ source: 'manual' }),
+            });
+            setOpMessage('Vol ajouté au voyage.');
+            setManual(EMPTY_MANUAL_FLIGHT);
+            setManualOpen(false);
+            await reload();
+        } catch (err) {
+            setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
+        } finally {
+            setManualSaving(false);
+        }
+    }, [manual, manualSaving, tripId, reload]);
+
     const openModal = () => {
         setApiResponse(null);
         setModalOpen(true);
@@ -316,14 +379,121 @@ export function FlightsSection({
                         <p className="text-xs text-light-muted font-bold">{headerSubtitle}</p>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={openModal}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                >
-                    <Search size={14} /> Rechercher un vol
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setManualOpen((v) => !v)}
+                        aria-expanded={manualOpen}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-light-border bg-card text-light-foreground font-bold text-sm hover:border-brand hover:text-brand transition-colors"
+                    >
+                        <PencilLine size={14} /> J&apos;ai déjà réservé
+                    </button>
+                    <button
+                        type="button"
+                        onClick={openModal}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white font-bold text-sm hover:opacity-90 transition-opacity"
+                    >
+                        <Search size={14} /> Rechercher un vol
+                    </button>
+                </div>
             </div>
+
+            {manualOpen && (
+                <div className="triply-card space-y-4 p-5">
+                    <p className="text-sm font-bold text-light-foreground">Ajouter un vol déjà réservé</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Compagnie / Vol
+                            <input
+                                type="text"
+                                value={manual.type}
+                                onChange={(e) => setManual((m) => ({ ...m, type: e.target.value }))}
+                                placeholder="Air France AF1234"
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Départ
+                                <input
+                                    type="text"
+                                    value={manual.depart_lieu}
+                                    onChange={(e) => setManual((m) => ({ ...m, depart_lieu: e.target.value }))}
+                                    placeholder="CDG"
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Arrivée
+                                <input
+                                    type="text"
+                                    value={manual.arrivee_lieu}
+                                    onChange={(e) => setManual((m) => ({ ...m, arrivee_lieu: e.target.value }))}
+                                    placeholder="BCN"
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                        </div>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Départ le
+                            <input
+                                type="datetime-local"
+                                value={manual.depart_le}
+                                onChange={(e) => setManual((m) => ({ ...m, depart_le: e.target.value }))}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Arrivée le
+                            <input
+                                type="datetime-local"
+                                value={manual.arrivee_le}
+                                onChange={(e) => setManual((m) => ({ ...m, arrivee_le: e.target.value }))}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Prix
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={manual.prix}
+                                    onChange={(e) => setManual((m) => ({ ...m, prix: e.target.value }))}
+                                    placeholder="0"
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Devise
+                                <input
+                                    type="text"
+                                    value={manual.devise}
+                                    onChange={(e) => setManual((m) => ({ ...m, devise: e.target.value.toUpperCase().slice(0, 3) }))}
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => void handleManualSave()}
+                            disabled={manualSaving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                        >
+                            {manualSaving ? 'Ajout…' : 'Ajouter le vol'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setManualOpen(false); setManual(EMPTY_MANUAL_FLIGHT); }}
+                            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-light-muted transition-colors hover:text-light-foreground"
+                        >
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {opMessage && (
                 <p className="text-xs text-light-muted font-bold" role="status">{opMessage}</p>
@@ -338,13 +508,26 @@ export function FlightsSection({
                     <div className="h-3 w-1/2 rounded bg-light-bg animate-pulse" />
                 </div>
             ) : flights.length === 0 ? (
-                <div className="triply-card p-8 text-center space-y-3">
-                    <p className="text-sm text-light-muted font-bold">
-                        Aucun vol enregistré pour ce voyage.
-                    </p>
-                    <p className="text-xs text-light-muted">
-                        Lancez une recherche pour comparer les meilleures offres selon votre budget.
-                    </p>
+                <div className="triply-card relative overflow-hidden p-8">
+                    <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
+                    <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-2">
+                            <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand">
+                                Aucun vol sélectionné
+                            </span>
+                            <h4 className="text-xl font-display font-bold text-light-foreground">Trouvez le vol le moins cher selon vos dates</h4>
+                            <p className="max-w-md text-sm leading-relaxed text-light-muted">
+                                Triply compare les offres aux meilleures dates et accroche le résultat à votre budget en un clic.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={openModal}
+                            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-90"
+                        >
+                            <Search size={16} /> Sélectionner un vol
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <ul className="space-y-3">

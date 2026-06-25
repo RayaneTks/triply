@@ -60,15 +60,16 @@ export function PrivacyView() {
 export function MentionsLegalesView() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-20 prose prose-slate prose-brand">
-      <PageHeader 
-        title="Mentions Légales" 
+      <PageHeader
+        title="Mentions Légales"
         subtitle="Transparence et informations administratives."
         className="not-prose"
       />
-      <p>Le site Triply est édité par la société <strong>Triply SAS</strong>, au capital de 10 000€, immatriculée au RCS de Paris sous le numéro 123 456 789.</p>
-      <p>Siège social : 12 rue du Voyage Durable, 75001 Paris.</p>
-      <p>Directeur de la publication : Monsieur Julien Martin.</p>
-      <p>Hébergeur : Google Cloud Run (Europe).</p>
+      <p>Le site <strong>Triply</strong> est édité par une équipe étudiante issue de l’Institut G4 Marseille.</p>
+      <p>Siège social : Institut G4 — Marseille (à la même adresse que l’Institut G4).</p>
+      <p>Directeur de la publication : <strong>Triply Team G4</strong>.</p>
+      <p>Contact : <a href="mailto:support@triply.ovh">support@triply.ovh</a>.</p>
+      <p>Hébergeur : OVHcloud (France).</p>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/src/components/ui/Toast";
 import { PwaProvider } from "@/src/components/pwa/PwaProvider";
+import { ConsentBanner } from "@/src/components/legal/ConsentBanner";
 
 export const metadata: Metadata = {
   title: "Triply - Planification de voyage",
@@ -37,9 +38,8 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
         <link rel="preload" href="/fonts/Chillax-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/Gotham-Book.otf" as="font" type="font/otf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/Gotham-Medium.otf" as="font" type="font/otf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        {/* Gotham OTFs (Book/Medium/Bold) chargés à la demande via @font-face + font-display:swap.
+            Pas de preload pour éviter de bloquer le LCP avec ~500kb de fonts non critiques. */}
       </head>
       <body className="antialiased overflow-x-hidden min-h-dvh">
         <ToastProvider>
@@ -47,6 +47,7 @@ export default function RootLayout({
           <main className="flex min-h-dvh flex-col">
             {children}
           </main>
+          <ConsentBanner />
         </ToastProvider>
       </body>
     </html>

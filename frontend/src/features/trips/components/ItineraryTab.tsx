@@ -19,6 +19,7 @@ interface ItineraryTabProps {
     onLikedChange: (activityId: string, state: LikedState) => void;
     onDeleteActivity: (activity: ActivityResource) => void;
     onRequestCityDelete: (city: string) => void;
+    onReorderDay?: (dayId: string, orderedIds: string[]) => void;
 }
 
 export const ItineraryTab: FC<ItineraryTabProps> = ({
@@ -32,6 +33,7 @@ export const ItineraryTab: FC<ItineraryTabProps> = ({
     onLikedChange,
     onDeleteActivity,
     onRequestCityDelete,
+    onReorderDay,
 }) => {
     const summary = useMemo(() => {
         const daysWithActivities = activitiesByDay.filter((d) => d.activities.length > 0);
@@ -109,6 +111,11 @@ export const ItineraryTab: FC<ItineraryTabProps> = ({
                                     day={day}
                                     onLikedChange={onLikedChange}
                                     onDelete={onDeleteActivity}
+                                    onReorder={
+                                        onReorderDay
+                                            ? (orderedIds) => onReorderDay(day.day_id, orderedIds)
+                                            : undefined
+                                    }
                                 />
                             </div>
                         );

@@ -1,13 +1,14 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useTransition, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, MotionConfig, type Variants } from 'framer-motion';
+import { MapPin, CalendarRange, RefreshCw, Route, Wallet, Clock, GitBranch, Share2 } from 'lucide-react';
 import { Button } from '@/src/components/Button/Button';
 import { ThemeToggle } from '@/src/components/ThemeToggle/ThemeToggle';
-import { WorldMap } from '@/src/components/Map/Map';
+import { WorldMap } from '@/src/components/Map/WorldMapDynamic';
 import { TriplyLogo } from '@/src/components/layout/TriplyLogo';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
@@ -46,61 +47,77 @@ function Reveal({ children, className }: RevealProps) {
 
 export default function HomePage() {
     const router = useRouter();
-    const enterApp = () => router.push('/planifier');
+    const [isNavPending, startTransition] = useTransition();
+    const enterApp = () => startTransition(() => router.push('/planifier'));
     const hasMapboxToken = MAPBOX_TOKEN.trim().length > 0;
 
-    // Comment ça marche — 3 étapes concrètes.
+    // Étapes — parcours utilisateur en 3 temps. Icône distincte par étape.
     const steps = [
         {
-            index: '1',
-            title: 'Créez votre voyage',
-            text: 'Indiquez votre destination, vos dates, le nombre de voyageurs et votre budget. Triply pose les bases de votre itinéraire.',
+            index: '01',
+            icon: MapPin,
+            title: 'On pose le cadre',
+            text: 'Destination, dates, budget. En 30 secondes.',
         },
         {
-            index: '2',
-            title: 'Organisez vos journées',
-            text: 'Ajoutez vos activités jour par jour, sur une carte, avec des trajets qui s’enchaînent logiquement.',
+            index: '02',
+            icon: CalendarRange,
+            title: 'On remplit les journées',
+            text: 'Activités sur carte, trajets calés.',
         },
         {
-            index: '3',
-            title: 'Ajustez budget et imprévus',
-            text: 'Suivez vos dépenses en euros et adaptez votre voyage en quelques clics quand un plan change.',
+            index: '03',
+            icon: RefreshCw,
+            title: 'On ajuste en route',
+            text: 'Imprévu ? La journée se réorganise seule.',
         },
     ];
 
-    // Aides concrètes à la planification — bénéfices utilisateur, pas des noms de feature.
+    // Bénéfices — bento asymétrique. Chaque carte = une promesse claire, peu de texte.
     const aides = [
         {
-            title: 'Un itinéraire jour par jour',
-            text: 'Chaque journée est claire : activités, horaires et trajets enchaînés, sans zigzag dans la ville.',
+            icon: Route,
+            title: 'Itinéraire jour par jour',
+            text: 'Activités, horaires, trajets enchaînés. Pas de zigzag.',
+            size: 'large' as const,
         },
         {
-            title: 'Un budget suivi en euros',
-            text: 'Vols, hébergement et activités réunis au même endroit. Vous voyez ce que coûte votre voyage à tout moment.',
+            icon: Wallet,
+            title: 'Budget en euros, en temps réel',
+            text: 'Vols, hôtel, activités au même endroit.',
+            size: 'small' as const,
         },
         {
-            title: 'Un voyage qui s’adapte',
-            text: 'Un vol décalé, une visite fermée ? Réorganisez la journée concernée sans tout refaire à la main.',
+            icon: RefreshCw,
+            title: 'S’adapte aux imprévus',
+            text: 'Vol décalé, visite fermée — la journée se replanifie.',
+            size: 'small' as const,
         },
         {
-            title: 'Vos temps libres mis à profit',
-            text: 'Le copilote vous suggère quoi faire pendant les creux, à distance de marche de là où vous êtes.',
+            icon: Clock,
+            title: 'Temps libres utilisés',
+            text: 'Suggestions à distance de marche pendant les creux.',
+            size: 'small' as const,
         },
         {
-            title: 'Des variantes à comparer',
-            text: 'Essayez une autre version d’une journée, gardez celle qui vous convient le mieux.',
+            icon: GitBranch,
+            title: 'Variantes à comparer',
+            text: 'Essayez deux versions d’une journée, gardez la meilleure.',
+            size: 'small' as const,
         },
         {
-            title: 'Un récap à partager',
-            text: 'Partagez votre itinéraire avec vos compagnons de voyage grâce à un simple lien.',
+            icon: Share2,
+            title: 'Récap partagé',
+            text: 'Un lien, et vos compagnons voient tout.',
+            size: 'small' as const,
         },
     ];
 
     return (
         <MotionConfig reducedMotion="user">
             <div className="min-h-dvh w-full bg-background text-foreground">
-                <header className="fixed left-1/2 top-0 z-50 w-full max-w-7xl -translate-x-1/2 bg-background/80 px-6 py-4 backdrop-blur-md">
-                    <div className="mx-auto flex w-full items-center justify-between">
+                <header className="fixed inset-x-0 top-0 z-50 w-full bg-background/80 backdrop-blur-md">
+                    <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-6 py-4">
                         <div className="flex items-center">
                             <TriplyLogo size={56} priority />
                         </div>
@@ -112,7 +129,7 @@ export default function HomePage() {
                         </nav>
                         <div className="flex items-center gap-3">
                             <ThemeToggle className="h-9 w-9" />
-                            <Button label="Créer un voyage" onClick={enterApp} variant="dark" tone="tone1" />
+                            <Button label={isNavPending ? 'Chargement…' : 'Créer un voyage'} onClick={enterApp} loading={isNavPending} disabled={isNavPending} variant="dark" tone="tone1" />
                         </div>
                     </div>
                 </header>
@@ -173,7 +190,7 @@ export default function HomePage() {
                                 variants={itemVariants}
                                 className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
                             >
-                                <Button label="Créer un voyage" onClick={enterApp} variant="dark" tone="tone1" />
+                                <Button label={isNavPending ? 'Chargement…' : 'Créer un voyage'} onClick={enterApp} loading={isNavPending} disabled={isNavPending} variant="dark" tone="tone1" />
                                 <a
                                     href="#etapes"
                                     className="text-sm font-semibold text-primary underline-offset-4 transition-opacity hover:opacity-80"
@@ -184,70 +201,95 @@ export default function HomePage() {
                         </motion.div>
                     </section>
 
-                    {/* COMMENT ÇA MARCHE */}
-                    <section id="etapes" className="mx-auto w-full max-w-7xl scroll-mt-28 px-6 py-20">
-                        <Reveal className="flex flex-col gap-3">
-                            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">Comment ça marche</span>
-                            <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Votre voyage prend forme en trois étapes</h2>
-                            <p className="max-w-2xl text-foreground/75">
-                                De la première idée à l’itinéraire complet, vous gardez la main du début à la fin.
-                            </p>
+                    {/* ÉTAPES — timeline horizontale, courte */}
+                    <section id="etapes" className="mx-auto w-full max-w-7xl scroll-mt-28 px-6 py-24">
+                        <Reveal className="flex flex-col items-center gap-3 text-center">
+                            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">Le parcours</span>
+                            <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">De l’idée au départ, en trois temps</h2>
                         </Reveal>
 
                         <motion.ol
-                            className="mt-10 grid gap-5 md:grid-cols-3"
+                            className="relative mt-16 grid gap-12 md:grid-cols-3"
                             variants={containerVariants}
                             initial="hidden"
                             whileInView="visible"
                             viewport={{ once: true, amount: 0.2 }}
                         >
-                            {steps.map((step) => (
-                                <motion.li
-                                    key={step.index}
-                                    variants={itemVariants}
-                                    className="triply-card p-6"
-                                >
-                                    <span className="font-title text-2xl font-black text-primary">{step.index}</span>
-                                    <h3 className="mt-3 font-title text-lg font-bold text-foreground">{step.title}</h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-foreground/75">{step.text}</p>
-                                </motion.li>
-                            ))}
+                            {/* Ligne reliant les étapes (desktop). */}
+                            <div
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-[16%] right-[16%] top-7 hidden h-px bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 md:block"
+                            />
+                            {steps.map((step) => {
+                                const Icon = step.icon;
+                                return (
+                                    <motion.li
+                                        key={step.index}
+                                        variants={itemVariants}
+                                        className="relative flex flex-col items-center text-center"
+                                    >
+                                        <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-background shadow-lg shadow-primary/10">
+                                            <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                                            <span className="absolute -right-2 -top-2 rounded-full bg-primary px-2 py-0.5 font-title text-[10px] font-black tracking-wider text-white">
+                                                {step.index}
+                                            </span>
+                                        </div>
+                                        <h3 className="mt-5 font-title text-lg font-bold text-foreground">{step.title}</h3>
+                                        <p className="mt-2 max-w-[22ch] text-sm leading-relaxed text-foreground/70">{step.text}</p>
+                                    </motion.li>
+                                );
+                            })}
                         </motion.ol>
                     </section>
 
-                    {/* CE QUE VOUS POUVEZ FAIRE */}
-                    <section id="aides" className="scroll-mt-28 bg-secondary/15 py-20">
+                    {/* BÉNÉFICES — bento asymétrique, peu de texte */}
+                    <section id="aides" className="scroll-mt-28 bg-secondary/15 py-24">
                         <div className="mx-auto w-full max-w-7xl px-6">
                             <Reveal className="flex flex-col gap-3">
-                                <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">Ce que Triply fait pour vous</span>
-                                <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Tout pour planifier, simplement mais en profondeur</h2>
-                                <p className="max-w-2xl text-foreground/75">
-                                    Des outils concrets pour construire un voyage clair, maîtriser le budget et rester flexible.
-                                </p>
+                                <span className="text-sm font-semibold uppercase tracking-[0.2em] text-micro-design">Concrètement</span>
+                                <h2 className="font-title text-3xl font-bold text-foreground md:text-4xl">Ce que vous gagnez à chaque voyage</h2>
                             </Reveal>
 
                             <motion.ul
-                                className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+                                className="mt-10 grid gap-4 md:grid-cols-3 md:auto-rows-[180px]"
                                 variants={containerVariants}
                                 initial="hidden"
                                 whileInView="visible"
                                 viewport={{ once: true, amount: 0.15 }}
                             >
-                                {aides.map((aide) => (
-                                    <motion.li
-                                        key={aide.title}
-                                        variants={itemVariants}
-                                        className="triply-card p-6"
-                                    >
-                                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="m5 12 5 5L20 7" />
-                                            </svg>
-                                        </div>
-                                        <h3 className="font-title text-lg font-bold text-foreground">{aide.title}</h3>
-                                        <p className="mt-2 text-sm leading-relaxed text-foreground/75">{aide.text}</p>
-                                    </motion.li>
-                                ))}
+                                {aides.map((aide) => {
+                                    const Icon = aide.icon;
+                                    const isLarge = aide.size === 'large';
+                                    return (
+                                        <motion.li
+                                            key={aide.title}
+                                            variants={itemVariants}
+                                            className={
+                                                isLarge
+                                                    ? 'triply-card relative flex flex-col justify-between overflow-hidden p-7 md:col-span-2 md:row-span-2'
+                                                    : 'triply-card flex flex-col justify-between p-6'
+                                            }
+                                        >
+                                            {isLarge && (
+                                                <div
+                                                    aria-hidden="true"
+                                                    className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl"
+                                                />
+                                            )}
+                                            <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary ${isLarge ? 'h-14 w-14' : ''}`}>
+                                                <Icon className={isLarge ? 'h-7 w-7' : 'h-5 w-5'} aria-hidden="true" />
+                                            </div>
+                                            <div className="mt-6">
+                                                <h3 className={`font-title font-bold text-foreground ${isLarge ? 'text-2xl md:text-3xl' : 'text-base'}`}>
+                                                    {aide.title}
+                                                </h3>
+                                                <p className={`mt-2 leading-relaxed text-foreground/70 ${isLarge ? 'text-sm md:text-base max-w-md' : 'text-sm'}`}>
+                                                    {aide.text}
+                                                </p>
+                                            </div>
+                                        </motion.li>
+                                    );
+                                })}
                             </motion.ul>
                         </div>
                     </section>
@@ -316,8 +358,10 @@ export default function HomePage() {
                                 Créez votre premier voyage et construisez un itinéraire clair en quelques minutes.
                             </p>
                             <Button
-                                label="Créer un voyage"
+                                label={isNavPending ? 'Chargement…' : 'Créer un voyage'}
                                 onClick={enterApp}
+                                loading={isNavPending}
+                                disabled={isNavPending}
                                 variant="light"
                                 tone="tone2"
                                 className="mt-8 inline-flex"
@@ -331,7 +375,7 @@ export default function HomePage() {
                     <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 md:flex-row">
                         <div>
                             <TriplyLogo size={50} />
-                            <p className="mt-1 text-xs text-foreground/60">© 2026 Triply Technologies. Tous droits réservés.</p>
+                            <p className="mt-1 text-xs text-foreground/60">© 2026 Triply. Tous droits réservés.</p>
                         </div>
                         <nav aria-label="Liens légaux" className="flex flex-wrap items-center justify-center gap-6 text-sm text-foreground/75">
                             <a href="/legal/confidentialite" className="transition-colors hover:text-primary">Confidentialité</a>

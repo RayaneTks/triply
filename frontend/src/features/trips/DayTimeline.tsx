@@ -2,12 +2,15 @@
 
 import { FC, useMemo, useState } from 'react';
 import {
+    ArrowDown,
+    ArrowUp,
     Building,
     Camera,
     ChevronDown,
     Clock,
     Coffee,
     Compass,
+    GripVertical,
     Landmark,
     Leaf,
     MapPin,
@@ -28,6 +31,9 @@ interface DayTimelineProps {
     day: ActivityDayBucket;
     onLikedChange: (activityId: string, state: LikedState) => void;
     onDelete: (activity: ActivityResource) => void;
+    /** Réordonne les activités du jour (nouvel ordre d'ids). Optionnel : sans
+     *  callback, le drag & drop est désactivé. */
+    onReorder?: (orderedActivityIds: string[]) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -190,18 +196,54 @@ const DayHeader: FC<DayHeaderProps> = ({
 interface ActivityRowProps {
     tripId: string;
     item: CategorizedActivity;
+    index: number;
     isFirst: boolean;
+    activityCount: number;
+    reorderable: boolean;
+    dragIndex: number | null;
+    overIndex: number | null;
     onLikedChange: (activityId: string, state: LikedState) => void;
     onDelete: (activity: ActivityResource) => void;
+    onDragStart: () => void;
+    onDragEnd: () => void;
+    onDragOver: () => void;
+    onDrop: () => void;
+    onMoveUp: () => void;
+    onMoveDown: () => void;
 }
 
-const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChange, onDelete }) => {
+const ActivityRow: FC<ActivityRowProps> = ({
+    tripId,
+    item,
+    index,
+    isFirst,
+    activityCount,
+    reorderable,
+    dragIndex,
+    overIndex,
+    onLikedChange,
+    onDelete,
+    onDragStart,
+    onDragEnd,
+    onDragOver,
+    onDrop,
+    onMoveUp,
+    onMoveDown,
+}) => {
+    const { activity, category, Icon, startTime, endTime, durationLabel } = item;
+    const { lat, lng } = activity.attributes;
+    const hasGeo = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
+
     const { activity, category, Icon, startTime, endTime, durationLabel } = item;
     const { lat, lng } = activity.attributes;
     const hasGeo = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
 
     return (
-        <li className="relative group">
+        <li
+            className="relative group"
+            onDragOver={reorderable ? (e) => { e.preventDefault(); onDragOver(); } : undefined}
+            onDrop={reorderable ? (e) => { e.preventDefault(); onDrop(); } : undefined}
+        >
             <span
                 aria-hidden
                 className={cn(
@@ -209,7 +251,13 @@ const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChang
                     isFirst ? 'bg-brand' : 'bg-brand/80',
                 )}
             />
-            <div className="flex flex-col gap-3 rounded-2xl border border-light-border bg-light-bg/40 p-4 transition-colors group-hover:bg-light-bg">
+            <div
+                className={cn(
+                    'flex flex-col gap-3 rounded-2xl border border-light-border bg-light-bg/40 p-4 transition-colors group-hover:bg-light-bg',
+                    dragIndex === index && 'opacity-50',
+                    reorderable && overIndex === index && dragIndex !== null && dragIndex !== index && 'ring-2 ring-brand/50',
+                )}
+            >
                 <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                     <span className="inline-flex items-center gap-1 text-brand">
                         <Clock size={12} /> {startTime} – {endTime}
@@ -255,6 +303,41 @@ const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChang
                         )}
                     </div>
                     <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                        {reorderable && (
+                            <>
+                                <span
+                                    draggable
+                                    onDragStart={onDragStart}
+                                    onDragEnd={onDragEnd}
+                                    role="button"
+                                    aria-label={`Glisser pour déplacer ${activity.attributes.title}`}
+                                    title="Glisser pour réordonner"
+                                    className="hidden h-8 w-8 cursor-grab items-center justify-center rounded-full text-light-muted hover:bg-light-bg hover:text-brand active:cursor-grabbing sm:flex"
+                                >
+                                    <GripVertical size={14} />
+                                </span>
+                                <div className="flex flex-col sm:hidden">
+                                    <button
+                                        type="button"
+                                        onClick={onMoveUp}
+                                        disabled={index === 0}
+                                        aria-label="Monter l'activité"
+                                        className="flex h-5 w-7 items-center justify-center rounded text-light-muted hover:text-brand disabled:opacity-30"
+                                    >
+                                        <ArrowUp size={13} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={onMoveDown}
+                                        disabled={index === activityCount - 1}
+                                        aria-label="Descendre l'activité"
+                                        className="flex h-5 w-7 items-center justify-center rounded text-light-muted hover:text-brand disabled:opacity-30"
+                                    >
+                                        <ArrowDown size={13} />
+                                    </button>
+                                </div>
+                            </>
+                        )}
                         <LikeButtons
                             tripId={tripId}
                             activityId={activity.id}
@@ -277,8 +360,28 @@ const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChang
     );
 };
 
-export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, onDelete }) => {
+export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, onDelete, onReorder }) => {
     const [expanded, setExpanded] = useState(day.index === 1);
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+    const [overIndex, setOverIndex] = useState<number | null>(null);
+    const reorderable = typeof onReorder === 'function' && day.activities.length > 1;
+
+    /** Applique un déplacement de `from` vers `to` et émet le nouvel ordre. */
+    const move = (from: number, to: number) => {
+        if (!onReorder) return;
+        const ids = day.activities.map((a) => a.id);
+        if (from < 0 || to < 0 || from >= ids.length || to >= ids.length || from === to) return;
+        const next = [...ids];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        onReorder(next);
+    };
+
+    const handleDrop = (to: number) => {
+        if (dragIndex !== null) move(dragIndex, to);
+        setDragIndex(null);
+        setOverIndex(null);
+    };
 
     const categorized = useMemo<CategorizedActivity[]>(() => {
         const startOfDay = 9 * 60; // 09:00
@@ -329,9 +432,20 @@ export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, 
                             key={item.activity.id}
                             tripId={tripId}
                             item={item}
+                            index={index}
                             isFirst={index === 0}
+                            activityCount={day.activities.length}
+                            reorderable={reorderable}
+                            dragIndex={dragIndex}
+                            overIndex={overIndex}
                             onLikedChange={onLikedChange}
                             onDelete={onDelete}
+                            onDragStart={() => setDragIndex(index)}
+                            onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
+                            onDragOver={() => setOverIndex(index)}
+                            onDrop={() => handleDrop(index)}
+                            onMoveUp={() => move(index, index - 1)}
+                            onMoveDown={() => move(index, index + 1)}
                         />
                     ))}
                 </ol>

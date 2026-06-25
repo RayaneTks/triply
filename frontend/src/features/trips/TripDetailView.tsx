@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft,
+    CalendarPlus,
     Copy,
     FileDown,
     FileText,
     Map,
+    Sparkles,
     Trash2,
     Wallet,
 } from 'lucide-react';
@@ -37,6 +39,7 @@ import {
 import { citiesClient } from '../../lib/cities-client';
 import { tripDetailFromApi, tripDetailFromStored, type TripDetailDisplay } from '../../lib/trip-view-adapter';
 import { printTripPdf } from '../../lib/trip-pdf-export';
+import { exportTripIcs } from '../../lib/trip-export-client';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import { AuthRequiredCard } from '../../components/auth/AuthRequiredCard';
 
@@ -59,6 +62,7 @@ export function TripDetailView() {
     const [replanOpen, setReplanOpen] = useState(false);
     const [budgetOpen, setBudgetOpen] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
+    const [exportingIcs, setExportingIcs] = useState(false);
 
     const reloadActivities = useCallback(async () => {
         if (!tripId || !authClient.getToken()) return;
@@ -182,6 +186,33 @@ export function TripDetailView() {
             toast({
                 variant: 'error',
                 title: 'Restauration impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
+        }
+    };
+
+    const handleReorderDay = async (dayId: string, orderedIds: string[]) => {
+        if (!tripId) return;
+        let previous: ActivityDayBucket[] = [];
+        setActivitiesByDay((current) => {
+            previous = current;
+            return current.map((day) => {
+                if (day.day_id !== dayId) return day;
+                const byId = new Map(day.activities.map((a) => [a.id, a]));
+                const reordered = orderedIds
+                    .map((id) => byId.get(id))
+                    .filter((a): a is ActivityResource => Boolean(a));
+                const missing = day.activities.filter((a) => !orderedIds.includes(a.id));
+                return { ...day, activities: [...reordered, ...missing] };
+            });
+        });
+        try {
+            await activitiesClient.reorder(tripId, orderedIds);
+        } catch (err) {
+            setActivitiesByDay(previous);
+            toast({
+                variant: 'error',
+                title: 'Réordonnancement impossible',
                 description: err instanceof Error ? err.message : undefined,
             });
         }
@@ -314,6 +345,39 @@ export function TripDetailView() {
         }
     };
 
+    const handleExportIcs = async () => {
+        if (!tripId || exportingIcs) return;
+        setExportingIcs(true);
+        try {
+            await exportTripIcs(tripId);
+            toast({
+                variant: 'success',
+                title: 'Agenda exporté',
+                description: 'Importez le fichier .ics dans votre agenda.',
+            });
+        } catch (err) {
+            toast({
+                variant: 'error',
+                title: 'Export impossible',
+                description: err instanceof Error ? err.message : undefined,
+            });
+        } finally {
+            setExportingIcs(false);
+        }
+    };
+
+    const pendingSelections = (() => {
+        const needs = apiTrip?.plan_snapshot?.plannerNeeds;
+        const flightDeclared = needs?.flights === true;
+        const hotelDeclared = needs?.hotels === true;
+        const hasFlightSummary = Boolean(apiTrip?.plan_snapshot?.flightSummary?.price);
+        const hasHotelSummary = Boolean(apiTrip?.plan_snapshot?.hotelSummary?.totalPrice);
+        const items: Array<{ key: 'flights' | 'hotels'; label: string }> = [];
+        if (flightDeclared && !hasFlightSummary) items.push({ key: 'flights', label: 'Vol' });
+        if (hotelDeclared && !hasHotelSummary) items.push({ key: 'hotels', label: 'Hôtel' });
+        return items;
+    })();
+
     return (
         <div className="max-w-7xl mx-auto px-6 py-12 lg:py-20">
             <Link
@@ -375,6 +439,14 @@ export function TripDetailView() {
                         >
                             <FileDown size={14} /> Export PDF
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleExportIcs()}
+                            disabled={exportingIcs}
+                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2 disabled:opacity-60"
+                        >
+                            <CalendarPlus size={14} className={exportingIcs ? 'animate-pulse' : undefined} /> Export ICS
+                        </button>
                     </div>
                 }
             />
@@ -387,6 +459,64 @@ export function TripDetailView() {
                 statusLabel={trip.statusLabel}
                 destination={trip.destination}
             />
+
+            {typeof trip.remainingBudget === 'number' && trip.remainingBudget < 0 && (
+                <div
+                    role="alert"
+                    className="mb-8 flex flex-col gap-3 rounded-2xl border border-amber-300/70 bg-amber-50/95 p-5 text-amber-950 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-100"
+                >
+                    <div className="flex items-start gap-3">
+                        <Wallet size={20} className="mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold">
+                                Dépassement budget&nbsp;: +{Math.abs(trip.remainingBudget)}€
+                            </p>
+                            <p className="text-xs leading-relaxed opacity-90">
+                                Les estimations actuelles dépassent l&apos;enveloppe de {trip.budget}€.
+                                Vous pouvez alléger pour rester dans le budget.
+                            </p>
+                        </div>
+                    </div>
+                    {apiTrip && (
+                        <button
+                            type="button"
+                            onClick={() => setBudgetOpen(true)}
+                            className="btn-secondary shrink-0 self-start px-4 py-2 text-xs sm:self-auto"
+                        >
+                            Alléger le budget
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {pendingSelections.length > 0 && (
+                <div className="mb-8 flex flex-col gap-3 rounded-2xl border border-brand/30 bg-brand/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                        <Sparkles size={18} className="mt-0.5 shrink-0 text-brand" />
+                        <div>
+                            <p className="text-sm font-bold text-light-foreground">
+                                Sélection{pendingSelections.length > 1 ? 's' : ''} en attente :{' '}
+                                {pendingSelections.map((i) => i.label).join(' + ')}
+                            </p>
+                            <p className="text-xs leading-relaxed text-light-muted">
+                                Vous avez demandé ces options au wizard. Sélectionnez-les pour ajuster le budget.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                        {pendingSelections.map((i) => (
+                            <button
+                                key={i.key}
+                                type="button"
+                                onClick={() => setActiveTab(i.key)}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-bold text-white hover:opacity-90"
+                            >
+                                Choisir {i.label.toLowerCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid lg:grid-cols-3 gap-12">
                 <div className="lg:col-span-2 space-y-8">
@@ -413,6 +543,7 @@ export function TripDetailView() {
                                 onLikedChange={setActivityLiked}
                                 onDeleteActivity={handleDeleteActivity}
                                 onRequestCityDelete={setPendingCityDelete}
+                                onReorderDay={handleReorderDay}
                             />
                         )}
 
