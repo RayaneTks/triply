@@ -168,7 +168,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
     const totalActivities = useMemo(() => days.reduce((sum, d) => sum + d.activities.length, 0), [days]);
 
     const handleShare = useCallback(async () => {
-        if (!recap || !authClient.getToken()) return;
+        if (!recap?.trip || !authClient.getToken()) return;
         setShareLoading(true);
         setShareError(null);
         try {
@@ -182,7 +182,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
     }, [recap, shareTtlDays]);
 
     const handleFinalizeBooking = useCallback(async () => {
-        if (!recap) return;
+        if (!recap?.trip) return;
         setBookingLoading(true);
         setBookingError(null);
         try {
@@ -245,7 +245,16 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
         );
     }
 
-    const dateRange = `${recap.trip.start_date} → ${recap.trip.end_date}`;
+    const trip = recap.trip;
+    if (!trip) {
+        return (
+            <div className="px-6 py-10">
+                <ErrorState title="Récap incomplet" description="Les informations du voyage sont indisponibles." />
+            </div>
+        );
+    }
+
+    const dateRange = `${trip.start_date} → ${trip.end_date}`;
 
     return (
         <div className="pb-24">
@@ -261,7 +270,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
                 <div className="max-w-7xl mx-auto px-6 py-10">
                     {!isPublic && (
                         <Link
-                            href={`/voyages/${recap.trip.id}`}
+                            href={`/voyages/${trip.id}`}
                             className="inline-flex items-center gap-2 text-sm/none font-bold mb-6 opacity-90 hover:opacity-100"
                         >
                             <ArrowLeft size={16} /> Retour au voyage
@@ -270,21 +279,21 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
                     <div className="flex flex-wrap items-end justify-between gap-6">
                         <div className="min-w-0">
                             <p className="uppercase tracking-widest text-xs font-bold opacity-80">Récapitulatif du voyage</p>
-                            <h1 className="mt-2 text-4xl md:text-5xl font-black leading-tight">{recap.trip.title}</h1>
+                            <h1 className="mt-2 text-4xl md:text-5xl font-black leading-tight">{trip.title}</h1>
                             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm opacity-95">
                                 <span className="inline-flex items-center gap-2">
-                                    <MapPin size={16} /> {recap.trip.destination}
+                                    <MapPin size={16} /> {trip.destination}
                                 </span>
                                 <span className="inline-flex items-center gap-2">
                                     <Calendar size={16} /> {dateRange}
                                 </span>
                                 <span className="inline-flex items-center gap-2">
-                                    <Users size={16} /> {recap.trip.travelers_count}{' '}
-                                    {recap.trip.travelers_count > 1 ? 'voyageurs' : 'voyageur'}
+                                    <Users size={16} /> {trip.travelers_count}{' '}
+                                    {trip.travelers_count > 1 ? 'voyageurs' : 'voyageur'}
                                 </span>
-                                {typeof recap.trip.budget_total === 'number' && (
+                                {typeof trip.budget_total === 'number' && (
                                     <span className="inline-flex items-center gap-2">
-                                        <Wallet size={16} /> {recap.trip.budget_total} {recap.trip.currency ?? 'EUR'}
+                                        <Wallet size={16} /> {trip.budget_total} {trip.currency ?? 'EUR'}
                                     </span>
                                 )}
                             </div>
@@ -320,7 +329,7 @@ export function RecapVoyageView({ publicShareToken }: RecapVoyageViewProps) {
 
                     {/* Stats */}
                     <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <StatTile icon={<Calendar size={18} />} label="Jours" value={recap.trip.travel_days.toString()} />
+                        <StatTile icon={<Calendar size={18} />} label="Jours" value={trip.travel_days.toString()} />
                         <StatTile icon={<Sparkles size={18} />} label="Activités" value={totalActivities.toString()} />
                         <StatTile icon={<Heart size={18} />} label="Coups de cœur" value={totalLiked.toString()} />
                         <StatTile

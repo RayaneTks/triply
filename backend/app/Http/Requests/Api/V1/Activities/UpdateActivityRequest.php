@@ -16,6 +16,9 @@ class UpdateActivityRequest extends BaseApiRequest
             'cost' => ['sometimes', 'numeric', 'min:0'],
             'type' => ['sometimes', 'string', 'max:100'],
             'notes' => ['sometimes', 'nullable', 'string'],
+            'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+            'layer_id' => ['sometimes', 'nullable', 'string', 'max:200'],
         ];
     }
 }

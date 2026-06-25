@@ -29,6 +29,8 @@ services:
     volumes:
       - ./frontend:/app/frontend
       - tri-spa-node_modules:/app/frontend/node_modules
+      # .next sur volume Linux : Turbopack ne peut pas écrire sur le bind-mount Windows (EPERM).
+      - tri-spa-next:/app/frontend/.next
     depends_on:
       - tri-api
     restart: unless-stopped
@@ -206,4 +208,5 @@ networks:
 volumes:
   tri-postgres-data:
   tri-spa-node_modules:
+  tri-spa-next:
   tri-backend-vendor:

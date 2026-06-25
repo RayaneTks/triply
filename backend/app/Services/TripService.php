@@ -146,11 +146,9 @@ class TripService implements TripServiceInterface
     public function validateTrip(string $tripId): array
     {
         $trip = $this->findUserTrip($tripId);
+        $this->snapshotSync->refreshCompactSnapshot($trip);
 
-        return [
-            'trip_id' => $trip->id,
-            'validated' => true,
-        ];
+        return $this->serializeTrip($trip->fresh(['transports', 'hebergements', 'journees.etapes']));
     }
 
     public function deleteTrip(string $tripId): void

@@ -192,6 +192,14 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
         return $snapshot;
     }
 
+    public function refreshCompactSnapshot(Voyage $voyage): void
+    {
+        $stored = is_array($voyage->plan_snapshot) ? $voyage->plan_snapshot : [];
+        $merged = array_replace_recursive($this->buildFromStructured($voyage), $stored);
+        $voyage->plan_snapshot = $this->compactForStorage($merged);
+        $voyage->save();
+    }
+
     public function extractBudgetTotal(mixed $snapshot): int
     {
         if (! is_array($snapshot)) {

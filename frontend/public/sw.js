@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION pour invalider tous les caches lors d'un déploiement cassant.
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE = {
   shell: `triply-shell-${CACHE_VERSION}`,
   pages: `triply-pages-${CACHE_VERSION}`,
@@ -79,6 +79,15 @@ function isStaticAsset(url) {
     url.pathname.startsWith('/fonts/') ||
     url.pathname.startsWith('/icons/') ||
     /\.(?:js|css|woff2?|otf|ttf|png|jpe?g|svg|gif|webp|avif|ico)$/i.test(url.pathname)
+  );
+}
+
+// Routes Next.js dynamiques (optimiseur d'images, flight data…) : laisser le navigateur gérer.
+function isNextRuntime(url) {
+  return (
+    url.pathname.startsWith('/_next/image') ||
+    url.pathname.startsWith('/_next/data/') ||
+    url.pathname.startsWith('/_next/webpack-hmr')
   );
 }
 
@@ -200,6 +209,12 @@ self.addEventListener('fetch', (event) => {
   // Tout le reste : on ne touche pas au cross-origin (CDN tiers, analytics, etc.).
   if (url.origin !== self.location.origin) return;
 
+  // Runtime Next (images optimisées, RSC, HMR) : pas d'interception.
+  if (isNextRuntime(url)) return;
+
+  // API dynamique (auth, intégrations, recherche Amadeus…) : pas d'interception SW.
+  if (url.pathname.startsWith('/api/') && !isCacheableApi(url)) return;
+
   // Navigations (pages voyage actif, day-of view…) : network-first → cache → page offline.
   if (isHtmlRequest(request)) {
     event.respondWith(networkFirst(request, CACHE.pages, MAX_ENTRIES.pages, OFFLINE_URL));
@@ -218,9 +233,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Défaut : réseau avec repli cache.
+  // Défaut : réseau avec repli cache (toujours une Response valide pour respondWith).
   event.respondWith(
-    fetch(request).catch(() => caches.match(request)),
+    (async () => {
+      try {
+        return await fetch(request);
+      } catch {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        return Response.error();
+      }
+    })(),
   );
 });
 

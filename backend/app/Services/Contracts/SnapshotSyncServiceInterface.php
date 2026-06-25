@@ -47,6 +47,12 @@ interface SnapshotSyncServiceInterface
     public function buildFromStructured(Voyage $voyage): array;
 
     /**
+     * Persist compact metadata only (strip days / flight / hotel summaries
+     * that live in structured tables). Call after map-side activity edits.
+     */
+    public function refreshCompactSnapshot(Voyage $voyage): void;
+
+    /**
      * Compute total trip budget (EUR) from snapshot flight + hotel pricing.
      */
     public function extractBudgetTotal(mixed $snapshot): int;

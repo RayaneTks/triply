@@ -24,6 +24,17 @@ export function ServiceWorkerRegistrar() {
     };
 
     const register = async () => {
+      // En dev, le SW intercepte HMR, l'optimiseur d'images et les API dynamiques.
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+
       try {
         const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
         // Si une mise à jour est trouvée, on l'active dès qu'elle est installée.

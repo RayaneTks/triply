@@ -148,6 +148,110 @@ class TripActivityControllerTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    public function test_reorder_via_activity_ids_updates_order(): void
+    {
+        $a = Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 1]);
+        $b = Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 2]);
+        $c = Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 3]);
+
+        $response = $this->postJson("/api/v1/trips/{$this->voyage->id}/activities/reorder", [
+            'activity_ids' => [(string) $c->id, (string) $a->id, (string) $b->id],
+        ]);
+
+        $response->assertOk();
+        $this->assertSame(1, $c->fresh()->ordre);
+        $this->assertSame(2, $a->fresh()->ordre);
+        $this->assertSame(3, $b->fresh()->ordre);
+    }
+
+    public function test_store_activity_avoids_order_conflict_with_soft_deleted_sibling(): void
+    {
+        Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 1]);
+        Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 2]);
+        Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 3]);
+        $deleted = Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 4]);
+        $deleted->delete();
+
+        $response = $this->postJson("/api/v1/trips/{$this->voyage->id}/activities", [
+            'source' => 'place',
+            'title' => 'Panthéon',
+            'day_id' => (string) $this->day->id,
+            'lat' => 41.8986,
+            'lng' => 12.4768,
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('etapes', [
+            'titre' => 'Panthéon',
+            'journee_id' => $this->day->id,
+            'ordre' => 5,
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_store_activity_after_soft_delete_assigns_non_conflicting_ordre(): void
+    {
+        Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 1]);
+        Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 2]);
+        Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 3]);
+        $deleted = Etape::factory()->create(['journee_id' => $this->day->id, 'ordre' => 4]);
+        $deleted->delete();
+
+        $response = $this->postJson("/api/v1/trips/{$this->voyage->id}/activities", [
+            'source' => 'place',
+            'title' => 'Basilica di San Pietro in Vincoli',
+            'day_id' => (string) $this->day->id,
+            'lat' => 41.8938,
+            'lng' => 12.4931,
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('etapes', [
+            'titre' => 'Basilica di San Pietro in Vincoli',
+            'journee_id' => $this->day->id,
+            'ordre' => 5,
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_store_activity_persists_lat_lng_in_description(): void
+    {
+        $response = $this->postJson("/api/v1/trips/{$this->voyage->id}/activities", [
+            'source' => 'place',
+            'title' => 'Colisée',
+            'day_id' => (string) $this->day->id,
+            'lat' => 41.8902,
+            'lng' => 12.4922,
+            'layer_id' => 'poi-label',
+        ]);
+
+        $response->assertCreated();
+        $etape = Etape::query()->where('titre', 'Colisée')->first();
+        $this->assertNotNull($etape);
+        $extra = json_decode((string) $etape->description, true);
+        $this->assertSame(41.8902, $extra['lat']);
+        $this->assertSame(12.4922, $extra['lng']);
+        $this->assertSame('poi-label', $extra['layerId']);
+    }
+
+    public function test_update_activity_merges_lat_lng(): void
+    {
+        $etape = Etape::factory()->create([
+            'journee_id' => $this->day->id,
+            'description' => json_encode(['lat' => 1.0, 'lng' => 2.0]),
+        ]);
+
+        $response = $this->patchJson("/api/v1/trips/{$this->voyage->id}/activities/{$etape->id}", [
+            'lat' => 48.8566,
+            'lng' => 2.3522,
+        ]);
+
+        $response->assertOk();
+        $extra = json_decode((string) $etape->fresh()->description, true);
+        $this->assertSame(48.8566, $extra['lat']);
+        $this->assertSame(2.3522, $extra['lng']);
+    }
+
     public function test_regenerate_activity_returns_202_with_job(): void
     {
         $etape = Etape::factory()->create(['journee_id' => $this->day->id]);

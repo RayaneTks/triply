@@ -1,17 +1,21 @@
 'use client';
 
 import { FC, useMemo, useState } from 'react';
+import { Reorder, useDragControls } from 'framer-motion';
 import {
+    AlertTriangle,
     Building,
     Camera,
     ChevronDown,
     Clock,
     Coffee,
     Compass,
+    GripVertical,
     Landmark,
     Leaf,
     MapPin,
     Music,
+    RefreshCw,
     ShoppingBag,
     Trash2,
     Trees,
@@ -22,12 +26,27 @@ import { LikeButtons } from '../../components/activities/LikeButtons';
 import { NearbyRestaurants } from '../../components/activities/NearbyRestaurants';
 import type { ActivityDayBucket, ActivityResource, LikedState } from '../../lib/activities-client';
 import { cn } from '../../lib/utils';
+import {
+    ACTIVITY_TIME_ALERT_COLOR,
+    formatDurationLabel,
+    parseDurationHours,
+    type DayTimeBudget,
+} from './trip-time-utils';
+import { dayColor } from './trip-map-constants';
 
-interface DayTimelineProps {
+interface InteractiveDayTimelineProps {
     tripId: string;
     day: ActivityDayBucket;
+    selected?: boolean;
+    onSelect?: () => void;
+    timeBudget?: DayTimeBudget;
     onLikedChange: (activityId: string, state: LikedState) => void;
     onDelete: (activity: ActivityResource) => void;
+    onReorder: (activityIds: string[]) => void;
+    onRegenerateActivity: (activity: ActivityResource) => void;
+    onRegenerateDay: () => void;
+    regeneratingActivityId?: string | null;
+    regeneratingDay?: boolean;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -55,15 +74,6 @@ const CATEGORY_LABELS: Record<string, string> = {
     walk: 'Balade',
     default: 'Activité',
 };
-
-interface CategorizedActivity {
-    activity: ActivityResource;
-    category: keyof typeof CATEGORY_COLORS;
-    Icon: typeof Landmark;
-    startTime: string;
-    endTime: string;
-    durationLabel: string;
-}
 
 function classifyActivity(title: string): { category: keyof typeof CATEGORY_COLORS; Icon: typeof Landmark } {
     const t = title.toLowerCase();
@@ -103,14 +113,6 @@ function classifyActivity(title: string): { category: keyof typeof CATEGORY_COLO
     return { category: 'default', Icon: MapPin };
 }
 
-function parseDurationHours(raw: string | null | undefined): number {
-    if (!raw) return 2;
-    const match = raw.match(/(\d+(?:[.,]\d+)?)/);
-    if (!match) return 2;
-    const value = parseFloat(match[1].replace(',', '.'));
-    return Number.isFinite(value) && value > 0 ? Math.min(8, value) : 2;
-}
-
 function formatClock(totalMinutesFromMidnight: number): string {
     const wrapped = ((totalMinutesFromMidnight % (24 * 60)) + 24 * 60) % (24 * 60);
     const h = Math.floor(wrapped / 60);
@@ -118,90 +120,42 @@ function formatClock(totalMinutesFromMidnight: number): string {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-function formatDurationLabel(hours: number): string {
-    const totalMinutes = Math.round(hours * 60);
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    if (h === 0) return `${m} min`;
-    if (m === 0) return `${h} h`;
-    return `${h} h ${m}`;
-}
-
-interface DayHeaderProps {
-    index: number;
-    date: string | null;
-    totalHoursLabel: string;
-    activityCount: number;
-    expanded: boolean;
-    onToggle: () => void;
-}
-
-const DayHeader: FC<DayHeaderProps> = ({
-    index,
-    date,
-    totalHoursLabel,
-    activityCount,
-    expanded,
-    onToggle,
-}) => (
-    <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className={cn(
-            'flex w-full flex-wrap items-center justify-between gap-3 text-left rounded-xl px-1 py-1 -mx-1 transition-colors',
-            'hover:bg-light-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
-            expanded ? 'mb-1' : 'pb-1',
-        )}
-    >
-        <div className="flex flex-wrap items-center gap-3 min-w-0">
-            <ChevronDown
-                size={18}
-                className={cn(
-                    'shrink-0 text-light-muted transition-transform duration-200',
-                    expanded ? 'rotate-0' : '-rotate-90',
-                )}
-                aria-hidden
-            />
-            <span className="text-xs font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-full uppercase tracking-widest">
-                Jour {String(index).padStart(2, '0')}
-            </span>
-            {date && (
-                <span className="text-xs text-light-muted font-bold capitalize">
-                    {new Date(date).toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                    })}
-                </span>
-            )}
-        </div>
-        <div className="flex items-center gap-4 text-xs text-light-muted font-bold shrink-0">
-            <span className="inline-flex items-center gap-1">
-                <Clock size={12} /> {totalHoursLabel}
-            </span>
-            <span>
-                {activityCount} activité{activityCount > 1 ? 's' : ''}
-            </span>
-        </div>
-    </button>
-);
-
-interface ActivityRowProps {
+interface DraggableActivityRowProps {
     tripId: string;
-    item: CategorizedActivity;
+    activity: ActivityResource;
+    index: number;
     isFirst: boolean;
     onLikedChange: (activityId: string, state: LikedState) => void;
     onDelete: (activity: ActivityResource) => void;
+    onRegenerate: () => void;
+    regenerating: boolean;
 }
 
-const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChange, onDelete }) => {
-    const { activity, category, Icon, startTime, endTime, durationLabel } = item;
+const DraggableActivityRow: FC<DraggableActivityRowProps> = ({
+    tripId,
+    activity,
+    index,
+    isFirst,
+    onLikedChange,
+    onDelete,
+    onRegenerate,
+    regenerating,
+}) => {
+    const dragControls = useDragControls();
+    const { category, Icon } = classifyActivity(activity.attributes.title || '');
+    const hours = parseDurationHours(activity.attributes.duration ?? null);
+    const startMinutes = 9 * 60 + index * (hours * 60 + 30);
+    const endMinutes = startMinutes + Math.round(hours * 60);
     const { lat, lng } = activity.attributes;
     const hasGeo = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
 
     return (
-        <li className="relative group">
+        <Reorder.Item
+            value={activity}
+            dragListener={false}
+            dragControls={dragControls}
+            className="relative group list-none"
+        >
             <span
                 aria-hidden
                 className={cn(
@@ -211,11 +165,19 @@ const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChang
             />
             <div className="flex flex-col gap-3 rounded-2xl border border-light-border bg-light-bg/40 p-4 transition-colors group-hover:bg-light-bg">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                    <button
+                        type="button"
+                        className="cursor-grab active:cursor-grabbing text-light-muted hover:text-brand p-0.5 -ml-1"
+                        onPointerDown={(e) => dragControls.start(e)}
+                        aria-label="Réordonner"
+                    >
+                        <GripVertical size={14} />
+                    </button>
                     <span className="inline-flex items-center gap-1 text-brand">
-                        <Clock size={12} /> {startTime} – {endTime}
+                        <Clock size={12} /> {formatClock(startMinutes)} – {formatClock(endMinutes)}
                     </span>
                     <span className="text-light-muted">·</span>
-                    <span className="text-light-muted">{durationLabel}</span>
+                    <span className="text-light-muted">{formatDurationLabel(hours)}</span>
                     <span
                         className={cn(
                             'ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider',
@@ -255,6 +217,16 @@ const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChang
                         )}
                     </div>
                     <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                        <button
+                            type="button"
+                            onClick={onRegenerate}
+                            disabled={regenerating}
+                            aria-label="Régénérer avec l'IA"
+                            title="Régénérer avec l'IA"
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-light-muted hover:text-brand hover:bg-brand/10 transition-colors disabled:opacity-50"
+                        >
+                            <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
+                        </button>
                         <LikeButtons
                             tripId={tripId}
                             activityId={activity.id}
@@ -273,68 +245,140 @@ const ActivityRow: FC<ActivityRowProps> = ({ tripId, item, isFirst, onLikedChang
                     </div>
                 </div>
             </div>
-        </li>
+        </Reorder.Item>
     );
 };
 
-export const DayTimeline: FC<DayTimelineProps> = ({ tripId, day, onLikedChange, onDelete }) => {
+export const InteractiveDayTimeline: FC<InteractiveDayTimelineProps> = ({
+    tripId,
+    day,
+    selected,
+    onSelect,
+    timeBudget,
+    onLikedChange,
+    onDelete,
+    onReorder,
+    onRegenerateActivity,
+    onRegenerateDay,
+    regeneratingActivityId,
+    regeneratingDay,
+}) => {
     const [expanded, setExpanded] = useState(day.index === 1);
+    const color = dayColor(day.index);
 
-    const categorized = useMemo<CategorizedActivity[]>(() => {
-        const startOfDay = 9 * 60; // 09:00
-        const gap = 30; // minutes between activities
-        const out: CategorizedActivity[] = [];
-        let next = startOfDay;
-        for (const activity of day.activities) {
-            const { category, Icon } = classifyActivity(activity.attributes.title || '');
-            const hours = parseDurationHours(activity.attributes.duration ?? null);
-            const startMinutes = next;
-            const endMinutes = startMinutes + Math.round(hours * 60);
-            next = endMinutes + gap;
-            out.push({
-                activity,
-                category,
-                Icon,
-                startTime: formatClock(startMinutes),
-                endTime: formatClock(endMinutes),
-                durationLabel: formatDurationLabel(hours),
-            });
-        }
-        return out;
-    }, [day.activities]);
-
-    const totalHours = useMemo(() => {
-        return day.activities.reduce((sum, a) => sum + parseDurationHours(a.attributes.duration ?? null), 0);
-    }, [day.activities]);
+    const totalHours = useMemo(
+        () => day.activities.reduce((sum, a) => sum + parseDurationHours(a.attributes.duration ?? null), 0),
+        [day.activities],
+    );
 
     return (
-        <section className="triply-card p-6 lg:p-8" aria-label={`Programme du jour ${day.index}`}>
-            <DayHeader
-                index={day.index}
-                date={day.date}
-                totalHoursLabel={formatDurationLabel(totalHours)}
-                activityCount={day.activities.length}
-                expanded={expanded}
-                onToggle={() => setExpanded((v) => !v)}
-            />
+        <section
+            className={cn(
+                'triply-card p-6 lg:p-8 transition-shadow',
+                selected && 'ring-2 ring-brand/40 shadow-md',
+            )}
+            aria-label={`Programme du jour ${day.index}`}
+            onClick={onSelect}
+        >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setExpanded((v) => !v);
+                    }}
+                    aria-expanded={expanded}
+                    className="flex flex-wrap items-center gap-3 text-left min-w-0"
+                >
+                    <ChevronDown
+                        size={18}
+                        className={cn(
+                            'shrink-0 text-light-muted transition-transform duration-200',
+                            expanded ? 'rotate-0' : '-rotate-90',
+                        )}
+                        aria-hidden
+                    />
+                    <span
+                        className="text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-widest text-white"
+                        style={{ backgroundColor: color }}
+                    >
+                        Jour {String(day.index).padStart(2, '0')}
+                    </span>
+                    {day.date && (
+                        <span className="text-xs text-light-muted font-bold capitalize">
+                            {new Date(day.date).toLocaleDateString('fr-FR', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                            })}
+                        </span>
+                    )}
+                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-light-muted font-bold">
+                        {day.activities.length} activité{day.activities.length > 1 ? 's' : ''} ·{' '}
+                        {formatDurationLabel(totalHours)}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRegenerateDay();
+                        }}
+                        disabled={regeneratingDay}
+                        className="inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-brand/10 disabled:opacity-50"
+                    >
+                        <RefreshCw size={11} className={regeneratingDay ? 'animate-spin' : ''} />
+                        Régénérer le jour
+                    </button>
+                </div>
+            </div>
+
+            {timeBudget?.overBudget && (
+                <div
+                    className="mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs font-bold"
+                    style={{
+                        borderColor: `${ACTIVITY_TIME_ALERT_COLOR}55`,
+                        backgroundColor: `${ACTIVITY_TIME_ALERT_COLOR}15`,
+                        color: ACTIVITY_TIME_ALERT_COLOR,
+                    }}
+                >
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <span>
+                        Journée chargée : {formatDurationLabel(timeBudget.totalHours)} au total (
+                        {formatDurationLabel(timeBudget.activityHours)} activités +{' '}
+                        {formatDurationLabel(timeBudget.travelHours)} trajets) — budget conseillé{' '}
+                        {formatDurationLabel(timeBudget.maxHours)}.
+                    </span>
+                </div>
+            )}
 
             {expanded && (
-                <ol className="relative mt-4 space-y-6 pl-8">
+                <Reorder.Group
+                    axis="y"
+                    values={day.activities}
+                    onReorder={(reordered) => onReorder(reordered.map((a) => a.id))}
+                    className="relative mt-4 space-y-6 pl-8 list-none"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <span
                         aria-hidden
                         className="absolute left-3 top-5 bottom-1 w-px bg-gradient-to-b from-brand/40 via-brand/20 to-transparent"
                     />
-                    {categorized.map((item, index) => (
-                        <ActivityRow
-                            key={item.activity.id}
+                    {day.activities.map((activity, index) => (
+                        <DraggableActivityRow
+                            key={activity.id}
                             tripId={tripId}
-                            item={item}
+                            activity={activity}
+                            index={index}
                             isFirst={index === 0}
                             onLikedChange={onLikedChange}
                             onDelete={onDelete}
+                            onRegenerate={() => onRegenerateActivity(activity)}
+                            regenerating={regeneratingActivityId === activity.id}
                         />
                     ))}
-                </ol>
+                </Reorder.Group>
             )}
         </section>
     );

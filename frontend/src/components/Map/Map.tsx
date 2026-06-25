@@ -145,6 +145,8 @@ export interface MapProps {
     showAttribution?: boolean;
     /** Afficher le logo Mapbox */
     showLogo?: boolean;
+    /** Afficher les aéroports (points et labels) */
+    showAirports?: boolean;
 
     locations?: Location[];
     /** Routes par profil (voiture, vélo, à pied) avec géométrie et durée en secondes ; legs = tronçons entre waypoints */
@@ -187,6 +189,7 @@ export const WorldMap: React.FC<MapProps> = ({
                                                  showFullscreenControl: _showFullscreenControl = false,
                                                  showAttribution = false,
                                                  showLogo = false,
+                                                 showAirports = true,
                                                  locations = [],
                                                  routeData = {},
                                                  routeSegments = [],
@@ -201,6 +204,30 @@ export const WorldMap: React.FC<MapProps> = ({
     const [hoveredRoute, setHoveredRoute] = useState<{ profile: string; duration: number; x: number; y: number } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isStyleReady, setIsStyleReady] = useState(false);
+
+    useEffect(() => {
+        if (!isMapLoaded || !mapRef.current) return;
+        const map = mapRef.current.getMap();
+
+        // Quand le style change, on masque temporairement les Source/Layer React
+        // jusqu'à ce que le nouveau style soit complètement chargé.
+        setIsStyleReady(false);
+        const checkStyleReady = () => {
+            try {
+                if (map.isStyleLoaded()) {
+                    setIsStyleReady(true);
+                }
+            } catch {
+                // ignore
+            }
+        };
+
+        checkStyleReady();
+        map.on('styledata', checkStyleReady);
+        return () => {
+            map.off('styledata', checkStyleReady);
+        };
+    }, [isMapLoaded, mapStyle]);
 
     const [viewState, setViewState] = useState<ViewState>({
         longitude: initialLongitude,
@@ -345,10 +372,15 @@ export const WorldMap: React.FC<MapProps> = ({
 
         // --- AJUSTEMENT FONCTIONNEL ICI ---
 
+        // Cadre de recentrage: privilégier les activités visibles (sans point d'origine),
+        // pour toujours garder les activités affichées dans l'écran.
+        const focusLocations = locations.filter((loc) => loc.id !== 'origin');
+        const boundsLocations = focusLocations.length > 0 ? focusLocations : locations;
+
         // Cas 1 : Une seule destination (ex: réponse Assistant "France" ou "Paris")
         // On respecte strictement le zoom défini par l'IA/Backend
-        if (locations.length === 1) {
-            const loc = locations[0];
+        if (boundsLocations.length === 1) {
+            const loc = boundsLocations[0];
 
             // On utilise flyTo au lieu de fitBounds pour contrôler le niveau de zoom précis
             mapRef.current.flyTo({
@@ -358,21 +390,21 @@ export const WorldMap: React.FC<MapProps> = ({
                 essential: true
             });
 
-            prevLocationsRef.current = locations;
+            prevLocationsRef.current = boundsLocations;
             return;
         }
 
         // Cas 2 : Plusieurs points (ex: Hôtels chargés)
         // On garde la logique fitBounds pour englober tous les points
-        const lngs = locations.map(l => l.coordinates.longitude);
-        const lats = locations.map(l => l.coordinates.latitude);
+        const lngs = boundsLocations.map(l => l.coordinates.longitude);
+        const lats = boundsLocations.map(l => l.coordinates.latitude);
         const minLng = Math.min(...lngs);
         const maxLng = Math.max(...lngs);
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
 
-        const isRefresh = prevLocationsRef.current.length > 0 && locations.length > prevLocationsRef.current.length;
-        prevLocationsRef.current = locations;
+        const isRefresh = prevLocationsRef.current.length > 0 && boundsLocations.length > prevLocationsRef.current.length;
+        prevLocationsRef.current = boundsLocations;
 
         mapRef.current.fitBounds(
             [
@@ -499,6 +531,46 @@ export const WorldMap: React.FC<MapProps> = ({
     );
 
     const hasSegmentRoutes = routeSegments.length > 0;
+
+    const routeLayersKey = React.useMemo(
+        () => routeSegments.map((s) => s.id).join('\0'),
+        [routeSegments],
+    );
+
+    // Les tronçons arrivent souvent après le chargement du style Mapbox (fetch Directions).
+    // Re-vérifier isStyleReady et forcer un repaint pour que react-map-gl attache les sources.
+    useEffect(() => {
+        if (!isMapLoaded || !mapRef.current || routeSegments.length === 0) return;
+        const map = mapRef.current.getMap();
+
+        const ensureStyleReady = () => {
+            try {
+                if (map.isStyleLoaded()) {
+                    setIsStyleReady(true);
+                }
+            } catch {
+                // ignore
+            }
+        };
+
+        ensureStyleReady();
+        map.on('styledata', ensureStyleReady);
+        map.on('idle', ensureStyleReady);
+
+        const frame = requestAnimationFrame(() => {
+            try {
+                map.triggerRepaint();
+            } catch {
+                // ignore
+            }
+        });
+
+        return () => {
+            cancelAnimationFrame(frame);
+            map.off('styledata', ensureStyleReady);
+            map.off('idle', ensureStyleReady);
+        };
+    }, [isMapLoaded, routeLayersKey, routeSegments.length]);
 
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (!mapRef.current) return;
@@ -657,7 +729,9 @@ export const WorldMap: React.FC<MapProps> = ({
                     Object.keys(routeData || {}).length > 0 ||
                     (routeSegments && routeSegments.length > 0)
                         ? undefined
-                        : ['airports-layer']
+                        : showAirports
+                          ? ['airports-layer']
+                          : undefined
                 }
                 {...(mapConfig && IS_MAPBOX_STANDARD(mapStyle) && {
                     config: {
@@ -667,7 +741,7 @@ export const WorldMap: React.FC<MapProps> = ({
                     },
                 })}
             >
-                {isMapLoaded && isStyleReady && (
+                {showAirports && isMapLoaded && isStyleReady && (
                     <Source id="airports-source" type="geojson" data={AIRPORTS_DATA_SOURCE}>
                         <Layer
                             id="airports-layer"
@@ -702,6 +776,86 @@ export const WorldMap: React.FC<MapProps> = ({
                         />
                     </Source>
                 )}
+                {isMapLoaded &&
+                    isStyleReady &&
+                    hasSegmentRoutes && (
+                        <React.Fragment key={routeLayersKey}>
+                            {routeSegments.map((seg, idx) => {
+                                const colors: Record<string, string> = {
+                                    driving: '#f97316',
+                                    walking: '#22d3ee',
+                                    cycling: '#84cc16',
+                                };
+                                return (
+                                    <Source
+                                        key={`route-seg-${seg.id}-${idx}`}
+                                        id={`route-source-seg-${idx}`}
+                                        type="geojson"
+                                        data={{
+                                            type: 'Feature',
+                                            geometry: seg.geometry,
+                                            properties: { profile: seg.profile, durationSec: seg.durationSec },
+                                        }}
+                                    >
+                                        <Layer
+                                            id={`route-layer-seg-${idx}`}
+                                            type="line"
+                                            layout={{
+                                                'line-join': 'round',
+                                                'line-cap': 'round',
+                                            }}
+                                            paint={{
+                                                'line-color': seg.color ?? colors[seg.profile] ?? '#22d3ee',
+                                                'line-width': 5,
+                                                'line-opacity': 0.88,
+                                                // Keep route colors vivid regardless of map light preset.
+                                                'line-emissive-strength': 1,
+                                            }}
+                                        />
+                                    </Source>
+                                );
+                            })}
+                        </React.Fragment>
+                    )}
+                {isMapLoaded &&
+                    isStyleReady &&
+                    !hasSegmentRoutes &&
+                    routeData &&
+                    Object.entries(routeData).map(([profile, { geometry }]) => {
+                        const colors: Record<string, string> = {
+                            driving: '#f97316',
+                            walking: '#22d3ee',
+                            cycling: '#84cc16',
+                        };
+                        return (
+                            <Source
+                                key={`route-${profile}`}
+                                id={`route-source-${profile}`}
+                                type="geojson"
+                                data={{
+                                    type: 'Feature',
+                                    geometry,
+                                    properties: {},
+                                }}
+                            >
+                                <Layer
+                                    id={`route-layer-${profile}`}
+                                    type="line"
+                                    layout={{
+                                        'line-join': 'round',
+                                        'line-cap': 'round',
+                                    }}
+                                    paint={{
+                                        'line-color': colors[profile] ?? '#22d3ee',
+                                        'line-width': 5,
+                                        'line-opacity': 0.85,
+                                        // Keep route colors vivid regardless of map light preset.
+                                        'line-emissive-strength': 1,
+                                    }}
+                                />
+                            </Source>
+                        );
+                    })}
                 {isMapLoaded && isStyleReady && locationsGeoJson && (
                     <Source id="locations-source" type="geojson" data={locationsGeoJson as GeoJSON.FeatureCollection}>
                         <Layer
@@ -779,79 +933,6 @@ export const WorldMap: React.FC<MapProps> = ({
                         />
                     </Source>
                 )}
-                {isMapLoaded &&
-                    isStyleReady &&
-                    hasSegmentRoutes &&
-                    routeSegments.map((seg, idx) => {
-                        const colors: Record<string, string> = {
-                            driving: '#f97316',
-                            walking: '#22d3ee',
-                            cycling: '#84cc16',
-                        };
-                        return (
-                            <Source
-                                key={`route-seg-${seg.id}-${idx}`}
-                                id={`route-source-seg-${idx}`}
-                                type="geojson"
-                                data={{
-                                    type: 'Feature',
-                                    geometry: seg.geometry,
-                                    properties: { profile: seg.profile, durationSec: seg.durationSec },
-                                }}
-                            >
-                                <Layer
-                                    id={`route-layer-seg-${idx}`}
-                                    type="line"
-                                    layout={{
-                                        'line-join': 'round',
-                                        'line-cap': 'round',
-                                    }}
-                                    paint={{
-                                        'line-color': seg.color ?? colors[seg.profile] ?? '#22d3ee',
-                                        'line-width': 5,
-                                        'line-opacity': 0.88,
-                                    }}
-                                />
-                            </Source>
-                        );
-                    })}
-                {isMapLoaded &&
-                    isStyleReady &&
-                    !hasSegmentRoutes &&
-                    routeData &&
-                    Object.entries(routeData).map(([profile, { geometry }]) => {
-                        const colors: Record<string, string> = {
-                            driving: '#f97316',
-                            walking: '#22d3ee',
-                            cycling: '#84cc16',
-                        };
-                        return (
-                            <Source
-                                key={`route-${profile}`}
-                                id={`route-source-${profile}`}
-                                type="geojson"
-                                data={{
-                                    type: 'Feature',
-                                    geometry,
-                                    properties: {},
-                                }}
-                            >
-                                <Layer
-                                    id={`route-layer-${profile}`}
-                                    type="line"
-                                    layout={{
-                                        'line-join': 'round',
-                                        'line-cap': 'round',
-                                    }}
-                                    paint={{
-                                        'line-color': colors[profile] ?? '#22d3ee',
-                                        'line-width': 5,
-                                        'line-opacity': 0.85,
-                                    }}
-                                />
-                            </Source>
-                        );
-                    })}
             </Map>
 
             {hasSegmentRoutes && (

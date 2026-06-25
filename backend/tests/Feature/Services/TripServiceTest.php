@@ -500,4 +500,64 @@ class TripServiceTest extends TestCase
         $this->assertDatabaseMissing('transports', ['voyage_id' => $result['id'], 'type' => 'Air France']);
         $this->assertDatabaseHas('transports', ['voyage_id' => $result['id'], 'type' => 'KLM']);
     }
+
+    public function test_validate_trip_strips_stale_days_from_plan_snapshot(): void
+    {
+        $result = $this->service->createTrip([
+            'title' => 'Lisbonne',
+            'destination' => 'Lisbonne',
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-03',
+            'plan_snapshot' => [
+                'days' => [
+                    [
+                        'dayIndex' => 1,
+                        'activities' => [
+                            ['title' => 'Belém Tower', 'durationHours' => 2.0],
+                        ],
+                    ],
+                ],
+                'origin' => [
+                    'cityName' => 'Paris',
+                    'iataCode' => 'CDG',
+                ],
+            ],
+        ]);
+
+        $trip = Voyage::query()->findOrFail($result['id']);
+        $trip->plan_snapshot = array_merge(
+            is_array($trip->plan_snapshot) ? $trip->plan_snapshot : [],
+            [
+                'days' => [
+                    [
+                        'dayIndex' => 1,
+                        'activities' => [
+                            ['title' => 'Stale activity', 'durationHours' => 1.0],
+                        ],
+                    ],
+                ],
+            ],
+        );
+        $trip->save();
+
+        $journee = Journee::query()->where('voyage_id', $trip->id)->where('numero_jour', 1)->firstOrFail();
+        $journee->etapes()->forceDelete();
+        $journee->etapes()->create([
+            'titre' => 'LX Factory',
+            'temps_estime' => '2h',
+            'prix_estime' => 0,
+            'ville' => 'Lisbonne',
+            'pays' => 'Portugal',
+            'ordre' => 1,
+            'liked_state' => 'neutral',
+        ]);
+
+        $validated = $this->service->validateTrip((string) $trip->id);
+
+        $stored = Voyage::query()->findOrFail($trip->id);
+        $this->assertIsArray($stored->plan_snapshot);
+        $this->assertArrayNotHasKey('days', $stored->plan_snapshot);
+        $this->assertSame('Paris', $stored->plan_snapshot['origin']['cityName'] ?? null);
+        $this->assertSame('LX Factory', $validated['plan_snapshot']['days'][0]['activities'][0]['title'] ?? null);
+    }
 }

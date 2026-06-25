@@ -48,6 +48,27 @@ class ActivityServiceTest extends TestCase
         $this->assertDatabaseHas('etapes', ['titre' => 'Visit Eiffel', 'ville' => 'Paris']);
     }
 
+    public function test_create_assigns_ordre_after_soft_deleted_activity(): void
+    {
+        Etape::factory()->create(['journee_id' => $this->journee->id, 'ordre' => 1]);
+        Etape::factory()->create(['journee_id' => $this->journee->id, 'ordre' => 2]);
+        $deleted = Etape::factory()->create(['journee_id' => $this->journee->id, 'ordre' => 3]);
+        $deleted->delete();
+
+        $result = $this->service->create((string) $this->voyage->id, [
+            'title' => 'New POI',
+            'day_id' => (string) $this->journee->id,
+        ]);
+
+        $this->assertSame(4, $result['attributes']['order']);
+        $this->assertDatabaseHas('etapes', [
+            'titre' => 'New POI',
+            'journee_id' => $this->journee->id,
+            'ordre' => 4,
+            'deleted_at' => null,
+        ]);
+    }
+
     public function test_create_uses_provided_day_id_when_valid(): void
     {
         $secondDay = Journee::factory()->forVoyage($this->voyage, 2)->create();

@@ -41,16 +41,21 @@ class ActivityService implements ActivityServiceInterface
         $title = (string) ($payload['title'] ?? 'Nouvelle activite');
         $city = $payload['city'] ?? $trip->destination;
         $duration = $payload['estimated_duration_minutes'] ?? null;
+        $extra = $this->buildGeoExtra($payload);
+
+        $ordre = $payload['ordre'] ?? $this->nextOrderForDay($journee);
 
         $etape = $journee->etapes()->create([
             'titre' => $title,
-            'description' => $payload['notes'] ?? null,
+            'description' => $extra !== []
+                ? json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                : ($payload['notes'] ?? null),
             'temps_estime' => $this->formatDuration($duration),
             'prix_estime' => isset($payload['cost']) ? (int) round((float) $payload['cost']) : 0,
             'ville' => $city,
             'pays' => $this->cityCountryResolver->resolve(is_string($city) ? $city : null),
             'source_lien' => $payload['source_lien'] ?? null,
-            'ordre' => $payload['ordre'] ?? ($journee->etapes()->max('ordre') + 1),
+            'ordre' => $ordre,
             'liked_state' => $payload['liked_state'] ?? 'neutral',
         ]);
 
@@ -138,6 +143,13 @@ class ActivityService implements ActivityServiceInterface
             $etape->pays = $this->cityCountryResolver->resolve($etape->ville);
         }
 
+        $geoKeys = array_intersect_key($payload, array_flip(['lat', 'lng', 'layer_id']));
+        if ($geoKeys !== []) {
+            $extra = $this->readGeoExtra($etape);
+            $extra = $this->mergeGeoExtra($extra, $geoKeys);
+            $etape->description = json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
         $etape->save();
 
         return $this->serializeActivity($etape->fresh(), $trip->id);
@@ -165,7 +177,12 @@ class ActivityService implements ActivityServiceInterface
     {
         $trip = $this->findUserTrip($tripId);
 
-        $order = isset($payload['order']) && is_array($payload['order']) ? $payload['order'] : [];
+        $order = [];
+        if (isset($payload['order']) && is_array($payload['order'])) {
+            $order = $payload['order'];
+        } elseif (isset($payload['activity_ids']) && is_array($payload['activity_ids'])) {
+            $order = $payload['activity_ids'];
+        }
         $updated = [];
         $activityIds = array_values(array_filter($order, static fn ($id) => is_scalar($id) && (string) $id !== ''));
         if ($activityIds === []) {
@@ -287,6 +304,14 @@ class ActivityService implements ActivityServiceInterface
         ];
     }
 
+    /** Next slot for (journee_id, ordre); includes soft-deleted rows (unique index does). */
+    private function nextOrderForDay(Journee $journee): int
+    {
+        $max = $journee->etapes()->withTrashed()->max('ordre');
+
+        return (int) ($max ?? 0) + 1;
+    }
+
     private function findUserTrip(string $tripId): Voyage
     {
         $user = Auth::user();
@@ -355,5 +380,67 @@ class ActivityService implements ActivityServiceInterface
         $hours = (float) $minutes / 60;
 
         return rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.').'h';
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function buildGeoExtra(array $payload): array
+    {
+        $extra = [];
+        if (isset($payload['lat']) && is_numeric($payload['lat'])) {
+            $extra['lat'] = (float) $payload['lat'];
+        }
+        if (isset($payload['lng']) && is_numeric($payload['lng'])) {
+            $extra['lng'] = (float) $payload['lng'];
+        }
+        $layerId = $payload['layer_id'] ?? $payload['layerId'] ?? null;
+        if (is_string($layerId) && trim($layerId) !== '') {
+            $extra['layerId'] = trim($layerId);
+        }
+
+        return $extra;
+    }
+
+    /** @return array<string, mixed> */
+    private function readGeoExtra(Etape $etape): array
+    {
+        if (! is_string($etape->description) || trim($etape->description) === '') {
+            return [];
+        }
+        $decoded = json_decode($etape->description, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function mergeGeoExtra(array $extra, array $payload): array
+    {
+        if (array_key_exists('lat', $payload)) {
+            if ($payload['lat'] === null) {
+                unset($extra['lat']);
+            } elseif (is_numeric($payload['lat'])) {
+                $extra['lat'] = (float) $payload['lat'];
+            }
+        }
+        if (array_key_exists('lng', $payload)) {
+            if ($payload['lng'] === null) {
+                unset($extra['lng']);
+            } elseif (is_numeric($payload['lng'])) {
+                $extra['lng'] = (float) $payload['lng'];
+            }
+        }
+        $layerId = $payload['layer_id'] ?? $payload['layerId'] ?? null;
+        if (array_key_exists('layer_id', $payload) || array_key_exists('layerId', $payload)) {
+            if ($layerId === null || (is_string($layerId) && trim($layerId) === '')) {
+                unset($extra['layerId']);
+            } elseif (is_string($layerId)) {
+                $extra['layerId'] = trim($layerId);
+            }
+        }
+
+        return $extra;
     }
 }
