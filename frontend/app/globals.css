@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Aligner Tailwind `dark:` sur le toggle Triply (classe .dark sur <html>), pas prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #1c1c1c;
   --foreground: #f4f4f5;
@@ -313,9 +316,11 @@
 .bg-amber-50,
 .bg-amber-100    { background-color: var(--warning-bg) !important; }
 .text-amber-500,
-.text-amber-600 { color: var(--warning-fg) !important; }
+.text-amber-600,
+.text-amber-700 { color: var(--warning-fg) !important; }
 .border-amber-100,
-.border-amber-200 { border-color: var(--warning-border) !important; }
+.border-amber-200,
+.border-amber-300 { border-color: var(--warning-border) !important; }
 
 .bg-sky-50,
 .bg-cyan-50      { background-color: color-mix(in srgb, var(--primary) 10%, transparent); }

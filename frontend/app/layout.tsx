@@ -34,9 +34,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="overflow-x-hidden" suppressHydrationWarning>
+    <html lang="fr" className="dark overflow-x-hidden" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');var r=document.documentElement;if(t==='light'){r.setAttribute('data-theme','light');r.classList.remove('dark');}else{r.removeAttribute('data-theme');r.classList.add('dark');}}catch(e){document.documentElement.classList.add('dark');}` }} />
         <link rel="preload" href="/fonts/Chillax-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         {/* Gotham OTFs (Book/Medium/Bold) chargés à la demande via @font-face + font-display:swap.
             Pas de preload pour éviter de bloquer le LCP avec ~500kb de fonts non critiques. */}

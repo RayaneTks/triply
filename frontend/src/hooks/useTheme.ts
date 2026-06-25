@@ -14,10 +14,13 @@ function readDomTheme(): Theme {
 
 function setDomTheme(next: Theme) {
     if (typeof document === 'undefined') return;
+    const root = document.documentElement;
     if (next === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
+        root.setAttribute('data-theme', 'light');
+        root.classList.remove('dark');
     } else {
-        document.documentElement.removeAttribute('data-theme');
+        root.removeAttribute('data-theme');
+        root.classList.add('dark');
     }
 }
 

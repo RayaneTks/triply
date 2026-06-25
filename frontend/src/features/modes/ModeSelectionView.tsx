@@ -31,7 +31,7 @@ export function ModeSelectionView() {
         <span className="inline-flex items-center gap-2 rounded-full border border-light-border bg-light-bg px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-light-muted">
           Étape 1 · Choisissez votre mode
         </span>
-        <h1 className="mt-5 font-display text-4xl font-bold md:text-5xl">Comment voulez-vous planifier&nbsp;?</h1>
+        <h1 className="mt-5 font-display text-4xl font-bold text-light-foreground md:text-5xl">Comment voulez-vous planifier&nbsp;?</h1>
         <p className="mx-auto mt-3 max-w-xl text-lg text-light-muted">
           Deux façons d’arriver au même résultat&nbsp;: un itinéraire clair, prêt à partir.
         </p>
@@ -47,13 +47,13 @@ export function ModeSelectionView() {
           className="group relative flex h-full flex-col items-start p-8 text-left triply-card border-2 border-transparent transition-colors hover:border-brand/40 disabled:opacity-70"
           aria-label="Démarrer le parcours guidé"
         >
-          <span className="inline-flex items-center rounded-full border border-light-border bg-light-bg/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-light-muted dark:bg-card">
+          <span className="inline-flex items-center rounded-full border border-light-border bg-light-bg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-light-muted">
             Pas à pas
           </span>
           <div className="mt-6 mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10 text-brand transition-transform group-hover:scale-110">
             <ListChecks size={32} />
           </div>
-          <h2 className="mb-3 font-display text-2xl font-bold">Parcours guidé</h2>
+          <h2 className="mb-3 font-display text-2xl font-bold text-light-foreground">Parcours guidé</h2>
           <p className="mb-6 leading-relaxed text-light-muted">
             On vous pose les bonnes questions, dans le bon ordre. Destination, dates, budget, style&nbsp;: on remplit ensemble. Idéal pour une première fois.
           </p>
@@ -86,20 +86,20 @@ export function ModeSelectionView() {
           className={cn(
             'group relative flex h-full flex-col items-start p-8 text-left triply-card border-2 transition-colors disabled:opacity-70',
             showManualLock
-              ? 'border-amber-200/90 hover:border-amber-300 dark:border-amber-900/60 dark:hover:border-amber-800/80'
+              ? 'border-amber-200 hover:border-amber-300 dark:border-amber-800/60 dark:hover:border-amber-700/80'
               : 'border-transparent hover:border-brand/40',
           )}
           aria-label={showManualLock ? 'Voir les offres pour débloquer le mode chat IA' : 'Démarrer le mode chat libre'}
         >
           <div className="flex flex-wrap items-center gap-2">
             {showManualLock ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/90 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100">
                 <Lock className="h-3 w-3" aria-hidden />
                 Abonnement requis
               </span>
             ) : (
               <>
-                <span className="inline-flex items-center rounded-full border border-light-border bg-light-bg/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-light-muted dark:bg-card">
+                <span className="inline-flex items-center rounded-full border border-light-border bg-light-bg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-light-muted">
                   Conversation libre
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-brand">
@@ -112,13 +112,13 @@ export function ModeSelectionView() {
             className={cn(
               'mt-6 mb-8 flex h-16 w-16 items-center justify-center rounded-2xl transition-transform group-hover:scale-110',
               showManualLock
-                ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-200'
                 : 'bg-brand/10 text-brand',
             )}
           >
             {showManualLock ? <Lock size={30} aria-hidden /> : <Sparkles size={32} />}
           </div>
-          <h2 className="mb-3 font-display text-2xl font-bold">Conversation libre</h2>
+          <h2 className="mb-3 font-display text-2xl font-bold text-light-foreground">Conversation libre</h2>
           <p className="mb-6 leading-relaxed text-light-muted">
             Dites au copilote ce que vous voulez, en une phrase ou en détail. Il construit l’itinéraire pour vous et vous ajustez en discutant. Le mode le plus puissant.
           </p>
@@ -130,7 +130,7 @@ export function ModeSelectionView() {
           <span
             className={cn(
               'mt-auto inline-flex items-center gap-2 font-bold transition-all group-hover:gap-3',
-              showManualLock ? 'text-amber-900 dark:text-amber-100' : 'text-brand',
+              showManualLock ? 'text-amber-700 dark:text-amber-100' : 'text-brand',
             )}
           >
             {isPendingFor('/planifier/manuel') || isPendingFor('/tarifs') ? (
