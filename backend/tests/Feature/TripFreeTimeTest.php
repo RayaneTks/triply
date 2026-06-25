@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\Voyage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -15,6 +16,10 @@ class TripFreeTimeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config()->set('integrations.amadeus.base_url', 'https://test.api.amadeus.com');
+        config()->set('integrations.amadeus.client_id', 'test-id');
+        config()->set('integrations.amadeus.client_secret', 'test-secret');
+        Cache::forget('integrations:amadeus:access_token');
         Http::fake([
             'api.frankfurter.app/*' => Http::response(['rates' => ['EUR' => 1.0]], 200),
             'test.api.amadeus.com/v1/security/oauth2/token' => Http::response([

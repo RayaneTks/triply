@@ -113,7 +113,7 @@ export const MapControls3D: FC<MapControls3DProps> = ({
     );
 };
 
-export function mapStyleUrl(style: MapVisualStyle): string {
+export function mapStyleUrl(_style: MapVisualStyle): string {
     // Keep Standard for all visual modes to preserve rich POI + smooth 3D.
     return 'mapbox://styles/mapbox/standard';
 }

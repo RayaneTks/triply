@@ -132,7 +132,10 @@ export function TripMapView() {
     }, [apiTrip]);
 
     const maxHoursPerDay = useMemo(() => {
-        const raw = apiTrip?.plan_snapshot?.activityTime;
+        const snapshot = apiTrip?.plan_snapshot;
+        const numeric = snapshot?.maxActivityHoursPerDay;
+        if (typeof numeric === 'number' && Number.isFinite(numeric) && numeric > 0) return numeric;
+        const raw = snapshot?.activityTime;
         if (typeof raw === 'string') {
             const n = parseFloat(raw.replace(',', '.'));
             if (Number.isFinite(n) && n > 0) return n;

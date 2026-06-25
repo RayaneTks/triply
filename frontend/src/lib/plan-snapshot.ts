@@ -14,6 +14,10 @@ export interface PlanSnapshotDay {
 
 export interface PlanSnapshot {
     days: PlanSnapshotDay[];
+    /** Heures d'activités par jour saisies au wizard (chaîne numérique, ex. "6"). */
+    activityTime?: string;
+    /** Budget horaire d'activités par jour (prioritaire sur activityTime). */
+    maxActivityHoursPerDay?: number;
     /** Budget total déclaré au wizard (EUR), persisté pour budget_total et affichage. */
     trip_budget_eur?: number;
     planningMode?: string;

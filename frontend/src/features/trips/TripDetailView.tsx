@@ -9,7 +9,7 @@ import {
     Copy,
     FileDown,
     FileText,
-    Map,
+    Map as MapIcon,
     Sparkles,
     Trash2,
     Wallet,
@@ -163,7 +163,7 @@ export function TripDetailView() {
     }, [activitiesByDay]);
 
     const cityGroups = useMemo(() => {
-        const groups = new globalThis.Map<string, ActivityResource[]>();
+        const groups = new Map<string, ActivityResource[]>();
         for (const bucket of activitiesByDay) {
             for (const activity of bucket.activities) {
                 const city = activity.attributes.city?.trim() || 'Sans ville';
@@ -536,7 +536,7 @@ export function TripDetailView() {
                             href={`/voyages/${tripId}/carte`}
                             className="btn-primary py-2 px-5 text-sm font-bold inline-flex items-center gap-2 shrink-0"
                         >
-                            <Map size={16} /> Carte interactive
+                            <MapIcon size={16} /> Carte interactive
                         </Link>
                     </div>
 
