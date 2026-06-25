@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bed, Trash2, ExternalLink, Search } from 'lucide-react';
-import { HotelSearchModal } from '@/src/components/HotelSearchModal/HotelSearchModal';
+import dynamic from 'next/dynamic';
+import { Bed, Trash2, ExternalLink, Search, PencilLine } from 'lucide-react';
+import type { HotelSearchModal as HotelSearchModalType } from '@/src/components/HotelSearchModal/HotelSearchModal';
+const HotelSearchModal = dynamic(
+  () => import('@/src/components/HotelSearchModal/HotelSearchModal').then((m) => m.HotelSearchModal),
+  { ssr: false },
+) as typeof HotelSearchModalType;
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 import type { AmadeusHotelResponse } from '@/src/components/HotelResults/HotelResults';
 import { searchHotels, searchPlaces, lookupIata, type AmadeusLocation, type HotelSearchBody } from '@/src/lib/integrations/amadeus';
@@ -18,6 +23,7 @@ interface HotelsSectionProps {
     endDate?: string | null;
     travelers?: number;
     budgetTotal?: number;
+    onUpdated?: () => void;
 }
 
 async function resolveCityCode(keyword: string): Promise<string | null> {
@@ -47,6 +53,16 @@ async function resolveCityCode(keyword: string): Promise<string | null> {
         return null;
     }
 }
+
+const EMPTY_MANUAL_HOTEL = {
+    nom: '',
+    adresse: '',
+    ville: '',
+    arrivee_le: '',
+    depart_le: '',
+    prix: '',
+    devise: 'EUR',
+};
 
 function offerToHotelPayload(offer: HotelOffer, fallbackCity: string): Omit<HotelRecord, 'id'> {
     const totalEur = Math.round(parseFloat(offer.price.total || '0'));
@@ -89,13 +105,13 @@ function buildHotelsErrorMessage(err: unknown): string {
         const backendMsg = extractErrorMessage(err.body);
         if (backendMsg) return backendMsg;
         if (err.status === 405) {
-            return 'La methode HTTP de recherche d\'hotels est refusee par le serveur. Rechargez l\'application puis reessayez.';
+            return 'La recherche d’hôtels est momentanément indisponible. Rechargez la page puis réessayez.';
         }
         if (err.status === 422) {
-            return 'La recherche d\'hotels a ete refusee (parametres invalides ou proxy API). Verifiez la ville et les dates.';
+            return 'La recherche d’hôtels n’a pas abouti. Vérifiez la ville et les dates, puis réessayez.';
         }
         if (err.status >= 500) {
-            return 'Le service hotels est temporairement indisponible. Reessayez dans quelques instants.';
+            return 'Le service d’hôtels est temporairement indisponible. Réessayez dans quelques instants.';
         }
         return err.message;
     }
@@ -113,6 +129,7 @@ export function HotelsSection({
     endDate,
     travelers,
     budgetTotal,
+    onUpdated,
 }: HotelsSectionProps) {
     const [hotels, setHotels] = useState<HotelRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -131,6 +148,11 @@ export function HotelsSection({
     const [apiResponse, setApiResponse] = useState<AmadeusHotelResponse | { error?: string; details?: string } | null>(null);
     const [persisting, setPersisting] = useState(false);
     const [opMessage, setOpMessage] = useState<string | null>(null);
+
+    // Saisie manuelle d'un hôtel déjà réservé hors Triply (centralisation).
+    const [manualOpen, setManualOpen] = useState(false);
+    const [manualSaving, setManualSaving] = useState(false);
+    const [manual, setManual] = useState(EMPTY_MANUAL_HOTEL);
 
     useEffect(() => { setCityCode(destination); }, [destination]);
     useEffect(() => {
@@ -169,13 +191,13 @@ export function HotelsSection({
             if (!inD || !isoDate.test(inD) || !outD || !isoDate.test(outD)) {
                 setApiResponse({
                     ...emptyEnv,
-                    error: 'Indiquez des dates d-arrivée et de départ au format AAAA-MM-JJ.',
+                    error: 'Indiquez des dates d’arrivée et de départ au format AAAA-MM-JJ.',
                 } as unknown as AmadeusHotelResponse);
                 return;
             }
             const resolvedCode = await resolveCityCode(cityCode);
             if (!resolvedCode) {
-                setApiResponse({ ...emptyEnv, error: `Aucun code Amadeus trouvé pour "${cityCode}". Essayez un code 3 lettres (PAR, BCN...).` } as unknown as AmadeusHotelResponse);
+                setApiResponse({ ...emptyEnv, error: `Ville introuvable pour "${cityCode}". Essayez un code à 3 lettres (PAR, BCN...).` } as unknown as AmadeusHotelResponse);
                 return;
             }
             const body: HotelSearchBody = {
@@ -192,7 +214,7 @@ export function HotelsSection({
             const res = await searchHotels(body);
             if (res && typeof res === 'object' && 'errors' in res) {
                 const errArr = (res as { errors?: Array<{ title?: string; detail?: string }> }).errors ?? [];
-                const msg = errArr[0]?.detail || errArr[0]?.title || 'Erreur Amadeus.';
+                const msg = errArr[0]?.detail || errArr[0]?.title || 'Recherche impossible pour le moment.';
                 setApiResponse({ ...emptyEnv, error: msg } as unknown as AmadeusHotelResponse);
                 return;
             }
@@ -215,21 +237,23 @@ export function HotelsSection({
             setModalOpen(false);
             setApiResponse(null);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
         } finally {
             setPersisting(false);
         }
-    }, [persisting, tripId, destination, reload]);
+    }, [persisting, tripId, destination, reload, onUpdated]);
 
     const handleDelete = useCallback(async (hotelId: string) => {
         try {
             await tripTravelClient.deleteHotel(tripId, hotelId);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Suppression impossible.');
         }
-    }, [tripId, reload]);
+    }, [tripId, reload, onUpdated]);
 
     const handleBook = useCallback(async (hotel: HotelRecord) => {
         try {
@@ -237,6 +261,10 @@ export function HotelsSection({
                 provider: 'booking',
                 kind: 'hotel',
                 destination: hotel.ville ?? destination,
+                property_name: hotel.nom,
+                address: hotel.adresse,
+                latitude: hotel.latitude ?? undefined,
+                longitude: hotel.longitude ?? undefined,
                 check_in: hotel.arrivee_le ?? undefined,
                 check_out: hotel.depart_le ?? undefined,
                 adults: travelerCount,
@@ -250,6 +278,50 @@ export function HotelsSection({
             setOpMessage(err instanceof Error ? err.message : 'Lien de réservation indisponible.');
         }
     }, [tripId, destination, travelerCount]);
+
+    const handleManualSave = useCallback(async () => {
+        if (manualSaving) return;
+        const nom = manual.nom.trim();
+        if (!nom) {
+            setOpMessage('Renseignez au moins le nom de l’hôtel.');
+            return;
+        }
+        if (!manual.arrivee_le || !manual.depart_le) {
+            setOpMessage('Indiquez les dates d’arrivée et de départ.');
+            return;
+        }
+        if (manual.depart_le < manual.arrivee_le) {
+            setOpMessage('Le départ doit être postérieur (ou égal) à l’arrivée.');
+            return;
+        }
+        setManualSaving(true);
+        setOpMessage(null);
+        try {
+            await tripTravelClient.createHotel(tripId, {
+                type: 'hotel',
+                nom,
+                adresse: manual.adresse.trim() || manual.ville.trim() || destination,
+                code_postal: null,
+                ville: manual.ville.trim() || destination,
+                latitude: null,
+                longitude: null,
+                arrivee_le: manual.arrivee_le,
+                depart_le: manual.depart_le,
+                prix: manual.prix ? Math.max(0, Math.round(Number(manual.prix))) : 0,
+                devise: manual.devise || 'EUR',
+                informations_supplementaire: JSON.stringify({ source: 'manual' }),
+            });
+            setOpMessage('Hôtel ajouté au voyage.');
+            setManual(EMPTY_MANUAL_HOTEL);
+            setManualOpen(false);
+            await reload();
+            onUpdated?.();
+        } catch (err) {
+            setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
+        } finally {
+            setManualSaving(false);
+        }
+    }, [manual, manualSaving, tripId, destination, reload, onUpdated]);
 
     const openModal = () => {
         setApiResponse(null);
@@ -274,14 +346,119 @@ export function HotelsSection({
                         <p className="text-xs text-light-muted font-bold">{headerSubtitle}</p>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={openModal}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                >
-                    <Search size={14} /> Rechercher un hôtel
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setManualOpen((v) => !v)}
+                        aria-expanded={manualOpen}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-light-border bg-card text-light-foreground font-bold text-sm hover:border-brand hover:text-brand transition-colors"
+                    >
+                        <PencilLine size={14} /> J&apos;ai déjà réservé
+                    </button>
+                    <button
+                        type="button"
+                        onClick={openModal}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white font-bold text-sm hover:opacity-90 transition-opacity"
+                    >
+                        <Search size={14} /> Rechercher un hôtel
+                    </button>
+                </div>
             </div>
+
+            {manualOpen && (
+                <div className="triply-card space-y-4 p-5">
+                    <p className="text-sm font-bold text-light-foreground">Ajouter un hôtel déjà réservé</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="space-y-1 text-xs font-bold text-light-muted sm:col-span-2">
+                            Nom de l&apos;hôtel
+                            <input
+                                type="text"
+                                value={manual.nom}
+                                onChange={(e) => setManual((m) => ({ ...m, nom: e.target.value }))}
+                                placeholder="Hôtel Belvédère"
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Adresse
+                            <input
+                                type="text"
+                                value={manual.adresse}
+                                onChange={(e) => setManual((m) => ({ ...m, adresse: e.target.value }))}
+                                placeholder="12 rue des Voyageurs"
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Ville
+                            <input
+                                type="text"
+                                value={manual.ville}
+                                onChange={(e) => setManual((m) => ({ ...m, ville: e.target.value }))}
+                                placeholder={destination}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Arrivée
+                            <input
+                                type="date"
+                                value={manual.arrivee_le}
+                                onChange={(e) => setManual((m) => ({ ...m, arrivee_le: e.target.value }))}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <label className="space-y-1 text-xs font-bold text-light-muted">
+                            Départ
+                            <input
+                                type="date"
+                                value={manual.depart_le}
+                                onChange={(e) => setManual((m) => ({ ...m, depart_le: e.target.value }))}
+                                className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                            />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Prix
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={manual.prix}
+                                    onChange={(e) => setManual((m) => ({ ...m, prix: e.target.value }))}
+                                    placeholder="0"
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-bold text-light-muted">
+                                Devise
+                                <input
+                                    type="text"
+                                    value={manual.devise}
+                                    onChange={(e) => setManual((m) => ({ ...m, devise: e.target.value.toUpperCase().slice(0, 3) }))}
+                                    className="w-full rounded-xl border border-light-border bg-card px-3 py-2 text-sm font-medium text-light-foreground focus:border-brand focus:outline-none"
+                                />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => void handleManualSave()}
+                            disabled={manualSaving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                        >
+                            {manualSaving ? 'Ajout…' : 'Ajouter l’hôtel'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setManualOpen(false); setManual(EMPTY_MANUAL_HOTEL); }}
+                            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-light-muted transition-colors hover:text-light-foreground"
+                        >
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {opMessage && (
                 <p className="text-xs text-light-muted font-bold" role="status">{opMessage}</p>
@@ -296,13 +473,26 @@ export function HotelsSection({
                     <div className="h-3 w-1/2 rounded bg-light-bg animate-pulse" />
                 </div>
             ) : hotels.length === 0 ? (
-                <div className="triply-card p-8 text-center space-y-3">
-                    <p className="text-sm text-light-muted font-bold">
-                        Aucun hôtel enregistré pour ce voyage.
-                    </p>
-                    <p className="text-xs text-light-muted">
-                        Lancez une recherche pour comparer les meilleures offres selon votre budget.
-                    </p>
+                <div className="triply-card relative overflow-hidden p-8">
+                    <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
+                    <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-2">
+                            <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand">
+                                Aucun hôtel sélectionné
+                            </span>
+                            <h4 className="text-xl font-display font-bold text-light-foreground">Trouvez l’hôtel le moins cher selon vos dates</h4>
+                            <p className="max-w-md text-sm leading-relaxed text-light-muted">
+                                Triply compare les offres et accroche celle qui rentre dans votre budget en un clic.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={openModal}
+                            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-90"
+                        >
+                            <Search size={16} /> Sélectionner un hôtel
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <ul className="space-y-3">
@@ -319,7 +509,7 @@ export function HotelsSection({
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-lg font-bold text-brand">
-                                    {hotel.prix} {hotel.devise ?? 'EUR'}
+                                    {hotel.prix.toLocaleString('fr-FR')} EUR
                                 </span>
                                 <button
                                     type="button"

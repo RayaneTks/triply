@@ -17,13 +17,17 @@ use App\Http\Controllers\Api\V1\Integrations\GooglePlaceReviewsController;
 use App\Http\Controllers\Api\V1\PlacesController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RestaurantController;
+use App\Http\Controllers\Api\V1\StripeWebhookController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TripActivityController;
 use App\Http\Controllers\Api\V1\TripBookingController;
+use App\Http\Controllers\Api\V1\TripBudgetController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripDayController;
 use App\Http\Controllers\Api\V1\TripExportController;
+use App\Http\Controllers\Api\V1\TripFreeTimeController;
 use App\Http\Controllers\Api\V1\TripRecapController;
+use App\Http\Controllers\Api\V1\TripReplanController;
 use App\Http\Controllers\Api\V1\TripRouteController;
 use App\Http\Controllers\Api\V1\TripSharingController;
 use App\Http\Controllers\Api\V1\TripTravelController;
@@ -65,6 +69,10 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/share/{token}', [TripSharingController::class, 'showPublic'])->middleware('throttle:places');
 
+    // Stripe webhook — public (signature header verifies authenticity).
+    Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
+        ->middleware('throttle:60,1');
+
     Route::get('/consent', [ConsentController::class, 'show']);
     Route::post('/consent', [ConsentController::class, 'store']);
 
@@ -86,8 +94,19 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/trips/{trip}/duplicate', [TripController::class, 'duplicate']);
         Route::post('/trips/{trip}/validate', [TripController::class, 'validateTrip']);
 
+        // Constraint Replanner — IA reécrit jours affectés en respectant locked etapes (preview only).
+        Route::post('/trips/{trip}/replan', [TripReplanController::class, 'store'])->middleware('throttle:ai');
+
+        // Budget Reshuffler — propose swap deterministe pour atteindre une cible d'économie.
+        Route::post('/trips/{trip}/budget-reshuffle', [TripBudgetController::class, 'reshuffle']);
+
         Route::get('/trips/{trip}/days', [TripDayController::class, 'index']);
         Route::patch('/trips/{trip}/days/{day}', [TripDayController::class, 'update']);
+
+        // Free-time Concierge — proposes walkable POIs for unused day capacity.
+        Route::get('/trips/{trip}/days/{day}/free-time', [TripFreeTimeController::class, 'show'])
+            ->where('day', '[0-9]+')
+            ->middleware('throttle:places');
 
         Route::post('/trips/{trip}/activities', [TripActivityController::class, 'store']);
         Route::get('/trips/{trip}/activities', [TripActivityController::class, 'index']);

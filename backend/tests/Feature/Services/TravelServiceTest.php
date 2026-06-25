@@ -145,12 +145,70 @@ class TravelServiceTest extends TestCase
         $result = $this->service->createHotel((string) $this->voyage->id, $payload);
 
         $this->assertSame('Hôtel Arts Barcelone', $result['nom']);
+        $this->assertSame('EUR', $result['devise']);
         $this->assertDatabaseHas('hebergements', [
             'voyage_id' => $this->voyage->id,
             'nom' => 'Hôtel Arts Barcelone',
             'ville' => 'Barcelone',
             'prix' => 720,
+            'devise' => 'EUR',
         ]);
+    }
+
+    public function test_create_hotel_converts_non_eur_price_to_eur(): void
+    {
+        Http::fake([
+            'https://api.frankfurter.app/latest?from=JPY&to=EUR' => Http::response([
+                'amount' => 1,
+                'base' => 'JPY',
+                'date' => '2026-06-01',
+                'rates' => ['EUR' => 0.0062],
+            ], 200),
+        ]);
+
+        $result = $this->service->createHotel((string) $this->voyage->id, [
+            'type' => 'hotel',
+            'nom' => 'HILTON TOKYO',
+            'adresse' => 'Shinjuku',
+            'ville' => 'Tokyo',
+            'arrivee_le' => '2026-06-26',
+            'depart_le' => '2026-06-30',
+            'prix' => 403258,
+            'devise' => 'JPY',
+        ]);
+
+        $this->assertSame('EUR', $result['devise']);
+        $this->assertSame(2500, $result['prix']);
+        $this->assertDatabaseHas('hebergements', [
+            'voyage_id' => $this->voyage->id,
+            'nom' => 'HILTON TOKYO',
+            'prix' => 2500,
+            'devise' => 'EUR',
+        ]);
+    }
+
+    public function test_list_hotels_migrates_legacy_non_eur_prices_to_eur(): void
+    {
+        Http::fake([
+            'https://api.frankfurter.app/latest?from=JPY&to=EUR' => Http::response([
+                'amount' => 1,
+                'base' => 'JPY',
+                'date' => '2026-06-01',
+                'rates' => ['EUR' => 0.0062],
+            ], 200),
+        ]);
+
+        Hebergement::factory()->create([
+            'voyage_id' => $this->voyage->id,
+            'nom' => 'HILTON TOKYO',
+            'prix' => 403258,
+            'devise' => 'JPY',
+        ]);
+
+        $result = $this->service->listHotels((string) $this->voyage->id);
+
+        $this->assertSame('EUR', $result['items'][0]['devise']);
+        $this->assertSame(2500, $result['items'][0]['prix']);
     }
 
     public function test_update_hotel_changes_fields(): void

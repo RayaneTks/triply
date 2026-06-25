@@ -17,6 +17,9 @@ class StoreActivityRequest extends BaseApiRequest
             'start_at' => ['nullable', 'date'],
             'cost' => ['nullable', 'numeric', 'min:0'],
             'type' => ['nullable', 'string', 'max:100'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'layer_id' => ['nullable', 'string', 'max:200'],
         ];
     }
 }

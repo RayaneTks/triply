@@ -34,5 +34,9 @@ class DatabaseSeeder extends Seeder
             'deleted_at' => null,
         ]);
         $admin->save();
+
+        // Jeu de données « investor demo » (voyage Rome géolocalisé).
+        // Idempotent et indépendant des comptes ci-dessus.
+        $this->call(DemoSeeder::class);
     }
 }

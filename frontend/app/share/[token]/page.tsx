@@ -13,7 +13,7 @@ interface PublicSharePageProps {
 export default async function PublicSharePage({ params }: PublicSharePageProps) {
     const { token } = await params;
     return (
-        <main className="min-h-screen" style={{ background: 'var(--background)' }}>
+        <main className="min-h-dvh" style={{ background: 'var(--background)' }}>
             <Suspense fallback={null}>
                 <RecapVoyageView publicShareToken={token} />
             </Suspense>

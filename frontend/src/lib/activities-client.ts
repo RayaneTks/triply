@@ -100,7 +100,12 @@ export const activitiesClient = {
         );
     },
 
-    async update(tripId: string, activityId: string, payload: Partial<ActivityAttributes>): Promise<ActivityResource> {
+    async update(tripId: string, activityId: string, payload: Partial<ActivityAttributes> & {
+        estimated_duration_minutes?: number;
+        lat?: number | null;
+        lng?: number | null;
+        layer_id?: string | null;
+    }): Promise<ActivityResource> {
         const token = requireToken();
         return request(
             apiUrl(`/trips/${tripId}/activities/${activityId}`),
@@ -149,5 +154,52 @@ export const activitiesClient = {
         if (response.status === 204 || response.ok) return;
         const payload = (await response.json().catch(() => null)) as ApiError | null;
         throw new Error(getErrorMessage(payload, 'Restauration impossible.'));
+    },
+
+    async create(
+        tripId: string,
+        payload: {
+            source: 'manual' | 'place' | 'ai';
+            title?: string;
+            day_id?: string;
+            estimated_duration_minutes?: number;
+            cost?: number;
+            lat?: number;
+            lng?: number;
+            layer_id?: string;
+            place_id?: string;
+        },
+    ): Promise<ActivityResource> {
+        const token = requireToken();
+        return request(
+            apiUrl(`/trips/${tripId}/activities`),
+            {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            },
+            'Création de l’activité impossible.',
+        );
+    },
+
+    async reorder(tripId: string, activityIds: string[]): Promise<{ trip_id: string; updated: string[] }> {
+        const token = requireToken();
+        return request(
+            apiUrl(`/trips/${tripId}/activities/reorder`),
+            {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ activity_ids: activityIds }),
+            },
+            'Réordonnancement impossible.',
+        );
     },
 };

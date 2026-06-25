@@ -30,6 +30,13 @@ function isoFromYMD(year: number, month: number, day: number): string {
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/** Décale une date ISO de `delta` jours (positif ou négatif). */
+function addDaysIso(iso: string, delta: number): string {
+    const d = new Date(`${iso}T00:00:00`);
+    d.setDate(d.getDate() + delta);
+    return isoFromYMD(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 function parseInitialMonth(dateString: string): { month: number; year: number } {
     if (dateString) {
         const date = new Date(dateString);
@@ -73,6 +80,10 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     const today = useMemo(() => getLocalIsoDate(), []);
 
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
+    const wasOpenRef = useRef(false);
+    /** Jour actuellement focusable au clavier (roving tabindex). */
+    const [focusedDate, setFocusedDate] = useState<string>(today);
     const [position, setPosition] = useState({ top: 0, left: 0 });
 
     useEffect(() => {
@@ -83,6 +94,75 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [isOpen]);
+
+    // Place le focus clavier sur le jour actif quand on navigue / ouvre.
+    useEffect(() => {
+        if (!isOpen) return;
+        const btn = gridRef.current?.querySelector<HTMLButtonElement>(`[data-date="${focusedDate}"]`);
+        btn?.focus();
+    }, [isOpen, focusedDate, calMonth, calYear]);
+
+    // Restaure le focus sur le déclencheur à la fermeture (accessibilité).
+    useEffect(() => {
+        if (wasOpenRef.current && !isOpen) {
+            triggerRef.current?.focus();
+        }
+        wasOpenRef.current = isOpen;
+    }, [isOpen]);
+
+    const moveFocus = (delta: number) => {
+        const base = focusedDate && focusedDate >= today ? focusedDate : today;
+        let next = addDaysIso(base, delta);
+        if (next < today) next = today;
+        const d = new Date(`${next}T00:00:00`);
+        setCalMonth(d.getMonth());
+        setCalYear(d.getFullYear());
+        setFocusedDate(next);
+    };
+
+    const handleGridKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        switch (e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                moveFocus(-1);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                moveFocus(1);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                moveFocus(-7);
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                moveFocus(7);
+                break;
+            case 'PageUp':
+                e.preventDefault();
+                moveFocus(-28);
+                break;
+            case 'PageDown':
+                e.preventDefault();
+                moveFocus(28);
+                break;
+            case 'Home':
+                e.preventDefault();
+                moveFocus(-(((new Date(`${focusedDate}T00:00:00`).getDay() + 6) % 7)));
+                break;
+            case 'End':
+                e.preventDefault();
+                moveFocus(6 - ((new Date(`${focusedDate}T00:00:00`).getDay() + 6) % 7));
+                break;
+            case 'Enter':
+            case ' ':
+                e.preventDefault();
+                if (focusedDate >= today) handleDayClick(focusedDate);
+                break;
+            default:
+                break;
+        }
+    };
 
     const computePosition = () => {
         if (!triggerRef.current) return { top: 0, left: 0 };
@@ -104,11 +184,13 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     };
 
     const openCalendar = () => {
+        const initialFocus = propStartDate && propStartDate >= today ? propStartDate : today;
         if (propStartDate) {
             const { month, year } = parseInitialMonth(propStartDate);
             setCalMonth(month);
             setCalYear(year);
         }
+        setFocusedDate(initialFocus);
         setPosition(computePosition());
         setIsOpen(true);
     };
@@ -233,37 +315,32 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.96, y: -8 }}
                                 transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-                                className="fixed z-[9999] rounded-2xl shadow-2xl overflow-hidden"
+                                className="fixed z-[9999] rounded-2xl shadow-2xl overflow-hidden bg-card text-light-foreground border border-light-border"
                                 style={{
-                                    backgroundColor: 'var(--background, #222222)',
-                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
                                     top: `${position.top}px`,
                                     left: `${position.left}px`,
                                     width: 'min(340px, calc(100vw - 24px))',
                                 }}
                             >
-                                <div className="relative p-4 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                <div className="relative p-4 border-b border-light-border">
                                     <div className="flex items-center justify-between">
                                         <button
                                             type="button"
                                             onClick={() => navigateMonth('prev')}
-                                            className="p-2 rounded-xl hover:bg-white/10 transition-colors"
-                                            style={{ color: 'var(--foreground, #ededed)' }}
+                                            className="p-2 rounded-xl text-light-foreground hover:bg-light-bg transition-colors"
                                             aria-label="Mois précédent"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                                             </svg>
                                         </button>
-                                        <h3 className="text-base font-semibold tracking-tight" style={{ color: 'var(--foreground, #ededed)' }}>
+                                        <h3 className="text-base font-semibold tracking-tight text-light-foreground">
                                             {MONTH_NAMES[calMonth]} {calYear}
                                         </h3>
                                         <button
                                             type="button"
                                             onClick={() => navigateMonth('next')}
-                                            className="p-2 rounded-xl hover:bg-white/10 transition-colors"
-                                            style={{ color: 'var(--foreground, #ededed)' }}
+                                            className="p-2 rounded-xl text-light-foreground hover:bg-light-bg transition-colors"
                                             aria-label="Mois suivant"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,20 +348,26 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                                             </svg>
                                         </button>
                                     </div>
-                                    <p className="text-xs mt-2 text-center" style={{ color: 'rgba(255, 255, 255, 0.55)' }}>
+                                    <p className="text-xs mt-2 text-center text-light-muted">
                                         {helperText}
                                     </p>
                                 </div>
 
                                 <div className="grid grid-cols-7 gap-1 px-3 pt-3 pb-2">
                                     {DAY_NAMES.map((d) => (
-                                        <div key={d} className="text-xs font-semibold text-center py-2" style={{ color: 'rgba(255, 255, 255, 0.4)' }}>
+                                        <div key={d} className="text-xs font-semibold text-center py-2 text-light-muted">
                                             {d}
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="grid grid-cols-7 gap-1 px-3 pb-3">
+                                <div
+                                    ref={gridRef}
+                                    role="grid"
+                                    aria-label="Calendrier"
+                                    onKeyDown={handleGridKeyDown}
+                                    className="grid grid-cols-7 gap-1 px-3 pb-3"
+                                >
                                     {blanks.map((_, i) => <div key={`b-${i}`} className="aspect-square" />)}
                                     {dayCells.map((day) => {
                                         const iso = isoFromYMD(calYear, calMonth, day);
@@ -297,28 +380,28 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                                             <button
                                                 key={day}
                                                 type="button"
-                                                onClick={() => !disabled && handleDayClick(iso)}
+                                                data-date={iso}
+                                                role="gridcell"
+                                                aria-label={formatHuman(iso)}
+                                                aria-selected={isStart || isEnd}
+                                                tabIndex={iso === focusedDate ? 0 : -1}
+                                                onClick={() => {
+                                                    if (disabled) return;
+                                                    setFocusedDate(iso);
+                                                    handleDayClick(iso);
+                                                }}
                                                 onMouseEnter={() => !disabled && setHoverDate(iso)}
                                                 onMouseLeave={() => setHoverDate(null)}
                                                 disabled={disabled}
-                                                className={`aspect-square rounded-xl text-sm font-medium transition-all ${
-                                                    disabled ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'
-                                                }`}
-                                                style={{
-                                                    color: disabled
-                                                        ? 'rgba(255, 255, 255, 0.2)'
+                                                className={`aspect-square rounded-xl text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                                                    disabled
+                                                        ? 'cursor-not-allowed text-light-muted opacity-40'
                                                         : isStart || isEnd
-                                                            ? '#ffffff'
-                                                            : 'var(--foreground, #ededed)',
-                                                    backgroundColor: isStart || isEnd
-                                                        ? 'var(--primary, #0096C7)'
-                                                        : inRange
-                                                            ? 'rgba(0, 150, 199, 0.25)'
-                                                            : 'transparent',
-                                                    boxShadow: isStart || isEnd
-                                                        ? '0 4px 12px rgba(0, 150, 199, 0.4)'
-                                                        : 'none',
-                                                }}
+                                                            ? 'cursor-pointer text-[#ffffff] hover:scale-105 active:scale-95 bg-brand shadow-brand/30'
+                                                            : inRange
+                                                                ? 'cursor-pointer text-light-foreground bg-brand/25 hover:scale-105 active:scale-95'
+                                                                : 'cursor-pointer text-light-foreground hover:scale-105 active:scale-95'
+                                                }`}
                                             >
                                                 {day}
                                             </button>
@@ -326,23 +409,18 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                                     })}
                                 </div>
 
-                                <div className="flex items-center justify-between gap-2 px-4 py-3 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-light-border">
                                     <button
                                         type="button"
                                         onClick={clear}
-                                        className="text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                                        style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-light-muted hover:bg-light-bg transition-colors"
                                     >
                                         Effacer
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setIsOpen(false)}
-                                        className="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                                        style={{
-                                            backgroundColor: 'var(--primary, #0096C7)',
-                                            color: '#ffffff',
-                                        }}
+                                        className="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors bg-brand text-[#ffffff]"
                                     >
                                         {startDate && endDate ? 'Valider' : 'Fermer'}
                                     </button>

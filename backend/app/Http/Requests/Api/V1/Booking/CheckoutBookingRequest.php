@@ -20,6 +20,10 @@ class CheckoutBookingRequest extends BaseApiRequest
             'adults' => ['nullable', 'integer', 'min:1', 'max:20'],
             'origin' => ['nullable', 'string', 'max:10'],
             'destination_code' => ['nullable', 'string', 'max:10'],
+            'property_name' => ['nullable', 'string', 'max:191'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ];
     }
 }

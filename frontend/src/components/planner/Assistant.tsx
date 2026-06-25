@@ -110,7 +110,7 @@ export function Assistant({
       });
 
       if (res.error) {
-        setMessages((prev) => [...prev, { role: "assistant", content: res.error ?? "Erreur." }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: res.error ?? "Désolé, je n’ai pas pu répondre. Réessayez dans un instant." }]);
         return;
       }
 
@@ -127,7 +127,7 @@ export function Assistant({
         setLastReplacement(res.replacement);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erreur réseau ou serveur.";
+      const msg = err instanceof Error ? err.message : "Connexion interrompue. Vérifiez votre réseau et réessayez.";
       setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
     } finally {
       setSending(false);

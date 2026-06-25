@@ -52,10 +52,10 @@ class MiscControllersTest extends TestCase
 
     // ---- UserAccountController ----
 
-    public function test_user_export_returns_202(): void
+    public function test_user_export_returns_data_archive(): void
     {
         $response = $this->getJson('/api/v1/user/export');
-        $response->assertStatus(202);
+        $response->assertOk();
     }
 
     public function test_user_delete_requires_confirm(): void

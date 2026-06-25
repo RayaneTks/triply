@@ -81,8 +81,8 @@ export function ManualCanvasView() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 lg:py-20">
       <PageHeader
-        title="Mode Libre"
-        subtitle="Décrivez votre projet avec vos mots. Triply en extrait les grandes lignes et les contraintes budgétaires."
+        title="Mode manuel"
+        subtitle="Décrivez votre projet avec vos mots. Triply en dégage les grandes lignes et votre budget."
       />
 
       <div className="mt-12 grid lg:grid-cols-3 gap-12">
@@ -148,7 +148,7 @@ export function ManualCanvasView() {
                >
                   <header className="flex items-center gap-3 text-brand">
                      <Bot size={24} />
-                     <h3 className="font-bold">Synthèse de votre brief</h3>
+                     <h3 className="font-bold">Synthèse de votre projet</h3>
                   </header>
 
                   <div className="space-y-6">
@@ -192,16 +192,13 @@ export function ManualCanvasView() {
                     </ul>
                   ) : (
                     <p className="text-xs text-light-muted font-bold pt-6 border-t border-brand/10">
-                      Aucune contrainte spécifique détectée. Vous pourrez les ajuster dans le wizard.
+                      Aucune contrainte particulière détectée. Vous pourrez les ajuster dans le parcours guidé.
                     </p>
                   )}
 
-                  <div className="pt-6 space-y-3">
+                  <div className="pt-6">
                      <button onClick={handleRefineInWizard} className="w-full btn-primary flex items-center justify-center gap-2">
-                        Affiner dans le wizard <ChevronRight size={16} />
-                     </button>
-                     <button onClick={() => router.push("/itineraire")} className="w-full py-4 text-brand font-bold text-sm bg-card border border-brand/20 rounded-2xl hover:bg-light-bg">
-                        Voir le brouillon d'itinéraire
+                        Affiner dans le parcours guidé <ChevronRight size={16} />
                      </button>
                   </div>
                </motion.div>
@@ -218,7 +215,7 @@ export function ManualCanvasView() {
                   </div>
                   <div className="p-4 bg-emerald-50 rounded-2xl flex gap-3 text-left">
                      <Sparkles size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                     <p className="text-xs font-bold text-emerald-700 leading-relaxed uppercase">Le budget détecté sera verrouillé comme contrainte dure.</p>
+                     <p className="text-xs font-bold text-emerald-700 leading-relaxed uppercase">Le budget détecté servira de limite à respecter.</p>
                   </div>
                </div>
              )}

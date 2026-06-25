@@ -7,15 +7,26 @@ import { HotelOfferCard } from '@/src/components/HotelResults/HotelOfferCard';
 import type { HotelOffer } from '@/src/components/HotelResults/HotelOfferCard';
 
 const buildBookingUrl = (offer: HotelOffer): string => {
-    const city = offer.cityCode || 'Paris';
     const checkIn = offer.checkInDate || new Date().toISOString().slice(0, 10);
     const checkOut = offer.checkOutDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const searchParts = [offer.hotelName];
+    if (offer.hotelAddress) {
+        searchParts.push(offer.hotelAddress);
+    } else if (offer.cityCode) {
+        searchParts.push(offer.cityCode);
+    }
     const params = new URLSearchParams({
-        q: city,
+        ss: searchParts.join(', '),
         checkin: checkIn,
         checkout: checkOut,
     });
-    return `https://www.google.com/travel/hotels?${params.toString()}`;
+    if (typeof offer.hotelLatitude === 'number') {
+        params.set('latitude', String(offer.hotelLatitude));
+    }
+    if (typeof offer.hotelLongitude === 'number') {
+        params.set('longitude', String(offer.hotelLongitude));
+    }
+    return `https://www.booking.com/searchresults.html?${params.toString()}`;
 };
 
 export interface HotelDetailModalProps {

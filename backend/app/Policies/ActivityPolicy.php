@@ -2,25 +2,23 @@
 
 namespace App\Policies;
 
+use App\Models\Etape;
 use App\Models\User;
 
 class ActivityPolicy
 {
-    public function view(User $user, mixed $activity): bool
+    public function view(User $user, Etape $etape): bool
     {
-        // TODO: Implement activity visibility checks.
-        return true;
+        return $user->id === $etape->journee->voyage->user_id;
     }
 
-    public function update(User $user, mixed $activity): bool
+    public function update(User $user, Etape $etape): bool
     {
-        // TODO: Implement activity update permissions.
-        return true;
+        return $user->id === $etape->journee->voyage->user_id;
     }
 
-    public function delete(User $user, mixed $activity): bool
+    public function delete(User $user, Etape $etape): bool
     {
-        // TODO: Implement activity delete permissions.
-        return true;
+        return $user->id === $etape->journee->voyage->user_id;
     }
 }

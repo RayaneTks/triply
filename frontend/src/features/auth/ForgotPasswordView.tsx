@@ -22,14 +22,14 @@ export function ForgotPasswordView() {
       await authClient.forgotPassword({ email });
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'envoyer l'email.");
+      setError(err instanceof Error ? err.message : "Impossible d'envoyer l'email pour le moment. Réessayez.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-6">
       <Link href="/" className="mb-12"><TriplyLogo /></Link>
 
       <motion.div
@@ -39,10 +39,10 @@ export function ForgotPasswordView() {
       >
         <header className="space-y-4">
           <Link href="/connexion" className="text-light-muted hover:text-brand flex items-center gap-2 text-xs font-bold uppercase transition-colors">
-            <ArrowLeft size={14} /> Retour à l'accès
+            <ArrowLeft size={14} /> Retour à la connexion
           </Link>
-          <h1 className="text-3xl font-display font-bold">Oubli de pilotage ?</h1>
-          <p className="text-light-muted">Pas d'inquiétude, saisissez votre email pour réinitialiser vos accès.</p>
+          <h1 className="text-3xl font-display font-bold">Mot de passe oublié ?</h1>
+          <p className="text-light-muted">Pas d'inquiétude. Saisissez votre email pour recevoir un lien de réinitialisation.</p>
         </header>
 
         {sent ? (

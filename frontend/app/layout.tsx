@@ -1,9 +1,22 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ToastProvider } from "@/src/components/ui/Toast";
+import { PwaProvider } from "@/src/components/pwa/PwaProvider";
+import { ConsentBanner } from "@/src/components/legal/ConsentBanner";
 
 export const metadata: Metadata = {
   title: "Triply - Planification de voyage",
   description: "Planifiez vos voyages facilement",
+  applicationName: "Triply",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Triply",
+  },
+  icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icons/icon.svg" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -11,6 +24,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
+  // Charte designer : cyan --primary #0096C7 (barre d'état / theme-color PWA).
+  themeColor: "#0096C7",
 };
 
 export default function RootLayout({
@@ -19,18 +34,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="overflow-x-hidden" suppressHydrationWarning>
+    <html lang="fr" className="dark overflow-x-hidden" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('triply-theme');var r=document.documentElement;if(t==='light'){r.setAttribute('data-theme','light');r.classList.remove('dark');}else{r.removeAttribute('data-theme');r.classList.add('dark');}}catch(e){document.documentElement.classList.add('dark');}` }} />
         <link rel="preload" href="/fonts/Chillax-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/Gotham-Book.otf" as="font" type="font/otf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/Gotham-Medium.otf" as="font" type="font/otf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        {/* Gotham OTFs (Book/Medium/Bold) chargés à la demande via @font-face + font-display:swap.
+            Pas de preload pour éviter de bloquer le LCP avec ~500kb de fonts non critiques. */}
       </head>
       <body className="antialiased overflow-x-hidden min-h-dvh">
-        <main className="flex min-h-dvh flex-col">
-          {children}
-        </main>
+        <ToastProvider>
+          <PwaProvider />
+          <main className="flex min-h-dvh flex-col">
+            {children}
+          </main>
+          <ConsentBanner />
+        </ToastProvider>
       </body>
     </html>
   );

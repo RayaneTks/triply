@@ -23,6 +23,10 @@ export type CheckoutPayload = {
     provider: 'booking' | 'skyscanner' | 'getyourguide' | string;
     kind?: 'flight' | 'hotel' | 'activity' | 'bundle';
     destination?: string;
+    property_name?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
     check_in?: string;
     check_out?: string;
     adults?: number;

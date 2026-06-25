@@ -25,7 +25,7 @@ export function tripApiToStoredTripForList(t: TripApi): StoredTrip {
   };
 }
 
-export type TripDetailDay = { id: number; title: string; status: "Cadré" | "À creuser" };
+export type TripDetailDay = { id: number; title: string; status: "Prêt" | "À compléter" };
 
 export type TripDetailDisplay = {
   destination: string;
@@ -40,9 +40,9 @@ export type TripDetailDisplay = {
 
 function placeholderDays(dest: string): TripDetailDay[] {
   return [
-    { id: 1, title: `Arrivée & prise en main — ${dest}`, status: "Cadré" },
-    { id: 2, title: "Exploration & temps fort", status: "Cadré" },
-    { id: 3, title: "Dernière matinée avant départ", status: "À creuser" },
+    { id: 1, title: `Arrivée & prise en main — ${dest}`, status: "Prêt" },
+    { id: 2, title: "Exploration & temps fort", status: "Prêt" },
+    { id: 3, title: "Dernière matinée avant départ", status: "À compléter" },
   ];
 }
 

@@ -59,11 +59,7 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    // Force a light palette regardless of the global theme so the
-                    // overlay reads correctly on the demo screen. All inner text
-                    // uses explicit slate colors instead of theme tokens.
-                    style={{ backgroundColor: 'rgba(248, 250, 252, 0.97)' }}
-                    className="fixed inset-0 z-[10000] flex flex-col items-center justify-center gap-10 backdrop-blur-md px-6"
+                    className="fixed inset-0 z-[10000] flex flex-col items-center justify-center gap-10 bg-background/95 backdrop-blur-md px-6"
                 >
                     <div className="flex flex-col items-center gap-6 text-center max-w-md">
                         <motion.div
@@ -74,14 +70,22 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                         <div className="space-y-2">
                             <div className="flex items-center justify-center gap-2 text-brand">
                                 <Sparkles size={18} />
-                                <span className="text-xs font-bold uppercase tracking-widest">Triply IA</span>
+                                <span className="text-xs font-bold uppercase tracking-widest">Copilote Triply</span>
                             </div>
-                            <h2 className="text-2xl font-display font-bold text-slate-900">
+                            <h2 className="text-2xl font-display font-bold text-light-foreground">
                                 Préparation de votre voyage à {destination.trim() || 'votre destination'}
                             </h2>
-                            <p className="text-sm text-slate-600 font-bold leading-relaxed">
+                            <p className="text-sm text-light-muted font-bold leading-relaxed">
                                 Sélection d'activités sur {travelDays} jour{travelDays > 1 ? 's' : ''} adaptées à votre budget de {budget.toLocaleString()}€.
                             </p>
+                            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 text-brand border border-brand/20 px-3 py-1 text-xs font-bold">
+                                    {travelDays} jour{travelDays > 1 ? 's' : ''}
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 text-brand border border-brand/20 px-3 py-1 text-xs font-bold">
+                                    {budget.toLocaleString()}€
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -93,19 +97,19 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                                 <li
                                     key={step.key}
                                     className={cn(
-                                        'flex items-center gap-4 px-4 py-3 rounded-2xl border transition-colors bg-white',
-                                        isDone && 'border-emerald-200 text-emerald-900',
-                                        isActive && 'border-brand/30 text-slate-900 shadow-sm',
-                                        !isDone && !isActive && 'border-slate-200 text-slate-500',
+                                        'flex items-center gap-4 px-4 py-3 rounded-2xl border transition-colors bg-card',
+                                        isDone && 'border-brand/30 text-brand',
+                                        isActive && 'border-brand/30 text-light-foreground shadow-sm',
+                                        !isDone && !isActive && 'border-light-border text-light-muted',
                                     )}
                                     aria-current={isActive ? 'step' : undefined}
                                 >
                                     <span
                                         className={cn(
                                             'flex w-9 h-9 items-center justify-center rounded-full shrink-0',
-                                            isDone && 'bg-emerald-500 text-white',
+                                            isDone && 'bg-brand text-white',
                                             isActive && 'bg-brand text-white',
-                                            !isDone && !isActive && 'bg-slate-100 text-slate-400',
+                                            !isDone && !isActive && 'bg-light-bg text-light-muted',
                                         )}
                                     >
                                         {isDone ? (
@@ -121,9 +125,9 @@ export const AiProgressOverlay: FC<AiProgressOverlayProps> = ({ stage, destinati
                                             size={18}
                                             className={cn(
                                                 'shrink-0',
-                                                isDone && 'text-emerald-600',
+                                                isDone && 'text-white',
                                                 isActive && 'text-brand',
-                                                !isDone && !isActive && 'text-slate-400',
+                                                !isDone && !isActive && 'text-light-muted',
                                             )}
                                         />
                                         <span className="text-sm font-bold truncate">{step.label}</span>

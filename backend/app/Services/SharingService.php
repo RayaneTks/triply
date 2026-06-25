@@ -9,6 +9,7 @@ use App\Services\Contracts\TripServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class SharingService implements SharingServiceInterface
@@ -39,11 +40,17 @@ class SharingService implements SharingServiceInterface
             $token = Str::random(40);
         }
 
-        $link = ShareLink::query()->create([
+        $data = [
             'voyage_id' => $voyage->id,
             'token' => $token,
             'expires_at' => Carbon::now()->addDays($ttlDays),
-        ]);
+        ];
+
+        if (! empty($payload['password']) && is_string($payload['password'])) {
+            $data['password_hash'] = Hash::make($payload['password']);
+        }
+
+        $link = ShareLink::query()->create($data);
 
         $frontendBase = rtrim((string) config('app.frontend_url'), '/');
 
@@ -55,11 +62,29 @@ class SharingService implements SharingServiceInterface
         ];
     }
 
-    public function publicRecap(string $token): array
+    public function publicRecap(string $token, ?string $providedPassword = null): array
     {
         $link = ShareLink::query()->where('token', $token)->first();
         if ($link === null || $link->isExpired()) {
             throw new ModelNotFoundException('Lien de partage invalide ou expire.');
+        }
+
+        if ($link->password_hash !== null) {
+            if ($providedPassword === null || $providedPassword === '') {
+                return [
+                    'error_code' => 'SHARE_PASSWORD_REQUIRED',
+                    'error_message' => 'Mot de passe requis pour acceder a ce lien.',
+                    '_httpStatus' => 401,
+                ];
+            }
+
+            if (! Hash::check($providedPassword, $link->password_hash)) {
+                return [
+                    'error_code' => 'SHARE_PASSWORD_INVALID',
+                    'error_message' => 'Mot de passe invalide.',
+                    '_httpStatus' => 401,
+                ];
+            }
         }
 
         $voyage = Voyage::query()->find($link->voyage_id);

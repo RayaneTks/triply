@@ -102,7 +102,7 @@ export const Button: React.FC<ButtonProps> = ({
                     padding: 0.5rem 1.5em;
                     background: var(--button_color);
                     color: var(--button_text_color);
-                    transform: translateY(-0.2em);
+                    transform: translateY(0);
                     transition: transform 0.1s ease;
                     height: 100%;
                     display: flex;
@@ -110,12 +110,18 @@ export const Button: React.FC<ButtonProps> = ({
                     justify-content: center;
                 }
 
-                .${buttonClass}:hover .${buttonClass}-top {
-                    transform: translateY(-0.33em);
-                }
+                @media (prefers-reduced-motion: no-preference) {
+                    .${buttonClass}-top {
+                        transform: translateY(-0.2em);
+                    }
 
-                .${buttonClass}:active .${buttonClass}-top {
-                    transform: translateY(0);
+                    .${buttonClass}:hover .${buttonClass}-top {
+                        transform: translateY(-0.33em);
+                    }
+
+                    .${buttonClass}:active .${buttonClass}-top {
+                        transform: translateY(0);
+                    }
                 }
             `}</style>
         </>

@@ -115,6 +115,47 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
             }
         }
 
+        // Besoins déclarés au wizard — nécessaires à la sélection automatique
+        // vol/hôtel après création du voyage.
+        $plannerNeeds = Arr::get($snapshot, 'plannerNeeds');
+        if (is_array($plannerNeeds)) {
+            $compactNeeds = [];
+            foreach (['flights', 'hotels', 'activities', 'restaurants'] as $key) {
+                if (isset($plannerNeeds[$key])) {
+                    $compactNeeds[$key] = (bool) $plannerNeeds[$key];
+                }
+            }
+            if ($compactNeeds !== []) {
+                $stored['plannerNeeds'] = $compactNeeds;
+            }
+        }
+
+        // Préférences avancées (escales, classe vol, étoiles hôtel) qui affinent
+        // la sélection automatique Amadeus.
+        $plannerPreferences = Arr::get($snapshot, 'plannerPreferences');
+        if (is_array($plannerPreferences)) {
+            $compactPrefs = [];
+            if (isset($plannerPreferences['flightNonStop'])) {
+                $compactPrefs['flightNonStop'] = (bool) $plannerPreferences['flightNonStop'];
+            }
+            $travelClass = $this->asNullableString($plannerPreferences['flightTravelClass'] ?? null);
+            if ($travelClass !== null) {
+                $upper = strtoupper($travelClass);
+                if (in_array($upper, ['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'], true)) {
+                    $compactPrefs['flightTravelClass'] = $upper;
+                }
+            }
+            if (isset($plannerPreferences['hotelMinStars']) && is_numeric($plannerPreferences['hotelMinStars'])) {
+                $stars = (int) $plannerPreferences['hotelMinStars'];
+                if ($stars >= 1 && $stars <= 5) {
+                    $compactPrefs['hotelMinStars'] = $stars;
+                }
+            }
+            if ($compactPrefs !== []) {
+                $stored['plannerPreferences'] = $compactPrefs;
+            }
+        }
+
         return $stored !== [] ? $stored : null;
     }
 
@@ -190,6 +231,14 @@ class SnapshotSyncService implements SnapshotSyncServiceInterface
         }
 
         return $snapshot;
+    }
+
+    public function refreshCompactSnapshot(Voyage $voyage): void
+    {
+        $stored = is_array($voyage->plan_snapshot) ? $voyage->plan_snapshot : [];
+        $merged = array_replace_recursive($this->buildFromStructured($voyage), $stored);
+        $voyage->plan_snapshot = $this->compactForStorage($merged);
+        $voyage->save();
     }
 
     public function extractBudgetTotal(mixed $snapshot): int

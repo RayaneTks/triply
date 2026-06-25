@@ -16,7 +16,7 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-light-border px-4 py-2 pb-safe z-50 flex justify-around items-center h-[64px]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-light-border px-4 py-2 pb-[env(safe-area-inset-bottom)] z-50 flex justify-around items-center h-[calc(64px+env(safe-area-inset-bottom))]">
       {navItems.map(({ to, icon: Icon, label }) => (
         <Link
           key={to}

@@ -12,9 +12,11 @@ export function PricingView() {
   const [isAnnual, setIsAnnual] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
 
   async function handleCheckout(planId: string) {
     setError(null);
+    setUnavailable(false);
     if (!authClient.getToken()) {
       router.push('/connexion?returnTo=/tarifs');
       return;
@@ -27,40 +29,49 @@ export function PricingView() {
         body: JSON.stringify({ plan: planId, billing: isAnnual ? 'annual' : 'monthly' }),
       });
       const data = await res.json();
+      if (res.status === 503) {
+        setUnavailable(true);
+        return;
+      }
       if (!res.ok) {
-        setError(data?.error || 'Impossible de démarrer le paiement.');
+        setError(data?.message || data?.error || 'Impossible de démarrer le paiement.');
         return;
       }
       if (data.url) window.location.href = data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur réseau ou serveur.');
+      setError(err instanceof Error ? err.message : 'Connexion interrompue. Vérifiez votre réseau et réessayez.');
     } finally {
       setLoadingPlan(null);
     }
   }
 
+  // Prix mensuels de référence (équivalent mensuel quand on souscrit à l'année).
+  // Annuel = (prix annuel équivalent) × 12, payé en une fois.
   const tiers = [
     {
       id: null,
       name: "Découverte",
-      price: 0,
-      features: ["1 voyage actif", "Assistant de base", "Exports PDF"],
+      monthlyPrice: 0,
+      annualMonthlyEq: 0,
+      features: ["1 voyage actif", "Copilote de base", "Partage par lien"],
       cta: "Commencer gratuitement",
       highlight: false
     },
     {
       id: "voyageur",
       name: "Voyageur",
-      price: isAnnual ? 9 : 12,
-      features: ["3 voyages actifs", "Assistant contextuel", "Budget en temps réel", "Synchronisation calendrier"],
+      monthlyPrice: 12,
+      annualMonthlyEq: 9,
+      features: ["3 voyages actifs", "Copilote contextuel", "Budget en temps réel", "Synchronisation calendrier"],
       cta: "Choisir Voyageur",
       highlight: true
     },
     {
       id: "pilote",
       name: "Pilote",
-      price: isAnnual ? 19 : 24,
-      features: ["Voyages illimités", "Assistant Pro", "Gestion de groupe", "Support prioritaire"],
+      monthlyPrice: 24,
+      annualMonthlyEq: 19,
+      features: ["Voyages illimités", "Copilote avancé", "Gestion de groupe", "Support prioritaire"],
       cta: "Passer en Pilote",
       highlight: false
     }
@@ -74,6 +85,14 @@ export function PricingView() {
         {error && (
           <div className="max-w-md mx-auto mb-8 px-4 py-3 rounded-xl border border-red-300 bg-red-50 text-red-900 text-sm font-bold">
             {error}
+          </div>
+        )}
+        {unavailable && (
+          <div
+            role="status"
+            className="max-w-md mx-auto mb-8 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm font-medium"
+          >
+            Le paiement est en cours de configuration. Revenez bientôt.
           </div>
         )}
 
@@ -110,9 +129,35 @@ export function PricingView() {
               </span>
             )}
             <h2 className="text-xl font-bold mb-2">{tier.name}</h2>
-            <div className="mb-8">
-              <span className="text-4xl font-display font-bold">{tier.price}€</span>
-              <span className="text-light-muted text-sm font-bold"> / mois</span>
+            <div className="mb-8 space-y-1">
+              {tier.monthlyPrice === 0 ? (
+                <>
+                  <div>
+                    <span className="text-4xl font-display font-bold">0€</span>
+                  </div>
+                  <p className="text-light-muted text-xs font-semibold">Gratuit, sans carte bancaire</p>
+                </>
+              ) : isAnnual ? (
+                <>
+                  <div>
+                    <span className="text-4xl font-display font-bold">{tier.annualMonthlyEq * 12}€</span>
+                    <span className="text-light-muted text-sm font-bold"> / an</span>
+                  </div>
+                  <p className="text-light-muted text-xs font-semibold">
+                    Soit {tier.annualMonthlyEq}€/mois · payé en une fois
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="text-4xl font-display font-bold">{tier.monthlyPrice}€</span>
+                    <span className="text-light-muted text-sm font-bold"> / mois</span>
+                  </div>
+                  <p className="text-light-muted text-xs font-semibold">
+                    Sans engagement · annulation à tout moment
+                  </p>
+                </>
+              )}
             </div>
             
             <ul className="space-y-4 mb-12 flex-1">
@@ -153,7 +198,7 @@ export function PricingView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 py-16 border-t border-light-border">
         {[
           { icon: Map, title: "Cartographie", desc: "Données précises" },
-          { icon: Sparkles, title: "Accompagnement", desc: "Assistant dédié" },
+          { icon: Sparkles, title: "Accompagnement", desc: "Copilote dédié" },
           { icon: Plane, title: "Logistique", desc: "Sync transports" },
           { icon: ListChecks, title: "Organisation", desc: "Checklists riches" }
         ].map((f, i) => (

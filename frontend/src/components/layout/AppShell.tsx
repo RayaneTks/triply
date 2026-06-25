@@ -103,7 +103,7 @@ export function AppShell({
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                   {hasPaidPlanner && (
-                    <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
+                    <span className="absolute -top-1 -right-1 rounded-full bg-brand text-[10px] font-bold px-1.5 py-0.5 text-white shadow-lg">
                       V
                     </span>
                   )}
@@ -119,7 +119,7 @@ export function AppShell({
                   className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-light-border bg-card px-3 py-1.5 text-xs font-bold text-light-muted transition-colors hover:border-brand hover:text-brand"
                 >
                   <LogOut size={14} />
-                  Logout
+                  Déconnexion
                 </button>
               </>
             ) : (

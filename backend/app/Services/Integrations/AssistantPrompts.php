@@ -17,6 +17,14 @@ class AssistantPrompts
         return is_readable($path) ? (string) file_get_contents($path) : '';
     }
 
+    /** @var list<string> */
+    private const FOOD_PREFERENCE_TAGS = [
+        'gastronomie locale',
+        'gastronomie',
+        'streetfood',
+        'gastro',
+    ];
+
     /**
      * @param  list<string>  $userPreferences
      */
@@ -37,15 +45,74 @@ class AssistantPrompts
         ];
         $resolved = array_map(fn ($p) => $labels[$p] ?? $p, $userPreferences);
 
-        return "\n\nPRÉFÉRENCES UTILISATEUR (à prendre en compte dans tes recommandations) :\n"
+        $block = "\n\nPRÉFÉRENCES UTILISATEUR (à prendre en compte dans tes recommandations) :\n"
             .implode(', ', $resolved)
             ."\n- Adapte tes suggestions (destinations, activités, hébergements) en fonction de ces préférences.\n"
             ."- Tu peux les mentionner naturellement si pertinent, sans les répéter systématiquement.\n";
+
+        if (self::hasFoodPreference($userPreferences)) {
+            $block .= self::gastronomyInstructions();
+        }
+
+        return $block;
+    }
+
+    /**
+     * @param  list<string>  $userPreferences
+     */
+    private static function hasFoodPreference(array $userPreferences): bool
+    {
+        foreach ($userPreferences as $pref) {
+            $normalized = mb_strtolower(trim($pref));
+            foreach (self::FOOD_PREFERENCE_TAGS as $tag) {
+                if ($normalized === $tag || str_contains($normalized, $tag)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static function gastronomyInstructions(): string
+    {
+        return <<<'TXT'
+
+PRÉFÉRENCE GASTRONOMIE (OBLIGATOIRE quand l'utilisateur a demandé la restauration) :
+- Inclus **au moins 1 activité gastronomique par jour** du séjour (de jour 1 à travelDays).
+- Chaque activité food doit être un **lieu concret** (restaurant, maquis, marché alimentaire, dégustation, street food) avec le **nom du lieu dans le title** (ex. « Déjeuner au Restaurant X », « Dégustation de tô au Maquis Y », « Marché central de Ouagadougou »).
+- Ces activités comptent dans le quota d'activités quotidiennes (pas de 4e activité systématique en plus des 3 minimum).
+- Varie les expériences sur la semaine : déjeuner, dîner, marché, dégustation locale.
+- Attribue durationHours réaliste : restaurant / déjeuner / dîner ≈ 1 à 1.5 h.
+
+TXT;
+    }
+
+    public static function durationGuidelinesInstructions(): string
+    {
+        return <<<'TXT'
+
+DURÉES D'ACTIVITÉ (OBLIGATOIRE) :
+- Chaque activité dans suggestedActivities (ou replacement / replannedActivities) DOIT inclure **durationHours** (nombre > 0, décimales autorisées ex. 1.5).
+- N'assigne **jamais** la même durée à toutes les activités d'un jour ; adapte au type réel de l'expérience.
+- Grille indicative (ajuste au budget maxActivityHoursPerDay du contexte) :
+  - Monument / point de vue rapide (fontaine, statue, photo) : 0.5 – 1 h
+  - Monument / église / site historique (cathédrale, palais) : 1 – 1.5 h
+  - Musée / galerie : 2 – 3 h
+  - Balade quartier / marché (hors repas) : 1 – 2 h
+  - Restaurant / déjeuner / dîner (lieu nommé) : 1 – 1.5 h
+  - Parc / jardin urbain : 1 – 2 h
+  - Nature / réserve / safari / savane : 3 – 6 h
+  - Excursion hors ville (village artisanal lointain, safari photo) : 4 – 8 h
+- La somme des durationHours **par jour** + environ 30 min de pause entre chaque activité ne doit pas dépasser maxActivityHoursPerDay quand il est fourni ; sinon base-toi sur 6 heures par jour.
+
+TXT;
     }
 
     public static function geoInstructions(string $destinationContext, string $refusalText): string
     {
         $d = $destinationContext !== '' ? $destinationContext : 'non spécifié';
+        $durationBlock = self::durationGuidelinesInstructions();
 
         return <<<TXT
 
@@ -63,7 +130,7 @@ Format JSON STRICT attendu (sans markdown, sans texte autour) :
   "coordinates": { "lat": number, "lng": number } ou null,
   "suggestedZoom": number (ex: 5 ou 12),
   "suggestedActivities": [
-    { "title": string, "lat": number, "lng": number, "durationHours": number optionnel, "day": number optionnel }
+    { "title": string, "lat": number, "lng": number, "durationHours": number, "day": number optionnel }
   ],
   "step1FormPatch": null ou objet partiel pour préremplir l'étape 1 (voir bloc FORMULAIRE ÉTAPE 1)
 }
@@ -75,8 +142,7 @@ Règles pour suggestedActivities (CRITIQUES) :
 - Si la demande porte **uniquement** sur le jour en cours (jour « selectedDay » du contexte) ou une modification ponctuelle d’une journée : mets **day** = selectedDay pour chaque nouvelle activité (ou omet **day**, équivalent à selectedDay).
 - Tableau de lieux concrets (monuments, musées, quartiers, parcs, etc.) dans la zone de la destination ou [] si hors sujet.
 - Coordonnées GPS plausibles (pas 0,0). Si la question ne demande pas d'idées d'activités pour le voyage, renvoie [].
-- durationHours optionnel (ex. 1.5). La somme des durées suggérées **pour un même day** ne doit pas dépasser le budget horaire du jour (maxActivityHoursPerDay) quand il est fourni ; sinon base-toi sur 6 heures par jour.
-
+{$durationBlock}
 Si la demande est hors périmètre, réponds avec reply contenant EXACTEMENT ce message de refus :
 "{$refusalText}"
 
@@ -188,6 +254,7 @@ TXT;
         string $destinationContext,
     ): string {
         $dc = $destinationContext !== '' ? $destinationContext : 'non spécifié';
+        $durationBlock = self::durationGuidelinesInstructions();
 
         return <<<TXT
 
@@ -207,11 +274,100 @@ Format JSON STRICT (sans markdown) :
     "title": string,
     "lat": number,
     "lng": number,
-    "durationHours": number optionnel (> 0)
+    "durationHours": number (> 0)
   } ou null si impossible
 }
-
+{$durationBlock}
 Si tu ne peux pas proposer d'alternative fiable, mets "replacement": null et explique dans "reply".
+
+TXT;
+    }
+
+    /**
+     * Instructions pour le mode "replan sous contrainte".
+     * Le modèle doit réécrire les jours affectés en préservant les étapes verrouillées
+     * et en respectant la destination, les horaires d'ouverture plausibles, et les temps
+     * de transit. Sortie = nouveau days[] complet avec activités.
+     *
+     * @param  list<array{day: int, title: string, lat: float, lng: float, durationHours?: float, locked?: bool}>  $currentActivities
+     * @param  list<int>  $affectedDays
+     */
+    public static function replanInstructions(
+        string $destinationContext,
+        string $reason,
+        string $details,
+        int $travelDays,
+        array $currentActivities,
+        array $affectedDays,
+    ): string {
+        $destination = $destinationContext !== '' ? $destinationContext : 'destination du voyage';
+        $reasonLabels = [
+            'flight_delay' => "le vol de l'utilisateur est retardé",
+            'weather' => 'la météo rend certaines activités impossibles',
+            'health' => "l'utilisateur ou un membre du groupe est souffrant",
+            'over_budget' => "l'utilisateur dépasse son budget et veut alléger",
+            'time_lost' => "l'utilisateur a perdu du temps imprévu",
+            'other' => "une contrainte imprévue est survenue",
+        ];
+        $reasonText = $reasonLabels[$reason] ?? $reasonLabels['other'];
+        $affectedList = $affectedDays === [] ? 'tous les jours du séjour' : 'jours '.implode(', ', $affectedDays);
+
+        $locked = array_values(array_filter($currentActivities, fn ($a) => ! empty($a['locked'])));
+        $unlocked = array_values(array_filter($currentActivities, fn ($a) => empty($a['locked'])));
+
+        $lockedBlock = "Aucune activité n'est verrouillée.";
+        if ($locked !== []) {
+            $lines = array_map(
+                fn ($a) => sprintf('- jour %d : "%s" (%.4f, %.4f)', (int) $a['day'], (string) $a['title'], (float) $a['lat'], (float) $a['lng']),
+                $locked
+            );
+            $lockedBlock = "Étapes VERROUILLÉES — à préserver telles quelles (même jour, même horaire approximatif) :\n".implode("\n", $lines);
+        }
+
+        $unlockedBlock = '';
+        if ($unlocked !== []) {
+            $lines = array_map(
+                fn ($a) => sprintf('- jour %d : "%s"', (int) $a['day'], (string) $a['title']),
+                $unlocked
+            );
+            $unlockedBlock = "\n\nÉtapes ré-arrangeables (à déplacer / remplacer / retirer selon la contrainte) :\n".implode("\n", $lines);
+        }
+
+        $durationBlock = self::durationGuidelinesInstructions();
+
+        return <<<TXT
+
+
+MODE REPLAN SOUS CONTRAINTE — destination "{$destination}", durée {$travelDays} jour(s).
+
+Contrainte : {$reasonText}.
+Précision utilisateur : {$details}.
+
+Jours affectés à réécrire : {$affectedList}.
+
+{$lockedBlock}{$unlockedBlock}
+
+Règles de replan (CRITIQUES) :
+- Tu DOIS conserver toutes les étapes verrouillées telles que listées (titre, coordonnées, jour). Ne les supprime pas, ne les déplace pas.
+- Pour les autres jours affectés, propose un nouveau programme cohérent : déplace les activités, remplace celles devenues impossibles, comprime ou étale selon le temps disponible.
+- Pense géographie : regroupe par zone pour limiter les transits ; ordre logique matin → après-midi → soir.
+- Pense réalisme : horaires d'ouverture plausibles, temps de marche, météo si pertinente à la contrainte.
+- Pour over_budget : privilégie activités gratuites/peu chères, garde 1-2 expériences fortes.
+- Pour flight_delay/time_lost : compresse les jours impactés, conserve les "must-do" verrouillés.
+- Pour weather : remplace l'extérieur par de l'intérieur si météo défavorable, ou inversement.
+- Pour health : retire les activités physiques exigeantes, garde calme et flexible.
+
+Format JSON STRICT (sans markdown, sans texte autour) :
+{
+  "reply": "Phrase courte expliquant à l'utilisateur le résumé du nouveau plan (1-2 phrases).",
+  "summary": "Bullet list courte (3-5 lignes max) listant les principaux changements (déplacements, suppressions, ajouts).",
+  "replannedActivities": [
+    { "title": string, "lat": number, "lng": number, "durationHours": number, "day": number entier, "locked": bool optionnel }
+  ],
+  "affectedDays": [ entiers — jours réellement modifiés ]
+}
+{$durationBlock}
+`replannedActivities` doit contenir TOUTES les activités finales pour les jours affectés (y compris les verrouillées repositionnées si besoin). Les jours non listés dans `affectedDays` ne sont pas renvoyés.
 
 TXT;
     }

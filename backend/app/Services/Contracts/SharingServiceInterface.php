@@ -5,5 +5,5 @@ namespace App\Services\Contracts;
 interface SharingServiceInterface
 {
     public function createShareLink(string $tripId, array $payload): array;
-    public function publicRecap(string $token): array;
+    public function publicRecap(string $token, ?string $providedPassword = null): array;
 }

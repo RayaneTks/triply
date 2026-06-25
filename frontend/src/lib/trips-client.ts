@@ -193,13 +193,36 @@ export const tripsClient = {
     ): Promise<TripSummary> {
         return updateTrip(requireToken(), tripId, body);
     },
-    validate(tripId: string): Promise<void> {
+    validate(tripId: string): Promise<TripSummary> {
         return validateTripApi(requireToken(), tripId);
     },
     delete(tripId: string): Promise<void> {
         return deleteTrip(requireToken(), tripId);
     },
+    duplicate(tripId: string): Promise<TripSummary> {
+        return duplicateTrip(requireToken(), tripId);
+    },
 };
+
+export async function duplicateTrip(token: string, tripId: string): Promise<TripSummary> {
+    const response = await fetch(getApiUrl(`/trips/${tripId}/duplicate`), {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccess<TripSummary> | ApiError | null;
+    if (!response.ok) {
+        throw new Error(getErrorMessage(payload as ApiError | null, 'Impossible de dupliquer le voyage.'));
+    }
+    const data = payload as ApiSuccess<TripSummary> | null;
+    if (!data?.success || !data.data) {
+        throw new Error('Impossible de dupliquer le voyage.');
+    }
+    return data.data;
+}
 
 export async function deleteTrip(token: string, tripId: string): Promise<void> {
     const response = await fetch(getApiUrl(`/trips/${tripId}`), {
@@ -220,7 +243,7 @@ export async function deleteTrip(token: string, tripId: string): Promise<void> {
     }
 }
 
-export async function validateTripApi(token: string, tripId: string): Promise<void> {
+export async function validateTripApi(token: string, tripId: string): Promise<TripSummary> {
     const response = await fetch(getApiUrl(`/trips/${tripId}/validate`), {
         method: 'POST',
         headers: {
@@ -229,13 +252,14 @@ export async function validateTripApi(token: string, tripId: string): Promise<vo
         },
     });
 
-    const payload = (await response.json().catch(() => null)) as ApiSuccess<unknown> | ApiError | null;
+    const payload = (await response.json().catch(() => null)) as ApiSuccess<TripSummary> | ApiError | null;
     if (!response.ok) {
         throw new Error(getErrorMessage(payload as ApiError | null, 'Impossible de valider le voyage.'));
     }
 
-    const data = payload as ApiSuccess<unknown> | null;
-    if (!data?.success) {
+    const data = payload as ApiSuccess<TripSummary> | null;
+    if (!data?.success || !data.data) {
         throw new Error('Impossible de valider le voyage.');
     }
+    return data.data;
 }

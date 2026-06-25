@@ -6,12 +6,17 @@ use App\Models\Hebergement;
 use App\Models\LocalTransport;
 use App\Models\Transport;
 use App\Models\Voyage;
+use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\TravelServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 
 class TravelService implements TravelServiceInterface
 {
+    public function __construct(
+        private readonly CurrencyConverterInterface $currencyConverter,
+    ) {
+    }
     public function listFlights(string $tripId): array
     {
         $voyage = $this->findUserTrip($tripId);
@@ -28,6 +33,10 @@ class TravelService implements TravelServiceInterface
     public function createFlight(string $tripId, array $payload): array
     {
         $voyage = $this->findUserTrip($tripId);
+        $normalized = $this->normalizePriceToEur(
+            (float) ($payload['prix'] ?? 0),
+            isset($payload['devise']) ? (string) $payload['devise'] : 'EUR',
+        );
 
         $transport = Transport::query()->create([
             'voyage_id' => $voyage->id,
@@ -36,8 +45,8 @@ class TravelService implements TravelServiceInterface
             'arrivee_lieu' => $payload['arrivee_lieu'],
             'depart_le' => $payload['depart_le'],
             'arrivee_le' => $payload['arrivee_le'],
-            'prix' => $payload['prix'],
-            'devise' => $payload['devise'] ?? 'EUR',
+            'prix' => $normalized['price'],
+            'devise' => $normalized['currency'],
             'information_supplementaire' => $payload['information_supplementaire'] ?? null,
         ]);
 
@@ -53,10 +62,18 @@ class TravelService implements TravelServiceInterface
             ->firstOrFail();
 
         $update = [];
-        foreach (['type', 'depart_lieu', 'arrivee_lieu', 'depart_le', 'arrivee_le', 'prix', 'devise', 'information_supplementaire'] as $field) {
+        foreach (['type', 'depart_lieu', 'arrivee_lieu', 'depart_le', 'arrivee_le', 'information_supplementaire'] as $field) {
             if (array_key_exists($field, $payload)) {
                 $update[$field] = $payload[$field];
             }
+        }
+        if (array_key_exists('prix', $payload) || array_key_exists('devise', $payload)) {
+            $normalized = $this->normalizePriceToEur(
+                (float) ($payload['prix'] ?? $transport->prix),
+                (string) ($payload['devise'] ?? $transport->devise ?? 'EUR'),
+            );
+            $update['prix'] = $normalized['price'];
+            $update['devise'] = $normalized['currency'];
         }
         if ($update !== []) {
             $transport->update($update);
@@ -97,6 +114,10 @@ class TravelService implements TravelServiceInterface
     public function createHotel(string $tripId, array $payload): array
     {
         $voyage = $this->findUserTrip($tripId);
+        $normalized = $this->normalizePriceToEur(
+            (float) ($payload['prix'] ?? 0),
+            isset($payload['devise']) ? (string) $payload['devise'] : 'EUR',
+        );
 
         $hebergement = Hebergement::query()->create([
             'voyage_id' => $voyage->id,
@@ -109,8 +130,8 @@ class TravelService implements TravelServiceInterface
             'longitude' => $payload['longitude'] ?? null,
             'arrivee_le' => $payload['arrivee_le'],
             'depart_le' => $payload['depart_le'],
-            'prix' => $payload['prix'],
-            'devise' => $payload['devise'] ?? 'EUR',
+            'prix' => $normalized['price'],
+            'devise' => $normalized['currency'],
             'informations_supplementaire' => $payload['informations_supplementaire'] ?? null,
         ]);
 
@@ -126,10 +147,18 @@ class TravelService implements TravelServiceInterface
             ->firstOrFail();
 
         $update = [];
-        foreach (['type', 'nom', 'adresse', 'code_postal', 'ville', 'latitude', 'longitude', 'arrivee_le', 'depart_le', 'prix', 'devise', 'informations_supplementaire'] as $field) {
+        foreach (['type', 'nom', 'adresse', 'code_postal', 'ville', 'latitude', 'longitude', 'arrivee_le', 'depart_le', 'informations_supplementaire'] as $field) {
             if (array_key_exists($field, $payload)) {
                 $update[$field] = $payload[$field];
             }
+        }
+        if (array_key_exists('prix', $payload) || array_key_exists('devise', $payload)) {
+            $normalized = $this->normalizePriceToEur(
+                (float) ($payload['prix'] ?? $hebergement->prix),
+                (string) ($payload['devise'] ?? $hebergement->devise ?? 'EUR'),
+            );
+            $update['prix'] = $normalized['price'];
+            $update['devise'] = $normalized['currency'];
         }
         if ($update !== []) {
             $hebergement->update($update);
@@ -240,10 +269,52 @@ class TravelService implements TravelServiceInterface
     }
 
     /**
+     * @return array{price: int, currency: string}
+     */
+    private function normalizePriceToEur(float $amount, string $currency): array
+    {
+        $from = strtoupper(trim($currency));
+        if ($from === '' || $from === 'EUR') {
+            return ['price' => (int) round($amount), 'currency' => 'EUR'];
+        }
+
+        $eur = $this->currencyConverter->convert($amount, $from, 'EUR');
+
+        return ['price' => (int) round($eur), 'currency' => 'EUR'];
+    }
+
+    /**
+     * @template T of Transport|Hebergement
+     *
+     * @param  T  $record
+     * @return T
+     */
+    private function ensureEurPriceOnRecord(Transport|Hebergement $record, string $priceField, string $currencyField): Transport|Hebergement
+    {
+        $currency = strtoupper(trim((string) ($record->{$currencyField} ?? 'EUR')));
+        if ($currency === '' || $currency === 'EUR') {
+            return $record;
+        }
+
+        $normalized = $this->normalizePriceToEur((float) $record->{$priceField}, $currency);
+        if ((int) $record->{$priceField} !== $normalized['price'] || $record->{$currencyField} !== 'EUR') {
+            $record->update([
+                $priceField => $normalized['price'],
+                $currencyField => 'EUR',
+            ]);
+            $record->refresh();
+        }
+
+        return $record;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function serializeFlight(Transport $t): array
     {
+        $t = $this->ensureEurPriceOnRecord($t, 'prix', 'devise');
+
         return [
             'id' => (string) $t->id,
             'type' => $t->type,
@@ -262,6 +333,8 @@ class TravelService implements TravelServiceInterface
      */
     private function serializeHotel(Hebergement $h): array
     {
+        $h = $this->ensureEurPriceOnRecord($h, 'prix', 'devise');
+
         return [
             'id' => (string) $h->id,
             'type' => $h->type,

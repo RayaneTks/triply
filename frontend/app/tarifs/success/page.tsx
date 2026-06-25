@@ -70,8 +70,8 @@ function CheckoutSuccessInner() {
           <AlertTriangle size={48} className="text-amber-500 mx-auto mb-6" />
           <h1 className="text-2xl font-display font-bold mb-4">Paiement effectué</h1>
           <p className="text-light-muted mb-6">
-            Votre paiement a été reçu par Stripe, mais la confirmation côté Triply a échoué.
-            Contactez-nous à <a className="text-brand underline" href="mailto:support@triply.ovh">support@triply.ovh</a> pour activer votre tier manuellement.
+            Votre paiement a bien été reçu, mais l’activation de votre abonnement n’a pas abouti.
+            Écrivez-nous à <a className="text-brand underline" href="mailto:support@triply.ovh">support@triply.ovh</a> et nous l’activons pour vous.
           </p>
           <Link href="/profil" className="inline-block bg-brand text-white px-8 py-4 rounded-xl font-bold hover:bg-brand-hover transition-colors">
             Voir mon profil

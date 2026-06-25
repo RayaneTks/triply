@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Aligner Tailwind `dark:` sur le toggle Triply (classe .dark sur <html>), pas prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #1c1c1c;
   --foreground: #f4f4f5;
@@ -69,6 +72,15 @@
   --dark-muted: rgba(17, 24, 39, 0.65);
   --dark-bg: #0f172a;
   --brand-hover: #0077a8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @theme inline {
@@ -304,9 +316,11 @@
 .bg-amber-50,
 .bg-amber-100    { background-color: var(--warning-bg) !important; }
 .text-amber-500,
-.text-amber-600 { color: var(--warning-fg) !important; }
+.text-amber-600,
+.text-amber-700 { color: var(--warning-fg) !important; }
 .border-amber-100,
-.border-amber-200 { border-color: var(--warning-border) !important; }
+.border-amber-200,
+.border-amber-300 { border-color: var(--warning-border) !important; }
 
 .bg-sky-50,
 .bg-cyan-50      { background-color: color-mix(in srgb, var(--primary) 10%, transparent); }
@@ -393,15 +407,21 @@ select.bg-light-bg { color: var(--foreground); }
   box-shadow: 0 4px 0 0 #1a1f2e;
 }
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
   box-shadow: 0 6px 0 0 var(--secondary);
 }
 [data-theme="light"] .btn-primary:hover:not(:disabled) {
   box-shadow: 0 6px 0 0 #1a1f2e;
 }
 .btn-primary:active:not(:disabled) {
-  transform: translateY(2px);
   box-shadow: 0 2px 0 0 var(--secondary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(2px);
+  }
 }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 

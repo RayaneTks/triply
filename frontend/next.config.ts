@@ -1,4 +1,11 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+// Chemin absolu fiable pour Turbopack (Docker + dev local).
+// __dirname peut être ignoré ou résolu en /ROOT/... par Turbopack (Next 16),
+// ce qui fait inférer /app/frontend/app au lieu de /app/frontend.
+const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -18,8 +25,9 @@ const nextConfig: NextConfig = {
   // ~150-300 MB sans node_modules complet à embarquer.
   output: "standalone",
   turbopack: {
-    root: __dirname,
+    root: frontendRoot,
   },
+  outputFileTracingRoot: frontendRoot,
   async rewrites() {
     const backendProxyTarget = (
       process.env.BACKEND_PROXY_TARGET

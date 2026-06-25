@@ -44,6 +44,10 @@ class BookingService implements BookingServiceInterface
             destinationCode: (string) ($payload['destination_code'] ?? ''),
             affiliateId: $aid !== '' ? $aid : null,
             skyscannerSubId: $skyscannerSubId !== '' ? $skyscannerSubId : null,
+            propertyName: (string) ($payload['property_name'] ?? ''),
+            address: (string) ($payload['address'] ?? ''),
+            latitude: isset($payload['latitude']) && is_numeric($payload['latitude']) ? (float) $payload['latitude'] : null,
+            longitude: isset($payload['longitude']) && is_numeric($payload['longitude']) ? (float) $payload['longitude'] : null,
         );
 
         return [
@@ -75,6 +79,10 @@ class BookingService implements BookingServiceInterface
         string $destinationCode,
         ?string $affiliateId,
         ?string $skyscannerSubId,
+        string $propertyName = '',
+        string $address = '',
+        ?float $latitude = null,
+        ?float $longitude = null,
     ): string {
         switch ($provider) {
             case 'skyscanner':
@@ -101,17 +109,47 @@ class BookingService implements BookingServiceInterface
 
             case 'booking':
             default:
+                $searchQuery = $this->buildHotelSearchQuery($propertyName, $destination, $address);
                 $url = 'https://www.booking.com/searchresults.html?'.http_build_query(array_filter([
-                    'ss' => $destination,
+                    'ss' => $searchQuery,
                     'checkin' => $checkIn,
                     'checkout' => $checkOut,
                     'group_adults' => $adults,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
                     'aid' => $affiliateId,
                     'label' => 'triply-recap',
-                ]));
+                ], fn ($value) => $value !== null && $value !== ''));
 
                 return $url;
         }
+    }
+
+    /**
+     * Construit une requête de recherche ciblant un hôtel précis plutôt que la ville seule.
+     */
+    private function buildHotelSearchQuery(string $propertyName, string $destination, string $address): string
+    {
+        $name = trim($propertyName);
+        $city = trim($destination);
+        $addr = trim($address);
+
+        if ($name !== '') {
+            $parts = [$name];
+            if ($addr !== '' && ! str_contains(mb_strtolower($name), mb_strtolower($addr))) {
+                $parts[] = $addr;
+            } elseif ($city !== '' && ! str_contains(mb_strtolower($name), mb_strtolower($city))) {
+                $parts[] = $city;
+            }
+
+            return implode(', ', $parts);
+        }
+
+        if ($addr !== '') {
+            return $city !== '' ? "{$addr}, {$city}" : $addr;
+        }
+
+        return $city;
     }
 
     private function findUserTrip(string $tripId): Voyage

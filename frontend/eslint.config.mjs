@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Service worker servi statiquement (globals self/caches) — hors périmètre lint app.
+    "public/**",
   ]),
 ]);
 
