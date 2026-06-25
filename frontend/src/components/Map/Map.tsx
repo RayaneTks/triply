@@ -204,14 +204,18 @@ export const WorldMap: React.FC<MapProps> = ({
     const [hoveredRoute, setHoveredRoute] = useState<{ profile: string; duration: number; x: number; y: number } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isStyleReady, setIsStyleReady] = useState(false);
+    const [trackedMapStyle, setTrackedMapStyle] = useState(mapStyle);
+
+    // Réinitialiser hors effet pour éviter setState synchrone dans l'effet (react-hooks/set-state-in-effect).
+    if (mapStyle !== trackedMapStyle) {
+        setTrackedMapStyle(mapStyle);
+        setIsStyleReady(false);
+    }
 
     useEffect(() => {
         if (!isMapLoaded || !mapRef.current) return;
         const map = mapRef.current.getMap();
 
-        // Quand le style change, on masque temporairement les Source/Layer React
-        // jusqu'à ce que le nouveau style soit complètement chargé.
-        setIsStyleReady(false);
         const checkStyleReady = () => {
             try {
                 if (map.isStyleLoaded()) {
