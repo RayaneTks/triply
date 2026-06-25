@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Hebergement;
 use App\Models\Transport;
 use App\Models\Voyage;
+use App\Services\Contracts\CurrencyConverterInterface;
 use App\Services\Contracts\TripAutoSelectionServiceInterface;
 use App\Services\Integrations\AmadeusClient;
 use Carbon\Carbon;
@@ -18,8 +19,10 @@ use Throwable;
  */
 class TripAutoSelectionService implements TripAutoSelectionServiceInterface
 {
-    public function __construct(private readonly AmadeusClient $amadeus)
-    {
+    public function __construct(
+        private readonly AmadeusClient $amadeus,
+        private readonly CurrencyConverterInterface $currencyConverter,
+    ) {
     }
 
     public function runForTrip(Voyage $voyage): void
@@ -153,6 +156,8 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
         $carrierCode = (string) ($firstSeg['carrierCode'] ?? '');
         $flightNumber = trim($carrierCode . (string) ($firstSeg['number'] ?? ''));
         $price = (int) round((float) ($cheapest['price']['grandTotal'] ?? 0));
+        $currency = (string) ($cheapest['price']['currency'] ?? 'EUR');
+        $normalized = $this->normalizePriceToEur($price, $currency);
 
         Transport::query()->create([
             'voyage_id' => $voyage->id,
@@ -161,8 +166,8 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
             'arrivee_lieu' => (string) ($lastSeg['arrival']['iataCode'] ?? $destIata),
             'depart_le' => (string) ($firstSeg['departure']['at'] ?? $startDate),
             'arrivee_le' => (string) ($lastSeg['arrival']['at'] ?? $startDate),
-            'prix' => $price,
-            'devise' => (string) ($cheapest['price']['currency'] ?? 'EUR'),
+            'prix' => $normalized['price'],
+            'devise' => $normalized['currency'],
             'information_supplementaire' => json_encode([
                 'flightNumber' => $flightNumber,
                 'stops' => max(0, count($segments) - 1),
@@ -174,8 +179,8 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
 
         $snapshot['flightSummary'] = [
             'carrier' => $carrierCode,
-            'price' => (string) $price,
-            'currency' => (string) ($cheapest['price']['currency'] ?? 'EUR'),
+            'price' => (string) $normalized['price'],
+            'currency' => $normalized['currency'],
             'originIata' => $originIata,
             'destinationIata' => $destIata,
             'outboundAt' => (string) ($firstSeg['departure']['at'] ?? ''),
@@ -267,6 +272,8 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
         $latitude = isset($hotel['latitude']) ? (float) $hotel['latitude'] : null;
         $longitude = isset($hotel['longitude']) ? (float) $hotel['longitude'] : null;
         $price = (int) round((float) ($offer['price']['total'] ?? 0));
+        $currency = (string) ($offer['price']['currency'] ?? 'EUR');
+        $normalized = $this->normalizePriceToEur($price, $currency);
 
         Hebergement::query()->create([
             'voyage_id' => $voyage->id,
@@ -279,8 +286,8 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
             'longitude' => $longitude,
             'arrivee_le' => $checkIn,
             'depart_le' => $checkOut,
-            'prix' => $price,
-            'devise' => (string) ($offer['price']['currency'] ?? 'EUR'),
+            'prix' => $normalized['price'],
+            'devise' => $normalized['currency'],
             'informations_supplementaire' => json_encode([
                 'offerId' => $offer['id'] ?? null,
                 'hotelId' => $hotel['hotelId'] ?? null,
@@ -295,8 +302,8 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
             'longitude' => $longitude,
             'cityCode' => $cityCode,
             'cityName' => (string) ($address['cityName'] ?? ''),
-            'totalPrice' => (string) $price,
-            'currency' => (string) ($offer['price']['currency'] ?? 'EUR'),
+            'totalPrice' => (string) $normalized['price'],
+            'currency' => $normalized['currency'],
             'checkInDate' => $checkIn,
             'checkOutDate' => $checkOut,
         ];
@@ -314,5 +321,20 @@ class TripAutoSelectionService implements TripAutoSelectionServiceInterface
             return null;
         }
         return $clean;
+    }
+
+    /**
+     * @return array{price: int, currency: string}
+     */
+    private function normalizePriceToEur(float $amount, string $currency): array
+    {
+        $from = strtoupper(trim($currency));
+        if ($from === '' || $from === 'EUR') {
+            return ['price' => (int) round($amount), 'currency' => 'EUR'];
+        }
+
+        $eur = $this->currencyConverter->convert($amount, $from, 'EUR');
+
+        return ['price' => (int) round($eur), 'currency' => 'EUR'];
     }
 }

@@ -23,6 +23,7 @@ interface HotelsSectionProps {
     endDate?: string | null;
     travelers?: number;
     budgetTotal?: number;
+    onUpdated?: () => void;
 }
 
 async function resolveCityCode(keyword: string): Promise<string | null> {
@@ -128,6 +129,7 @@ export function HotelsSection({
     endDate,
     travelers,
     budgetTotal,
+    onUpdated,
 }: HotelsSectionProps) {
     const [hotels, setHotels] = useState<HotelRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -235,21 +237,23 @@ export function HotelsSection({
             setModalOpen(false);
             setApiResponse(null);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
         } finally {
             setPersisting(false);
         }
-    }, [persisting, tripId, destination, reload]);
+    }, [persisting, tripId, destination, reload, onUpdated]);
 
     const handleDelete = useCallback(async (hotelId: string) => {
         try {
             await tripTravelClient.deleteHotel(tripId, hotelId);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Suppression impossible.');
         }
-    }, [tripId, reload]);
+    }, [tripId, reload, onUpdated]);
 
     const handleBook = useCallback(async (hotel: HotelRecord) => {
         try {
@@ -257,6 +261,10 @@ export function HotelsSection({
                 provider: 'booking',
                 kind: 'hotel',
                 destination: hotel.ville ?? destination,
+                property_name: hotel.nom,
+                address: hotel.adresse,
+                latitude: hotel.latitude ?? undefined,
+                longitude: hotel.longitude ?? undefined,
                 check_in: hotel.arrivee_le ?? undefined,
                 check_out: hotel.depart_le ?? undefined,
                 adults: travelerCount,
@@ -307,12 +315,13 @@ export function HotelsSection({
             setManual(EMPTY_MANUAL_HOTEL);
             setManualOpen(false);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
         } finally {
             setManualSaving(false);
         }
-    }, [manual, manualSaving, tripId, destination, reload]);
+    }, [manual, manualSaving, tripId, destination, reload, onUpdated]);
 
     const openModal = () => {
         setApiResponse(null);
@@ -500,7 +509,7 @@ export function HotelsSection({
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-lg font-bold text-brand">
-                                    {hotel.prix} {hotel.devise ?? 'EUR'}
+                                    {hotel.prix.toLocaleString('fr-FR')} EUR
                                 </span>
                                 <button
                                     type="button"

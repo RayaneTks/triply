@@ -97,4 +97,25 @@ class TripBookingControllerTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    public function test_checkout_booking_deeplink_includes_hotel_name(): void
+    {
+        $response = $this->postJson("/api/v1/trips/{$this->voyage->id}/booking/checkout", [
+            'provider' => 'booking',
+            'kind' => 'hotel',
+            'destination' => 'Tokyo',
+            'property_name' => 'HILTON TOKYO',
+            'address' => '6-2 Nishishinjuku 6 Chome - Shinjuku',
+            'latitude' => 35.6896,
+            'longitude' => 139.6917,
+            'check_in' => '2026-06-26',
+            'check_out' => '2026-06-30',
+            'adults' => 2,
+        ]);
+
+        $response->assertStatus(202);
+        $deeplink = (string) $response->json('data.attributes.deeplink');
+        $this->assertStringContainsString('HILTON+TOKYO', $deeplink);
+        $this->assertStringContainsString('latitude=35.6896', $deeplink);
+    }
 }

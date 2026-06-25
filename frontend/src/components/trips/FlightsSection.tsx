@@ -25,6 +25,7 @@ interface FlightsSectionProps {
      *  prefill the flight search modal instead of falling back to "Paris". */
     defaultOriginCity?: string;
     defaultOriginIata?: string;
+    onUpdated?: () => void;
 }
 
 const EMPTY_MANUAL_FLIGHT = {
@@ -140,6 +141,7 @@ export function FlightsSection({
     budgetTotal,
     defaultOriginCity,
     defaultOriginIata,
+    onUpdated,
 }: FlightsSectionProps) {
     const [flights, setFlights] = useState<FlightRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -276,21 +278,23 @@ export function FlightsSection({
             setModalOpen(false);
             setApiResponse(null);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
         } finally {
             setPersisting(false);
         }
-    }, [persisting, tripId, reload]);
+    }, [persisting, tripId, reload, onUpdated]);
 
     const handleDelete = useCallback(async (flightId: string) => {
         try {
             await tripTravelClient.deleteFlight(tripId, flightId);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Suppression impossible.');
         }
-    }, [tripId, reload]);
+    }, [tripId, reload, onUpdated]);
 
     const handleBook = useCallback(async (flight: FlightRecord) => {
         try {
@@ -349,12 +353,13 @@ export function FlightsSection({
             setManual(EMPTY_MANUAL_FLIGHT);
             setManualOpen(false);
             await reload();
+            onUpdated?.();
         } catch (err) {
             setOpMessage(err instanceof Error ? err.message : 'Sauvegarde impossible.');
         } finally {
             setManualSaving(false);
         }
-    }, [manual, manualSaving, tripId, reload]);
+    }, [manual, manualSaving, tripId, reload, onUpdated]);
 
     const openModal = () => {
         setApiResponse(null);
@@ -544,7 +549,7 @@ export function FlightsSection({
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-lg font-bold text-brand">
-                                    {flight.prix} {flight.devise ?? 'EUR'}
+                                    {flight.prix.toLocaleString('fr-FR')} EUR
                                 </span>
                                 <button
                                     type="button"

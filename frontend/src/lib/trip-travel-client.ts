@@ -82,6 +82,10 @@ export interface BookingCheckoutPayload {
     provider: 'booking' | 'skyscanner' | 'getyourguide';
     kind: 'flight' | 'hotel' | 'activity';
     destination?: string;
+    property_name?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
     check_in?: string;
     check_out?: string;
     adults?: number;

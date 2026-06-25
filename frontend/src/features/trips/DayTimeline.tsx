@@ -85,7 +85,7 @@ function classifyActivity(title: string): { category: keyof typeof CATEGORY_COLO
     if (/cathédrale|cathedrale|église|eglise|basilique|palais|château|chateau|monument|tour|arc /.test(t)) {
         return { category: 'monument', Icon: Landmark };
     }
-    if (/parc|jardin|forêt|foret|montagne|plage|lac|nature|randonnée|randonnee|hike/.test(t)) {
+    if (/parc|jardin|forêt|foret|montagne|plage|lac|nature|randonnée|randonnee|hike|safari|réserve|reserve|parc national/.test(t)) {
         return { category: 'nature', Icon: Trees };
     }
     if (/marché|marche|boutique|shopping|magasin/.test(t)) {
@@ -230,10 +230,6 @@ const ActivityRow: FC<ActivityRowProps> = ({
     onMoveUp,
     onMoveDown,
 }) => {
-    const { activity, category, Icon, startTime, endTime, durationLabel } = item;
-    const { lat, lng } = activity.attributes;
-    const hasGeo = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
-
     const { activity, category, Icon, startTime, endTime, durationLabel } = item;
     const { lat, lng } = activity.attributes;
     const hasGeo = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);

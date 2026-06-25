@@ -49,27 +49,28 @@ export function RegisterView() {
   if (success) {
     return (
       <AuthPanelLayout
-        title="Compte cree"
-        subtitle="Bienvenue a bord. Ton espace Triply est pret."
+        centered
+        title="Compte créé"
+        subtitle="Bienvenue à bord. Ton espace Triply est prêt."
         footer={
           <>
-            Besoin d'aide ?{' '}
-            <Link href="/connexion" className="font-semibold text-brand hover:opacity-90">
-              Acceder a la connexion
+            Tu préfères explorer d&apos;abord ?{' '}
+            <Link href="/voyages" className="font-semibold text-brand hover:opacity-90">
+              Voir mes voyages
             </Link>
           </>
         }
       >
-        <div className="space-y-5 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand/25 text-cyan-100">
-            <Check size={30} />
+        <div className="flex flex-col items-center gap-8 py-2">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/20 text-brand ring-1 ring-brand/30">
+            <Check size={30} strokeWidth={2.5} />
           </div>
           <Button
-            label={returnTo === '/planifier' ? 'Demarrer mon premier voyage' : 'Continuer'}
+            label={returnTo === '/planifier' ? 'Démarrer mon premier voyage' : 'Continuer'}
             onClick={() => router.push(returnTo)}
             variant="dark"
             tone="tone1"
-            className="w-full"
+            className="w-full max-w-sm"
           />
         </div>
       </AuthPanelLayout>
@@ -79,10 +80,10 @@ export function RegisterView() {
   return (
     <AuthPanelLayout
       title="Inscription"
-      subtitle="Cree ton compte en quelques secondes pour enregistrer et partager tes itineraires."
+      subtitle="Crée ton compte en quelques secondes pour enregistrer et partager tes itinéraires."
       footer={
         <>
-          Deja inscrit ?{' '}
+          Déjà inscrit ?{' '}
           <Link href="/connexion" className="font-semibold text-brand hover:opacity-90">
             Se connecter
           </Link>

@@ -361,11 +361,17 @@ export function Wizard() {
 
   const generateAiItinerary = async (): Promise<PlanSnapshotDay[]> => {
     const aiPreferences = [...userPreferences, ...needsToPreferences(needs)];
+    const restaurantHint = needs.restaurants
+      ? " Inclus au moins une expérience gastronomique par jour (restaurant ou lieu de restauration nommé). "
+        + "Attribue une durationHours réaliste et différente à chaque activité selon son type "
+        + "(monument ~1h, musée ~2-3h, safari/réserve ~4-6h, restaurant ~1-1.5h)."
+      : " Attribue une durationHours réaliste et différente à chaque activité selon son type "
+        + "(monument ~1h, musée ~2-3h, safari/réserve ~4-6h, restaurant ~1-1.5h).";
     const response = await sendChat({
       messages: [
         {
           role: "user",
-          content: `Construis un itinéraire jour par jour à ${destination.trim()} sur ${travelDays} jour${travelDays > 1 ? 's' : ''} pour ${travelers} voyageur${travelers > 1 ? 's' : ''}, budget total ${budget}€. Trois activités par jour minimum.`,
+          content: `Construis un itinéraire jour par jour à ${destination.trim()} sur ${travelDays} jour${travelDays > 1 ? 's' : ''} pour ${travelers} voyageur${travelers > 1 ? 's' : ''}, budget total ${budget}€. Trois activités par jour minimum.${restaurantHint}`,
         },
       ],
       destinationContext: destination.trim(),

@@ -602,7 +602,9 @@ class ChatAssistantService
         $daysList = implode(', ', $missingDays);
         $retryUserMessage = "Tu as omis les jours suivants : {$daysList}. "
             ."Complète maintenant UNIQUEMENT ces jours en respectant le format JSON attendu. "
-            ."Pour chacun de ces jours, fournis 3 activités distinctes (titre, lat, lng, durationHours, day). "
+            ."Pour chacun de ces jours, fournis 3 activités distinctes (titre, lat, lng, durationHours obligatoire, day). "
+            ."Attribue des durationHours réalistes et variées selon le type (monument ~1h, musée ~2-3h, safari/réserve ~4-6h, restaurant ~1-1.5h). "
+            ."Ne mets pas la même durée sur toutes les activités. "
             ."suggestedActivities doit contenir EXACTEMENT les activités pour ces jours, rien d'autre.";
 
         $retryMessages = array_merge($originalMessages, [

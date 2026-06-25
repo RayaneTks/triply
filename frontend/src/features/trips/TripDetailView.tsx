@@ -78,6 +78,16 @@ export function TripDetailView() {
         }
     }, [tripId]);
 
+    const refreshTrip = useCallback(async () => {
+        if (!tripId || !authClient.getToken()) return;
+        try {
+            const fresh = await tripsClient.get(tripId);
+            if (fresh) setApiTrip(fresh);
+        } catch {
+            /* ignore — aside reste sur le dernier snapshot connu */
+        }
+    }, [tripId]);
+
     useEffect(() => {
         let cancelled = false;
         if (!tripId) {
@@ -560,6 +570,7 @@ export function TripDetailView() {
                                     apiTrip?.plan_snapshot?.origin?.iataCode
                                     ?? apiTrip?.plan_snapshot?.flightSummary?.originIata
                                 }
+                                onUpdated={() => void refreshTrip()}
                             />
                         )}
 
@@ -576,13 +587,20 @@ export function TripDetailView() {
                                 endDate={apiTrip?.end_date}
                                 travelers={apiTrip?.travelers_count}
                                 budgetTotal={apiTrip?.budget_total}
+                                onUpdated={() => void refreshTrip()}
                             />
                         )}
 
                     </section>
                 </div>
 
-                <TripCopilotAside dates={trip.dates} travelers={trip.travelers} />
+                <TripCopilotAside
+                    dates={trip.dates}
+                    travelers={trip.travelers}
+                    flightSummary={apiTrip?.plan_snapshot?.flightSummary}
+                    hotelSummary={apiTrip?.plan_snapshot?.hotelSummary}
+                    onNavigateTab={setActiveTab}
+                />
             </div>
 
             {/* Modale suppression ville */}

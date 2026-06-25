@@ -80,4 +80,25 @@ class BookingServiceTest extends TestCase
         $this->expectException(ModelNotFoundException::class);
         $this->service->checkout((string) $otherVoyage->id, []);
     }
+
+    public function test_checkout_booking_deeplink_targets_specific_hotel(): void
+    {
+        $result = $this->service->checkout((string) $this->voyage->id, [
+            'provider' => 'booking',
+            'kind' => 'hotel',
+            'destination' => 'Tokyo',
+            'property_name' => 'HILTON TOKYO',
+            'address' => '6-2 Nishishinjuku 6 Chome - Shinjuku',
+            'latitude' => 35.6896,
+            'longitude' => 139.6917,
+            'check_in' => '2026-06-26',
+            'check_out' => '2026-06-30',
+        ]);
+
+        $deeplink = $result['attributes']['deeplink'];
+        $this->assertStringContainsString('HILTON+TOKYO', $deeplink);
+        $this->assertStringContainsString('latitude=35.6896', $deeplink);
+        $this->assertStringContainsString('longitude=139.6917', $deeplink);
+        $this->assertStringNotContainsString('ss=Tokyo', $deeplink);
+    }
 }
