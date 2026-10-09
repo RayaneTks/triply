@@ -1,16 +1,35 @@
-# Triply
+# Triply — Planification de voyages
 
-Planification de voyage centralisée : vols, hébergements, carte et parcours dans une seule application.
+Application de planification de voyages réunissant vols, hébergements, carte et parcours. Le dépôt regroupe une interface Next.js, une API Laravel et un environnement Docker de développement.
 
-## Structure du dépôt
+## Fonctionnalités
 
-| Zone | Rôle |
-|------|------|
-| **`frontend/`** (`app/`, `src/`, `next.config.ts`) | **App principale** — Next.js 16 (App Router) + React 19 + Tailwind 4. Tous les appels `/api/v1/*` sont réécrits (`next.config.ts`) vers le backend Laravel. |
-| **`backend/`** | API Laravel (Sanctum, voyages, intégrations Amadeus, copilote côté serveur). |
-| **`compose.dev.yaml`** + **`Makefile`** | Stack de développement (Postgres, PHP-FPM, Nginx, Redis, PgAdmin, app Next.js). |
+- Organisation de voyages et de leurs étapes.
+- Intégrations de recherche de voyage, notamment Amadeus.
+- Carte et visualisation du parcours.
+- Authentification via Laravel Sanctum.
+- Copilote côté serveur ; son usage dépend de la configuration des services externes.
 
-Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md).
+## Technologies
+
+**Interface :** Next.js 16, React 19, TypeScript et Tailwind CSS 4.
+
+**API :** Laravel 12, PHP 8.2+, Sanctum et PostgreSQL.
+
+**Environnement :** Docker Compose, Nginx, Redis, PgAdmin et Makefile.
+
+## Organisation
+
+| Chemin | Rôle |
+|---|---|
+| `frontend/` | Application Next.js et redirection des appels `/api/v1/*` vers l’API. |
+| `backend/` | API Laravel, logique métier et intégrations. |
+| `compose.dev.yaml` | Services de développement. |
+| `Makefile` | Installation, démarrage et commandes de maintenance. |
+
+## Documentation
+
+[Contexte produit](PRODUCT_CONTEXT.md) · [Guide du backend](backend/README.md) · [Design system](frontend/design-system.md)
 
 ## Prérequis
 
@@ -23,7 +42,7 @@ Le détail produit (vision, personas) est dans [`PRODUCT_CONTEXT.md`](PRODUCT_CO
 - PHP 8.2+, Composer 2+, Node.js 22+, PostgreSQL 16+
 - Extensions PHP Laravel habituelles (`pdo_pgsql`, `mbstring`, etc.)
 
-## Installation (clone neuf)
+## Installation
 
 ### 1) Docker + Makefile
 
@@ -63,7 +82,7 @@ Application : [http://localhost:3000](http://localhost:3000) (port Next.js par d
 
 - Tokens, fontes et charte graphique : [frontend/design-system.md](frontend/design-system.md).
 
-## Organisation des `.env` (important)
+## Configuration des variables d’environnement
 
 - `.env` (racine) : variables **Docker Compose** uniquement (`DB_*`, `PGADMIN_*`, ports).
 - `backend/.env` : variables **Laravel** + **secrets** (ex. `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, `OPENAI_API_KEY`).
@@ -119,7 +138,7 @@ docker compose -f compose.dev.yaml exec -T tri-php-fpm php artisan migrate --for
 | Swagger | [http://127.0.0.1:8000/api/documentation](http://127.0.0.1:8000/api/documentation) |
 | PgAdmin | [http://127.0.0.1:8080](http://127.0.0.1:8080) |
 
-## Ajouter une dépendance npm (important)
+## Ajouter une dépendance npm
 
 `node_modules` du frontend vit dans le volume nommé `tri-spa-node_modules`, isolé du host. Un `npm install` local **ne se propage pas** au conteneur.
 
